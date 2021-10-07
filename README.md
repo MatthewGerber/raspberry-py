@@ -1,5 +1,9 @@
 # rpi
 Raspberry Pi
 
-On an Ubuntu 20.04 Server LTS 64-bit OS, need to run `sudo chmod og+rwx /dev/gpio*` in order for permissions to allow
-GPIO to work.
+On an Ubuntu 20.04 Server LTS 64-bit OS, enable GPIO device permissions on boot:
+1. Edit `sudo emacs /etc/udev/rules.d/99-gpiomem.rules` as follows:
+```
+KERNEL=="gpiomem", OWNER="root", GROUP="dialout"
+```
+2. Test the permissions:  `sudo udevadm trigger /dev/gpiomem`
