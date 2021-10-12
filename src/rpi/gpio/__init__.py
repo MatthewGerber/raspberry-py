@@ -205,12 +205,13 @@ class Clock(Component):
 
     def __init__(
             self,
-            tick_interval_seconds: float
+            tick_interval_seconds: Optional[float]
     ):
         """
         Initialize the clock.
 
-        :param tick_interval_seconds: Number of seconds to wait between clock ticks.
+        :param tick_interval_seconds: Number of seconds to wait between clock ticks, or None to tick as quickly as
+        possible.
         """
 
         super().__init__(
@@ -242,12 +243,13 @@ class Clock(Component):
         # run until we should stop
         while self.state.running:
 
-            # sleep for a bit
-            time.sleep(self.tick_interval_seconds)
+            # sleep if we have a tick interval
+            if self.tick_interval_seconds is not None:
+                time.sleep(self.tick_interval_seconds)
 
             # create new state
             new_state = deepcopy(self.state)
-            new_state.tick += self.tick_interval_seconds
+            new_state.tick += 1
 
             # watch out for race condition on the running value. only set state if we're still running.
             if new_state.running:
