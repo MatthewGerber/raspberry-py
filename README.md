@@ -64,7 +64,7 @@ Other examples can be found [here](src/rpi/gpio/examples).
 
 ## Installation
 This package has been developed using the Ubuntu installation described 
-[here](https://matthewgerber.github.io/rlai/raspberry_pi.html). By default, Ubuntu does not give the user permission
+[here](https://matthewgerber.github.io/rlai/raspberry_pi.html#operating-system) (ignore the "Install RLAI" section). By default, Ubuntu does not give the user permission
 to interact with the GPIO pins of the Raspberry Pi. To grant GPIO permissions when the Raspberry Pi boots:
 1. Edit `/etc/udev/rules.d/99-gpiomem.rules` as follows to assign the `gpiomem` device to the `dialout` 
 group, which the user is a member of by default:
