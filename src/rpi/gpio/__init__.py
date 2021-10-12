@@ -2,7 +2,7 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from threading import Thread
+from threading import Thread, Lock
 from typing import List, Tuple, Callable, Optional
 
 import RPi.GPIO as gpio
@@ -181,11 +181,12 @@ class Clock(Component):
 
         self.state: Clock.State
 
-        if self.state.running:
-            logging.warning('Attempted to start clock that is running.')
-        else:
-            self.run_thread = Thread(target=self.__run__)
-            self.run_thread.start()
+        with self.state_lock:
+            if self.state.running:
+                logging.warning('Attempted to start clock that is running.')
+            else:
+                self.run_thread = Thread(target=self.__run__)
+                self.run_thread.start()
 
     def stop(
             self
@@ -196,12 +197,14 @@ class Clock(Component):
 
         self.state: Clock.State
 
-        if self.state.running:
-            self.state.running = False
-            self.run_thread.join()
-            logging.info('Stopped clock.')
-        else:
-            logging.warning('Attempted to stop clock that is not running.')
+        with self.state_lock:
+            if self.state.running:
+                self.state.running = False
+            else:
+                logging.warning('Attempted to stop clock that is not running.')
+
+        self.run_thread.join()
+        logging.info('Stopped clock.')
 
     def __init__(
             self,
@@ -224,6 +227,7 @@ class Clock(Component):
         self.tick_interval_seconds = tick_interval_seconds
 
         self.run_thread: Optional[Thread] = None
+        self.state_lock = Lock()
 
     def __run__(
             self
@@ -235,27 +239,31 @@ class Clock(Component):
         self.state: Clock.State
 
         # reset state
-        new_state = deepcopy(self.state)
-        new_state.running = True
-        new_state.tick = 0
-        self.set(new_state)
+        with self.state_lock:
+            new_state = deepcopy(self.state)
+            new_state.running = True
+            new_state.tick = 0
+            self.set(new_state)
 
         # run until we should stop
-        while self.state.running:
+        loop = True
+        while loop:
 
             # sleep if we have a tick interval
             if self.tick_interval_seconds is not None:
                 time.sleep(self.tick_interval_seconds)
 
-            # create new state
-            new_state = deepcopy(self.state)
-            new_state.tick += 1
-
             # watch out for race condition on the running value. only set state if we're still running.
-            if new_state.running:
-                self.set(new_state)
+            with self.state_lock:
+                if self.state.running:
+                    new_state = deepcopy(self.state)
+                    new_state.tick += 1
+                    self.set(new_state)
+                else:
+                    loop = False
 
         # set final state
-        new_state = deepcopy(self.state)
-        new_state.running = False
-        self.set(new_state)
+        with self.state_lock:
+            new_state = deepcopy(self.state)
+            new_state.running = False
+            self.set(new_state)
