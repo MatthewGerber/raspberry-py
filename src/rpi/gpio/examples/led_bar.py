@@ -1,7 +1,7 @@
 import time
 
 from rpi.gpio import setup, cleanup
-from rpi.gpio.lights import LED
+from rpi.gpio.lights import LED, LedBar
 
 
 def main():
@@ -12,31 +12,15 @@ def main():
 
     setup()
 
-    delay_seconds = 0.03
-
-    leds = [
-        LED(output_pin=pin, reverse=True)
-        for pin in [11, 12, 13, 15, 16, 18, 22, 3, 5, 24]
-    ]
-
-    for led in leds:
-        led.set(LED.State(on=False))
-
-    leds[0].set(LED.State(on=True))
+    led_bar = LedBar(
+        output_pins=[11, 12, 13, 15, 16, 18, 22, 3, 5, 24],
+        reverse=True,
+        delay_seconds=0.03
+    )
 
     try:
-
         while True:
-            for i in range(1, len(leds)):
-                time.sleep(delay_seconds)
-                leds[i-1].set(LED.State(on=False))
-                leds[i].set(LED.State(on=True))
-
-            for i in reversed(range(len(leds) - 1)):
-                time.sleep(delay_seconds)
-                leds[i+1].set(LED.State(on=False))
-                leds[i].set(LED.State(on=True))
-
+            led_bar.flow()
     except KeyboardInterrupt:
         pass
 
