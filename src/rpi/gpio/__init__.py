@@ -11,7 +11,6 @@ import RPi.GPIO as gpio
 def setup():
     """
     Set up the GPIO interface.
-    :return:
     """
 
     gpio.setmode(gpio.BOARD)
@@ -20,7 +19,6 @@ def setup():
 def cleanup():
     """
     Clean up the GPIO interface.
-    :return:
     """
 
     gpio.cleanup()
@@ -97,7 +95,7 @@ class Component(ABC):
             state: 'Component.State'
     ):
         """
-        Set the state and trigger any listeners.
+        Set the state and trigger events.
 
         :param state: State.
         """
@@ -204,6 +202,7 @@ class Clock(Component):
                 logging.warning('Attempted to stop clock that is not running.')
 
         self.run_thread.join()
+
         logging.info('Stopped clock.')
 
     def __init__(
