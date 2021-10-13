@@ -64,18 +64,20 @@ class LED(Component):
         self.state: 'LED.State'
 
         if self.state.on:
-            gpio.output(self.output_pin, gpio.HIGH)
+            gpio.output(self.output_pin, gpio.LOW if self.reverse else gpio.HIGH)
         else:
-            gpio.output(self.output_pin, gpio.LOW)
+            gpio.output(self.output_pin, gpio.HIGH if self.reverse else gpio.LOW)
 
     def __init__(
             self,
-            output_pin: int
+            output_pin: int,
+            reverse: bool = False
     ):
         """
         Initialize the LED.
 
         :param output_pin: Output pin that connects to the LED.
+        :param reverse: Whether or not the LED is wired in reverse, such that LOW is on and HIGH is off.
         """
 
         super().__init__(
@@ -83,6 +85,7 @@ class LED(Component):
         )
 
         self.output_pin = output_pin
+        self.reverse = reverse
 
         gpio.setup(self.output_pin, gpio.OUT)
 
