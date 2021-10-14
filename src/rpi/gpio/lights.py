@@ -41,7 +41,7 @@ class LED(Component):
 
             return self.on == other.on
 
-    def get(
+    def get_state(
             self
     ) -> 'LED.State':
         """
@@ -52,7 +52,7 @@ class LED(Component):
 
         return self.state
 
-    def set(
+    def set_state(
             self,
             state: 'LED.State'
     ):
@@ -62,7 +62,7 @@ class LED(Component):
         :param state: State.
         """
 
-        super().set(state)
+        super().set_state(state)
 
         self.state: 'LED.State'
 
@@ -70,6 +70,46 @@ class LED(Component):
             gpio.output(self.output_pin, gpio.LOW if self.reverse else gpio.HIGH)
         else:
             gpio.output(self.output_pin, gpio.HIGH if self.reverse else gpio.LOW)
+
+    def turn_on(
+            self
+    ):
+        """
+        Turn the LED on.
+        """
+
+        self.set_state(LED.State(on=True))
+
+    def turn_off(
+            self
+    ):
+        """
+        Turn the LED off.
+        """
+
+        self.set_state(LED.State(on=False))
+
+    def is_on(
+            self
+    ) -> bool:
+        """
+        Check whether the LED is on.
+
+        :return: True if on and False otherwise.
+        """
+
+        return self.get_state().on
+
+    def is_off(
+            self
+    ) -> bool:
+        """
+        Check whether the LED is off.
+
+        :return: True if off and False otherwise.
+        """
+
+        return not self.is_on()
 
     def __init__(
             self,
@@ -92,7 +132,7 @@ class LED(Component):
 
         gpio.setup(self.output_pin, gpio.OUT)
 
-        self.set(self.state)
+        self.set_state(self.state)
 
 
 class LedBar(Component):
@@ -133,7 +173,7 @@ class LedBar(Component):
 
             return self.illuminated_led_index == other.illuminated_led_index
 
-    def get(
+    def get_state(
             self
     ) -> 'LedBar.State':
         """
@@ -153,25 +193,29 @@ class LedBar(Component):
 
         # turn all leds off
         for led in self.leds:
-            led.set(LED.State(on=False))
+            led.turn_off()
 
         # illuminate the first led
-        self.leds[0].set(LED.State(on=True))
-        self.set(LedBar.State(self.leds[0], 0))
+        self.leds[0].turn_on()
+        self.set_state(LedBar.State(self.leds[0], 0))
 
         # turn each led on in forward sequence
         for i in range(1, len(self.leds)):
             time.sleep(self.delay_seconds)
-            self.leds[i - 1].set(LED.State(on=False))
-            self.leds[i].set(LED.State(on=True))
-            self.set(LedBar.State(self.leds[i], i))
+            self.leds[i - 1].turn_off()
+            self.leds[i].turn_on()
+            self.set_state(LedBar.State(self.leds[i], i))
 
         # turn each led on in reversed sequence
         for i in reversed(range(len(self.leds) - 1)):
             time.sleep(self.delay_seconds)
-            self.leds[i + 1].set(LED.State(on=False))
-            self.leds[i].set(LED.State(on=True))
-            self.set(LedBar.State(self.leds[i], i))
+            self.leds[i + 1].turn_off()
+            self.leds[i].turn_on()
+            self.set_state(LedBar.State(self.leds[i], i))
+
+        time.sleep(self.delay_seconds)
+        self.leds[0].turn_off()
+        self.set_state(LedBar.State(None, None))
 
     def __init__(
             self,

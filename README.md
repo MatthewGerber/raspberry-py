@@ -15,16 +15,18 @@ setup()
 led = LED(output_pin=11)
 
 # set on for 1 second then off
-led.set(LED.State(on=True))
+led.turn_on()
 time.sleep(1)
-led.set(LED.State(on=False))
+led.turn_off()
 
 cleanup()
 ```
 A more complex example using a button-switched LED is shown below:
+
 ```python
 import time
-from rpi.gpio import setup, cleanup, Clock
+
+from rpi.gpio import setup, cleanup
 from rpi.gpio.lights import LED
 from rpi.gpio.switches import TwoPoleButton
 
@@ -34,28 +36,16 @@ setup()
 led = LED(output_pin=11)
 
 # create a button on input pin 12
-button = TwoPoleButton(input_pin=12)
-
-# create a clock that ticks as quickly as possible. this will be the event source for updating the button's state.
-clock = Clock(tick_interval_seconds=None)
-
-# update the button state each clock tick
-clock.add_listener(
-    trigger=lambda clock_state: True,
-    event=lambda: button.update()
-)
+button = TwoPoleButton(input_pin=12, bounce_time_ms=300)
 
 # turn the led on when the button is pressed
-button.add_listener(
-    trigger=lambda button_state: True,
-    event=lambda: led.set(LED.State(on=button.get().pressed))
+button.on(
+    trigger=None,
+    event=lambda: led.turn_on() if button.is_pressed() else led.turn_off()
 )
 
-# start clock and run for 10 seconds
-clock.start()
 print('You have 20 seconds to press the button...')
 time.sleep(20)
-clock.stop()
 
 cleanup()
 ```
@@ -70,5 +60,6 @@ to interact with the GPIO pins of the Raspberry Pi. To grant GPIO permissions wh
 group, which the user is a member of by default:
 ```
 KERNEL=="gpiomem", OWNER="root", GROUP="dialout"
+KERNEL=="gpiochip*", OWNER="root", GROUP="dialout"
 ```
-2. Test the permissions:  `sudo udevadm trigger /dev/gpiomem`
+2. Reboot for the new permissions to take effect.

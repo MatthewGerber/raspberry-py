@@ -19,9 +19,9 @@ def main():
     clock = Clock(tick_interval_seconds=0.5)
 
     # alternate the led each clock tick
-    clock.add_listener(
-        trigger=lambda clock_state: True,
-        event=lambda: led.set(LED.State(on=not led.get().on))
+    clock.on(
+        trigger=None,
+        event=lambda: led.turn_off() if led.is_on() else led.turn_on()
     )
 
     # start clock and run for 10 seconds

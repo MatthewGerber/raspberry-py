@@ -66,22 +66,23 @@ class Component(ABC):
 
             return not self.__eq__(other)
 
-    def add_listener(
+    def on(
             self,
-            trigger: Callable[['Component.State'], bool],
+            trigger: Optional[Callable[['Component.State'], bool]],
             event: Callable
     ):
         """
-        Add a listener to the current component.
+        Add an event trigger to the component.
 
-        :param trigger: A function that takes the current state and returns True if event should be fired.
-        :param event: Event to fire if trigger returns True.
+        :param trigger: A function that takes the current state and returns True if event should be fired, or None to
+        fire the event on every state change.
+        :param event: Event to fire.
         """
 
         self.trigger_events.append((trigger, event))
 
     @abstractmethod
-    def get(
+    def get_state(
             self
     ) -> 'Component.State':
         """
@@ -90,7 +91,7 @@ class Component(ABC):
         :return: State.
         """
 
-    def set(
+    def set_state(
             self,
             state: 'Component.State'
     ):
@@ -103,7 +104,7 @@ class Component(ABC):
         if state != self.state:
             self.state = state
             for trigger, event in self.trigger_events:
-                if trigger(self.state):
+                if trigger is None or trigger(self.state):
                     event()
 
     def __init__(
@@ -118,7 +119,7 @@ class Component(ABC):
 
         self.state = state
 
-        self.trigger_events: List[Tuple[Callable[['Component.State'], bool], Callable]] = []
+        self.trigger_events: List[Tuple[Optional[Callable[['Component.State'], bool]], Callable]] = []
 
 
 class Clock(Component):
@@ -159,7 +160,7 @@ class Clock(Component):
 
             return self.running == other.running and self.tick == other.tick
 
-    def get(
+    def get_state(
             self
     ) -> 'Clock.State':
         """
@@ -242,7 +243,7 @@ class Clock(Component):
             new_state = deepcopy(self.state)
             new_state.running = True
             new_state.tick = 0
-            self.set(new_state)
+            self.set_state(new_state)
 
         # run until we should stop
         loop = True
@@ -257,7 +258,7 @@ class Clock(Component):
                 if self.state.running:
                     new_state = deepcopy(self.state)
                     new_state.tick += 1
-                    self.set(new_state)
+                    self.set_state(new_state)
                 else:
                     loop = False
 
@@ -265,4 +266,4 @@ class Clock(Component):
         with self.state_lock:
             new_state = deepcopy(self.state)
             new_state.running = False
-            self.set(new_state)
+            self.set_state(new_state)

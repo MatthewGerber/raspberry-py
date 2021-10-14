@@ -1,6 +1,6 @@
 import time
 
-from rpi.gpio import setup, cleanup, Clock
+from rpi.gpio import setup, cleanup
 from rpi.gpio.lights import LED
 from rpi.gpio.switches import TwoPoleButton
 
@@ -17,28 +17,18 @@ def main():
     led = LED(output_pin=11)
 
     # create a button on input pin 12
-    button = TwoPoleButton(input_pin=12)
+    button = TwoPoleButton(input_pin=12, bounce_time_ms=300)
 
-    # create a clock that ticks as quickly as possible. this will be the event source for updating the button's state.
-    clock = Clock(tick_interval_seconds=None)
-
-    # update the button state each clock tick
-    clock.add_listener(
-        trigger=lambda clock_state: True,
-        event=lambda: button.update()
+    # turn the led on when the button is pressed and off when pressed again
+    button.on(
+        None,
+        event=lambda: led.turn_off() if button.is_pressed() and led.is_on()
+        else led.turn_on() if button.is_pressed() and led.is_off()
+        else None
     )
 
-    # turn the led on when the button is pressed
-    button.add_listener(
-        trigger=lambda button_state: True,
-        event=lambda: led.set(LED.State(on=not led.get().on if button.get().pressed else led.get().on))
-    )
-
-    # start clock and run for 10 seconds
-    clock.start()
     print('You have 20 seconds to press the button...')
     time.sleep(20)
-    clock.stop()
 
     cleanup()
 

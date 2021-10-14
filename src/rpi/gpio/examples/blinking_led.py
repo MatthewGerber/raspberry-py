@@ -16,9 +16,9 @@ def main():
     led = LED(output_pin=11)
 
     # set on for 1 second then off
-    led.set(LED.State(on=True))
+    led.turn_on()
     time.sleep(1)
-    led.set(LED.State(on=False))
+    led.turn_off()
 
     cleanup()
 

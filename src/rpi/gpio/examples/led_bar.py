@@ -1,7 +1,5 @@
-import time
-
 from rpi.gpio import setup, cleanup
-from rpi.gpio.lights import LED, LedBar
+from rpi.gpio.lights import LedBar
 
 
 def main():

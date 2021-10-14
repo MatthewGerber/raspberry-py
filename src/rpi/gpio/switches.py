@@ -38,7 +38,7 @@ class TwoPoleButton(Component):
 
             return self.pressed == other.pressed
 
-    def get(
+    def get_state(
             self
     ) -> 'TwoPoleButton.State':
         """
@@ -49,23 +49,27 @@ class TwoPoleButton(Component):
 
         return self.state
 
-    def update(
+    def is_pressed(
             self
-    ):
+    ) -> bool:
         """
-        Update the state based on the input channel's value.
+        Check whether the button is currently pressed.
+
+        :return: True if pressed and False otherwise.
         """
 
-        self.set(TwoPoleButton.State(pressed=True if gpio.input(self.input_pin) == gpio.LOW else False))
+        return self.get_state().pressed
 
     def __init__(
             self,
-            input_pin: int
+            input_pin: int,
+            bounce_time_ms: int
     ):
         """
         Initialize the button.
 
         :param input_pin: Input pin for button.
+        :param bounce_time_ms: Debounce interval (milliseconds).
         """
 
         super().__init__(
@@ -75,3 +79,9 @@ class TwoPoleButton(Component):
         self.input_pin = input_pin
 
         gpio.setup(input_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
+
+        gpio.add_event_detect(self.input_pin, gpio.BOTH, callback=lambda channel: self.set_state(
+            TwoPoleButton.State(
+                pressed=True if gpio.input(self.input_pin) == gpio.LOW else False
+            )
+        ), bouncetime=bounce_time_ms)
