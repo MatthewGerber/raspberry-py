@@ -17,12 +17,11 @@ def main():
     led = LED(output_pin=11)
 
     # create a button on input pin 12
-    button = TwoPoleButton(input_pin=12, bounce_time_ms=300)
+    button = TwoPoleButton(input_pin=12, bounce_time_ms=50)
 
     # turn the led on when the button is pressed and off when pressed again
-    button.on(
-        None,
-        event=lambda: led.turn_off() if button.is_pressed() and led.is_on()
+    button.event(
+        lambda _: led.turn_off() if button.is_pressed() and led.is_on()
         else led.turn_on() if button.is_pressed() and led.is_off()
         else None
     )

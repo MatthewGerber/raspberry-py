@@ -66,20 +66,20 @@ class Component(ABC):
 
             return not self.__eq__(other)
 
-    def on(
+    def event(
             self,
-            trigger: Optional[Callable[['Component.State'], bool]],
-            event: Callable
+            action: Callable[['Component.State'], None],
+            trigger: Optional[Callable[['Component.State'], bool]] = None
     ):
         """
-        Add an event trigger to the component.
+        Add an event to the component. The event is triggered by state changes, which can be optionally filtered.
 
-        :param trigger: A function that takes the current state and returns True if event should be fired, or None to
-        fire the event on every state change.
-        :param event: Event to fire.
+        :param action: Function to run when event is triggered. Accepts the component's current state.
+        :param trigger: A function that takes the component state and returns True if action should be triggered, or
+        None to trigger the event on every state change.
         """
 
-        self.trigger_events.append((trigger, event))
+        self.trigger_actions.append((trigger, action))
 
     @abstractmethod
     def get_state(
@@ -103,9 +103,9 @@ class Component(ABC):
 
         if state != self.state:
             self.state = state
-            for trigger, event in self.trigger_events:
+            for trigger, action in self.trigger_actions:
                 if trigger is None or trigger(self.state):
-                    event()
+                    action(self.state)
 
     def __init__(
             self,
@@ -119,7 +119,7 @@ class Component(ABC):
 
         self.state = state
 
-        self.trigger_events: List[Tuple[Optional[Callable[['Component.State'], bool]], Callable]] = []
+        self.trigger_actions: List[Tuple[Optional[Callable[['Component.State'], bool]], Callable]] = []
 
 
 class Clock(Component):
