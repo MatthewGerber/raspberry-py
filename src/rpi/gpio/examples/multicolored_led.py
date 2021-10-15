@@ -1,10 +1,10 @@
+import random
 import time
 
 import RPi.GPIO as gpio
 
 from rpi.gpio import setup, cleanup
 from rpi.gpio.lights import LED
-from numpy.random import RandomState
 
 
 def main():
@@ -27,8 +27,6 @@ def main():
     led_b = LED(output_pin=13)
     pwm_b = gpio.PWM(led_b.output_pin, 2000)
     pwm_b.start(0)
-
-    rng = RandomState(12345)
 
     def set_pwms(
             r: float,
@@ -59,9 +57,9 @@ def main():
     try:
         while True:
             set_pwms(
-                rng.random() * 100.0,
-                rng.random() * 100.0,
-                rng.random() * 100.0,
+                random.randint(0, 100),
+                random.randint(0, 100),
+                random.randint(0, 100),
                 0.1
             )
     except KeyboardInterrupt:
