@@ -22,7 +22,7 @@ def main():
 
     button = TwoPoleButton(input_pin=32, bounce_time_ms=50)
 
-    button.event(lambda _: led_bar.flow() if button.get_state().pressed else None)
+    button.event(lambda s: led_bar.flow() if s.pressed else None)
 
     print('You have 20 seconds to press the button...')
     time.sleep(20)

@@ -30,7 +30,7 @@ class LED(Component):
 
         def __eq__(
                 self,
-                other: 'LED.State'
+                other: object
         ) -> bool:
             """
             Check equality with another state.
@@ -39,22 +39,25 @@ class LED(Component):
             :return: True if equal and False otherwise.
             """
 
+            if not isinstance(other, LED.State):
+                raise ValueError(f'Expected a {LED.State}')
+
             return self.on == other.on
 
-    def get_state(
-            self
-    ) -> 'LED.State':
-        """
-        Get the state.
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
 
-        :return: State.
-        """
+            :return: String.
+            """
 
-        return self.state
+            return f'on={self.on}'
 
     def set_state(
             self,
-            state: 'LED.State'
+            state: Component.State
     ):
         """
         Set the state and trigger any listeners.
@@ -64,9 +67,12 @@ class LED(Component):
 
         super().set_state(state)
 
-        self.state: 'LED.State'
+        if not isinstance(state, LED.State):
+            raise ValueError(f'Expected a {LED.State}')
 
-        if self.state.on:
+        state: LED.State
+
+        if state.on:
             gpio.output(self.output_pin, gpio.LOW if self.reverse else gpio.HIGH)
         else:
             gpio.output(self.output_pin, gpio.HIGH if self.reverse else gpio.LOW)
@@ -98,7 +104,9 @@ class LED(Component):
         :return: True if on and False otherwise.
         """
 
-        return self.get_state().on
+        self.state: LED.State
+
+        return self.state.on
 
     def is_off(
             self
@@ -162,7 +170,7 @@ class LedBar(Component):
 
         def __eq__(
                 self,
-                other: 'LedBar.State'
+                other: object
         ) -> bool:
             """
             Check equality with another LED bar.
@@ -171,18 +179,21 @@ class LedBar(Component):
             :return: True if equal and False otherwise.
             """
 
+            if not isinstance(other, LedBar.State):
+                raise ValueError(f'Expected a {LedBar.State}')
+
             return self.illuminated_led_index == other.illuminated_led_index
 
-    def get_state(
-            self
-    ) -> 'LedBar.State':
-        """
-        Get the state.
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
 
-        :return: State.
-        """
+            :return: String.
+            """
 
-        return self.state
+            return f'illuminated={self.illuminated_led_index}'
 
     def flow(
             self

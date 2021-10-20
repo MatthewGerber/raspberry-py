@@ -15,6 +15,8 @@ def setup():
 
     gpio.setmode(gpio.BOARD)
 
+    logging.getLogger().setLevel(logging.DEBUG)
+
 
 def cleanup():
     """
@@ -44,7 +46,7 @@ class Component(ABC):
         @abstractmethod
         def __eq__(
                 self,
-                other: 'Component.State'
+                other: object
         ) -> bool:
             """
             Check equality with another state.
@@ -55,7 +57,7 @@ class Component(ABC):
 
         def __ne__(
                 self,
-                other: 'Component.State'
+                other: object
         ) -> bool:
             """
             Check inequality with another state.
@@ -65,6 +67,16 @@ class Component(ABC):
             """
 
             return not self.__eq__(other)
+
+        @abstractmethod
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
 
     def event(
             self,
@@ -81,7 +93,6 @@ class Component(ABC):
 
         self.trigger_actions.append((trigger, action))
 
-    @abstractmethod
     def get_state(
             self
     ) -> 'Component.State':
@@ -90,6 +101,8 @@ class Component(ABC):
 
         :return: State.
         """
+
+        return self.state
 
     def set_state(
             self,
@@ -101,7 +114,10 @@ class Component(ABC):
         :param state: State.
         """
 
-        if state != self.state:
+        if state == self.state:
+            logging.info(f'State of {self} is already {state}. Not setting state or triggering events.')
+        else:
+            logging.debug(f'Setting state of {self} to {state}.')
             self.state = state
             for trigger, action in self.trigger_actions:
                 if trigger is None or trigger(self.state):
@@ -120,6 +136,17 @@ class Component(ABC):
         self.state = state
 
         self.trigger_actions: List[Tuple[Optional[Callable[['Component.State'], bool]], Callable]] = []
+
+    def __str__(
+            self
+    ) -> str:
+        """
+        Get string.
+
+        :return: String.
+        """
+
+        return type(self).__name__
 
 
 class Clock(Component):
@@ -149,7 +176,7 @@ class Clock(Component):
 
         def __eq__(
                 self,
-                other: 'Clock.State'
+                other: object
         ) -> bool:
             """
             Check equality with another state.
@@ -158,18 +185,21 @@ class Clock(Component):
             :return: True if equal and False otherwise.
             """
 
+            if not isinstance(other, Clock.State):
+                raise ValueError(f'Expected a {Clock.State}')
+
             return self.running == other.running and self.tick == other.tick
 
-    def get_state(
-            self
-    ) -> 'Clock.State':
-        """
-        Get the state.
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
 
-        :return: State.
-        """
+            :return: String.
+            """
 
-        return self.state
+            return f'running={self.running}, tick={self.tick}'
 
     def start(
             self

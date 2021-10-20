@@ -39,7 +39,7 @@ led = LED(output_pin=11)
 button = TwoPoleButton(input_pin=12, bounce_time_ms=300)
 
 # turn the led on when the button is pressed
-button.event(lambda _: led.turn_on() if button.is_pressed() else led.turn_off())
+button.event(lambda s: led.turn_on() if s.pressed else led.turn_off())
 
 print('You have 20 seconds to press the button...')
 time.sleep(20)
@@ -53,10 +53,9 @@ Other examples can be found [here](src/rpi/gpio/examples).
 This package has been developed using the Ubuntu installation described 
 [here](https://matthewgerber.github.io/rlai/raspberry_pi.html#operating-system) (ignore the "Install RLAI" section). By default, Ubuntu does not give the user permission
 to interact with the GPIO pins of the Raspberry Pi. To grant GPIO permissions when the Raspberry Pi boots:
-1. Edit `/etc/udev/rules.d/99-gpiomem.rules` as follows to assign the `gpiomem` device to the `dialout` 
-group, which the user is a member of by default:
+1. Edit `/etc/udev/rules.d/99-gpiomem.rules` as follows to assign all `gpio*` device to the `dialout` group, which the 
+user is a member of by default:
 ```
-KERNEL=="gpiomem", OWNER="root", GROUP="dialout"
-KERNEL=="gpiochip*", OWNER="root", GROUP="dialout"
+KERNEL=="gpio*", OWNER="root", GROUP="dialout"
 ```
 2. Reboot for the new permissions to take effect.

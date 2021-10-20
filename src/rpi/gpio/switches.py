@@ -27,7 +27,7 @@ class TwoPoleButton(Component):
 
         def __eq__(
                 self,
-                other: 'TwoPoleButton.State'
+                other: object
         ) -> bool:
             """
             Check equality with another state.
@@ -36,18 +36,21 @@ class TwoPoleButton(Component):
             :return: True if equal and False otherwise.
             """
 
+            if not isinstance(other, TwoPoleButton.State):
+                raise ValueError(f'Expected a {TwoPoleButton.State}')
+
             return self.pressed == other.pressed
 
-    def get_state(
-            self
-    ) -> 'TwoPoleButton.State':
-        """
-        Get the state.
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
 
-        :return: State.
-        """
+            :return: String.
+            """
 
-        return self.state
+            return f'pressed={self.pressed}'
 
     def is_pressed(
             self
@@ -58,7 +61,9 @@ class TwoPoleButton(Component):
         :return: True if pressed and False otherwise.
         """
 
-        return self.get_state().pressed
+        self.state: TwoPoleButton.State
+
+        return self.state.pressed
 
     def __init__(
             self,
@@ -80,8 +85,15 @@ class TwoPoleButton(Component):
 
         gpio.setup(input_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
 
-        gpio.add_event_detect(self.input_pin, gpio.BOTH, callback=lambda channel: self.set_state(
-            TwoPoleButton.State(
-                pressed=True if gpio.input(self.input_pin) == gpio.LOW else False
-            )
-        ), bouncetime=bounce_time_ms)
+        gpio.add_event_detect(
+            self.input_pin,
+            gpio.BOTH,
+            callback=lambda channel: self.set_state(
+                TwoPoleButton.State(pressed=True)
+            ) if gpio.input(self.input_pin) == gpio.LOW else
+            self.set_state(
+                TwoPoleButton.State(pressed=False)
+            ) if gpio.input(self.input_pin) == gpio.HIGH else
+            None,
+            bouncetime=bounce_time_ms
+        )
