@@ -2,7 +2,7 @@ import time
 
 import RPi.GPIO as gpio
 
-from rpi.gpio import setup, cleanup
+from rpi.gpio import setup, cleanup, CkPin
 from rpi.gpio.lights import LED
 
 
@@ -14,8 +14,8 @@ def main():
 
     setup()
 
-    # create an led on output pin 11
-    led = LED(output_pin=12)
+    # create an led
+    led = LED(output_pin=CkPin.GPIO18)
 
     # configure pulse-width modulation
     pwm = gpio.PWM(led.output_pin, 500)

@@ -3,7 +3,7 @@ import time
 
 import RPi.GPIO as gpio
 
-from rpi.gpio import setup, cleanup
+from rpi.gpio import setup, cleanup, CkPin
 from rpi.gpio.lights import LED
 
 
@@ -16,15 +16,15 @@ def main():
     setup()
 
     # create leds and their pulse-wave modulators
-    led_r = LED(output_pin=11)
+    led_r = LED(output_pin=CkPin.GPIO17)
     pwm_r = gpio.PWM(led_r.output_pin, 2000)
     pwm_r.start(0)
 
-    led_g = LED(output_pin=12)
+    led_g = LED(output_pin=CkPin.GPIO18)
     pwm_g = gpio.PWM(led_g.output_pin, 2000)
     pwm_g.start(0)
 
-    led_b = LED(output_pin=13)
+    led_b = LED(output_pin=CkPin.GPIO27)
     pwm_b = gpio.PWM(led_b.output_pin, 2000)
     pwm_b.start(0)
 

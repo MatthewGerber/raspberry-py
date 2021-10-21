@@ -1,6 +1,6 @@
 import time
 
-from rpi.gpio import setup, cleanup
+from rpi.gpio import setup, cleanup, CkPin
 from rpi.gpio.lights import LED
 
 
@@ -12,8 +12,8 @@ def main():
 
     setup()
 
-    # create an led on output pin 11
-    led = LED(output_pin=11)
+    # create an led
+    led = LED(output_pin=CkPin.GPIO17)
 
     # set on for 1 second then off
     led.turn_on()

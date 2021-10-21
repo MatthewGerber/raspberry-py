@@ -1,6 +1,6 @@
 import time
 
-from rpi.gpio import setup, cleanup
+from rpi.gpio import setup, cleanup, CkPin
 from rpi.gpio.sounds import ActiveBuzzer
 from rpi.gpio.switches import TwoPoleButton
 
@@ -13,9 +13,9 @@ def main():
 
     setup()
 
-    buzzer = ActiveBuzzer(output_pin=11)
+    buzzer = ActiveBuzzer(output_pin=CkPin.GPIO17)
 
-    button = TwoPoleButton(input_pin=12, bounce_time_ms=200)
+    button = TwoPoleButton(input_pin=CkPin.GPIO18, bounce_time_ms=200)
 
     button.event(lambda s: buzzer.buzz() if s.pressed else buzzer.stop())
 

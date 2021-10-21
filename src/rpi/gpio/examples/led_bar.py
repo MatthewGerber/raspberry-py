@@ -1,4 +1,4 @@
-from rpi.gpio import setup, cleanup
+from rpi.gpio import setup, cleanup, CkPin
 from rpi.gpio.lights import LedBar
 
 
@@ -11,7 +11,18 @@ def main():
     setup()
 
     led_bar = LedBar(
-        output_pins=[11, 12, 13, 15, 16, 18, 22, 3, 5, 24],
+        output_pins=[
+            CkPin.GPIO17,
+            CkPin.GPIO18,
+            CkPin.GPIO27,
+            CkPin.GPIO22,
+            CkPin.GPIO23,
+            CkPin.GPIO24,
+            CkPin.GPIO25,
+            CkPin.SDA1,
+            CkPin.SCL1,
+            CkPin.CE0,
+        ],
         reverse=True,
         delay_seconds=0.03
     )

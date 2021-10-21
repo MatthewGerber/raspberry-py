@@ -2,6 +2,7 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from enum import IntEnum
 from threading import Thread, Lock
 from typing import List, Tuple, Callable, Optional
 
@@ -24,6 +25,89 @@ def cleanup():
     """
 
     gpio.cleanup()
+
+
+class Pin(IntEnum):
+    """
+    GPIO pins and their board pin numbers, corresponding to the pinout provided in the Raspberry Pi documentation:
+
+    https://github.com/raspberrypi/documentation/blob/develop/documentation/asciidoc/computers/os/using-gpio.adoc#gpio-and-the-40-pin-header
+
+    Other Raspberry Pi hardware manufacturers and distributors use varying names for the pins, both in their
+    documentation and printed on their hardware. See the classes following this one for alternative name/pin mappings.
+    """
+
+    GPIO_0_ID_SD = 27  # CK:  SDA0
+    GPIO_1_ID_SC = 28  # CK:  SCL0
+    GPIO_2_SDA = 3  # CK:  SDA1
+    GPIO_3_SCL = 5  # CK:
+    GPIO_4_GPCLK0 = 7
+    GPIO_5 = 29
+    GPIO_6 = 31
+    GPIO_7_CE1 = 26
+    GPIO_8_CE0 = 24
+    GPIO_9_MISO = 21
+    GPIO_10_MOSI = 19
+    GPIO_11_SCLK = 23
+    GPIO_12_PWM0 = 32
+    GPIO_13_PWM1 = 33
+    GPIO_14_TXD = 8
+    GPIO_15_RXD = 10
+    GPIO_16 = 36
+    GPIO_17 = 11
+    GPIO_18_PCM_CLK = 12
+    GPIO_19_PCM_FS = 35
+    GPIO_20_PCM_DIN = 38
+    GPIO_21_PCM_DOUT = 40
+    GPIO_22 = 15
+    GPIO_23 = 16
+    GPIO_24 = 18
+    GPIO_25 = 22
+    GPIO_26 = 37
+    GPIO_27 = 13
+
+
+class CkPin(IntEnum):
+    """
+    GPIO pins and their board pin numbers, corresponding to identifiers printed on the CanaKit GPIO extension board.
+    """
+
+    GPIO4 = Pin.GPIO_4_GPCLK0
+    GPIO5 = Pin.GPIO_5
+    GPIO6 = Pin.GPIO_6
+    GPIO13 = Pin.GPIO_13_PWM1
+    GPIO12 = Pin.GPIO_12_PWM0
+    GPIO16 = Pin.GPIO_16
+    GPIO17 = Pin.GPIO_17
+    GPIO18 = Pin.GPIO_18_PCM_CLK
+    GPIO19 = Pin.GPIO_19_PCM_FS
+    GPIO20 = Pin.GPIO_20_PCM_DIN
+    GPIO21 = Pin.GPIO_21_PCM_DOUT
+    GPIO22 = Pin.GPIO_22
+    GPIO23 = Pin.GPIO_23
+    GPIO24 = Pin.GPIO_24
+    GPIO25 = Pin.GPIO_25
+    GPIO26 = Pin.GPIO_26
+    GPIO27 = Pin.GPIO_27
+
+    # SPI
+    MOSI = Pin.GPIO_10_MOSI
+    MISO = Pin.GPIO_9_MISO
+    SCLK = Pin.GPIO_11_SCLK
+    CE0 = Pin.GPIO_8_CE0
+    CE1 = Pin.GPIO_7_CE1
+
+    # UART
+    TXD0 = Pin.GPIO_14_TXD
+    RXD0 = Pin.GPIO_15_RXD
+
+    # I2C
+    SDA1 = Pin.GPIO_2_SDA
+    SCL1 = Pin.GPIO_3_SCL
+
+    # ID
+    SDA0 = Pin.GPIO_0_ID_SD
+    SCL0 = Pin.GPIO_1_ID_SC
 
 
 class Component(ABC):

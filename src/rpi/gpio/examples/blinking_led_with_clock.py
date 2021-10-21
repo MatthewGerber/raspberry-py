@@ -1,6 +1,6 @@
 import time
 
-from rpi.gpio import setup, cleanup, Clock
+from rpi.gpio import setup, cleanup, Clock, CkPin
 from rpi.gpio.lights import LED
 
 
@@ -12,8 +12,8 @@ def main():
 
     setup()
 
-    # create an led on output pin 11
-    led = LED(output_pin=11)
+    # create an led
+    led = LED(output_pin=CkPin.GPIO17)
 
     # create a clock that ticks each second
     clock = Clock(tick_interval_seconds=0.5)
