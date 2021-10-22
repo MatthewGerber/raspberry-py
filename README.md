@@ -21,8 +21,7 @@ led.turn_off()
 
 cleanup()
 ```
-A more complex example using a button-switched LED is shown below:
-
+A button-switched LED is shown below:
 ```python
 import time
 
@@ -47,7 +46,10 @@ time.sleep(20)
 cleanup()
 ```
 
-Other examples can be found [here](src/rpi/gpio/examples).
+Still more examples:
+* [![Buzzing LED bar with push button](https://img.youtube.com/vi/e6PrM2QVSA4/0.jpg)](https://www.youtube.com/watch?v=e6PrM2QVSA4)
+
+Python code for all examples can be found [here](src/rpi/gpio/examples).
 
 ## Installation
 This package has been developed using the Ubuntu installation described 

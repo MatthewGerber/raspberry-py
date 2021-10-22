@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import IntEnum
 from threading import Thread, Lock
-from typing import List, Tuple, Callable, Optional
+from typing import List, Callable, Optional
 
 import RPi.GPIO as gpio
 
@@ -37,10 +37,10 @@ class Pin(IntEnum):
     documentation and printed on their hardware. See the classes following this one for alternative name/pin mappings.
     """
 
-    GPIO_0_ID_SD = 27  # CK:  SDA0
-    GPIO_1_ID_SC = 28  # CK:  SCL0
-    GPIO_2_SDA = 3  # CK:  SDA1
-    GPIO_3_SCL = 5  # CK:
+    GPIO_0_ID_SD = 27
+    GPIO_1_ID_SC = 28
+    GPIO_2_SDA = 3
+    GPIO_3_SCL = 5
     GPIO_4_GPCLK0 = 7
     GPIO_5 = 29
     GPIO_6 = 31
@@ -110,6 +110,33 @@ class CkPin(IntEnum):
     SCL0 = Pin.GPIO_1_ID_SC
 
 
+class Event:
+    """
+    Event.
+    """
+
+    def __init__(
+            self,
+            action: Callable[['Component.State'], None],
+            trigger: Optional[Callable[['Component.State'], bool]] = None,
+            synchronous: bool = True
+    ):
+        """
+        Initialize the event.
+
+        :param action: Function to run when event is triggered. Accepts the component's current state.
+        :param trigger: A function that takes the component state and returns True if action should be triggered, or
+        None to trigger the event on every state change.
+        :param synchronous: Whether or not the action function should be called synchronously. If True, then execution
+        will not resume until the action function has returned. If False, the action function will be started in a new
+        thread and execution will resume immediately.
+        """
+
+        self.action = action
+        self.trigger = trigger
+        self.synchronous = synchronous
+
+
 class Component(ABC):
     """
     Abstract base class for all components.
@@ -165,7 +192,8 @@ class Component(ABC):
     def event(
             self,
             action: Callable[['Component.State'], None],
-            trigger: Optional[Callable[['Component.State'], bool]] = None
+            trigger: Optional[Callable[['Component.State'], bool]] = None,
+            synchronous: bool = True
     ):
         """
         Add an event to the component. The event is triggered by state changes, which can be optionally filtered.
@@ -173,9 +201,16 @@ class Component(ABC):
         :param action: Function to run when event is triggered. Accepts the component's current state.
         :param trigger: A function that takes the component state and returns True if action should be triggered, or
         None to trigger the event on every state change.
+        :param synchronous: Whether or not the action function should be called synchronously. If True, then execution
+        will not resume until the action function has returned. If False, the action function will be started in a new
+        thread and execution will resume immediately.
         """
 
-        self.trigger_actions.append((trigger, action))
+        self.events.append(Event(
+            trigger=trigger,
+            action=action,
+            synchronous=synchronous
+        ))
 
     def get_state(
             self
@@ -203,9 +238,12 @@ class Component(ABC):
         else:
             logging.debug(f'Setting state of {self} to {state}.')
             self.state = state
-            for trigger, action in self.trigger_actions:
-                if trigger is None or trigger(self.state):
-                    action(self.state)
+            for event in self.events:
+                if event.trigger is None or event.trigger(self.state):
+                    if event.synchronous:
+                        event.action(self.state)
+                    else:
+                        Thread(target=event.action, args=[self.state]).start()
 
     def __init__(
             self,
@@ -219,7 +257,7 @@ class Component(ABC):
 
         self.state = state
 
-        self.trigger_actions: List[Tuple[Optional[Callable[['Component.State'], bool]], Callable]] = []
+        self.events: List[Event] = []
 
     def __str__(
             self
