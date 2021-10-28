@@ -65,10 +65,10 @@ class LED(Component):
         :param state: State.
         """
 
-        super().set_state(state)
-
         if not isinstance(state, LED.State):
             raise ValueError(f'Expected a {LED.State}')
+
+        super().set_state(state)
 
         state: LED.State
 
@@ -254,3 +254,14 @@ class LedBar(Component):
             LED(output_pin=pin, reverse=self.reverse)
             for pin in self.output_pins
         ]
+
+    def __len__(
+            self
+    ) -> int:
+        """
+        Get length (number of LEDs).
+
+        :return: Length.
+        """
+
+        return len(self.leds)
