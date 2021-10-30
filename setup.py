@@ -7,7 +7,8 @@ from setuptools import (
 
 INSTALL_REQUIREMENTS = [
 
-    'RPi.GPIO==0.7.0'
+    'RPi.GPIO==0.7.0',
+    'smbus2==0.4.1 '
 
 ]
 

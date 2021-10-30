@@ -67,12 +67,14 @@ KERNEL=="gpio*", OWNER="root", GROUP="dialout"
 ```
 2. Reboot for the new permissions to take effect.
 
-Use of I2C with the Raspberry Pi requires configuration with the `raspi-config` utility, which is installed by default
-in the Raspberry Pi OS but not in Ubuntu. Install `raspi-config` for Ubuntu with the following commands:
+Use of I2C with the Raspberry Pi (e.g., page 111 of the tutorial) requires configuration with the `raspi-config` 
+utility, which is installed by default in the Raspberry Pi OS but not in Ubuntu. Install `raspi-config` for Ubuntu with 
+the following commands:
 ```
 sudo apt install lua5.1
 wget http://archive.raspberrypi.org/debian/pool/main/r/raspi-config/raspi-config_20211019_all.deb
 sudo dpkg -i raspi-config_20211019_all.deb
 ```
 A full listing of the latest `raspi-config` packages can be found 
-[here](http://archive.raspberrypi.org/debian/pool/main/r/raspi-config).
+[here](http://archive.raspberrypi.org/debian/pool/main/r/raspi-config). The user will also need to be added to the 
+`i2c` group with `sudo usermod -a -G i2c ubuntu` (then restart for the change to take effect).
