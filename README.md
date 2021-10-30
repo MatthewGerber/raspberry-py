@@ -54,12 +54,25 @@ Buzzing LED bar with push button (click to watch; Python code [here](https://git
 Python code for these and other examples can be found [here](src/rpi/gpio/examples).
 
 ## Installation
+
+### OS and GPIO
 This package has been developed using the Ubuntu installation described 
-[here](https://matthewgerber.github.io/rlai/raspberry_pi.html#operating-system) (ignore the "Install RLAI" section). By default, Ubuntu does not give the user permission
-to interact with the GPIO pins of the Raspberry Pi. To grant GPIO permissions when the Raspberry Pi boots:
+[here](https://matthewgerber.github.io/rlai/raspberry_pi.html#operating-system) (ignore the "Install RLAI" section). By 
+default, Ubuntu does not give the user permission to interact with the GPIO pins of the Raspberry Pi. To grant GPIO 
+permissions when the Raspberry Pi boots:
 1. Edit `/etc/udev/rules.d/99-gpiomem.rules` as follows to assign all `gpio*` device to the `dialout` group, which the 
 user is a member of by default:
 ```
 KERNEL=="gpio*", OWNER="root", GROUP="dialout"
 ```
 2. Reboot for the new permissions to take effect.
+
+Use of I2C with the Raspberry Pi requires configuration with the `raspi-config` utility, which is installed by default
+in the Raspberry Pi OS but not in Ubuntu. Install `raspi-config` for Ubuntu with the following commands:
+```
+sudo apt install lua5.1
+wget http://archive.raspberrypi.org/debian/pool/main/r/raspi-config/raspi-config_20211019_all.deb
+sudo dpkg -i raspi-config_20211019_all.deb
+```
+A full listing of the latest `raspi-config` packages can be found 
+[here](http://archive.raspberrypi.org/debian/pool/main/r/raspi-config).
