@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict
 
 from smbus2 import SMBus
 
@@ -19,18 +19,15 @@ class AdcDevice(Component, ABC):
 
         def __init__(
                 self,
-                channel: Optional[int],
-                value: Optional[int]
+                channel_value: Optional[Dict[int, int]]
         ):
             """
             Initialize the state.
 
-            :param channel: Channel.
-            :param value: Value.
+            :param channel_value: Channels and values.
             """
 
-            self.channel = channel
-            self.value = value
+            self.channel_value = channel_value
 
         def __eq__(
                 self,
@@ -46,7 +43,7 @@ class AdcDevice(Component, ABC):
             if not isinstance(other, AdcDevice.State):
                 raise ValueError(f'Expected a {AdcDevice.State}')
 
-            return self.channel == other.channel and self.value == other.value
+            return self.channel_value == other.channel_value
 
         def __str__(
                 self
@@ -57,18 +54,19 @@ class AdcDevice(Component, ABC):
             :return: String.
             """
 
-            return f'Channel {self.channel}:  {self.value}'
+            return str(self.channel_value)
 
     @staticmethod
     def detect_i2c(
             bus: str,
-            digital_range_scale: Optional[Tuple[int, int]]
+            channel_rescaled_range: Dict[int, Optional[Tuple[int, int]]]
     ) -> 'AdcDevice':
         """
         Detect an ADC device.
 
         :param bus: Bus (e.g., /dev/i2c-1).
-        :param digital_range_scale: ADC range low and high values, or None to use raw digital values.
+        :param channel_rescaled_range: Channels to use and their rescaled output ranges. Pass None for the ranges to use
+        the native digital range of the ADC device.
         :return: ADC Device.
         """
 
@@ -80,7 +78,7 @@ class AdcDevice(Component, ABC):
                 bus=sm_bus,
                 cmd=PCF8591.COMMAND,
                 address=PCF8591.ADDRESS,
-                digital_range_scale=digital_range_scale
+                channel_rescaled_range=channel_rescaled_range
             )
         except Exception as e:
             logging.info(f'{e}')
@@ -91,7 +89,7 @@ class AdcDevice(Component, ABC):
                 bus=sm_bus,
                 cmd=ADS7830.COMMAND,
                 address=ADS7830.ADDRESS,
-                digital_range_scale=digital_range_scale
+                channel_rescaled_range=channel_rescaled_range
             )
         except Exception as e:
             logging.info(f'{e}')
@@ -111,31 +109,32 @@ class AdcDevice(Component, ABC):
         """
 
     def update_state(
-            self,
-            channel: int
+            self
     ):
         """
-        Update state of a channel.
-
-        :param channel: Channel.
+        Update state.
         """
 
-        value = self.analog_read(channel)
+        channel_value = {}
 
-        if not self.digital_range[0] <= value <= self.digital_range[1]:
-            raise ValueError('Out of range.')
+        for channel in self.channel_rescaled_range:
 
-        if self.digital_range_scale is not None:
-            range_frac = (value - self.digital_range[0]) / (self.digital_range[1] - self.digital_range[0])
-            scaled_range = self.digital_range_scale[1] + self.digital_range_scale[0]
-            value = round(self.digital_range_scale[0] + range_frac * scaled_range)
+            # read native value and ensure that it is in range
+            value = self.analog_read(channel)
+            if not self.digital_range[0] <= value <= self.digital_range[1]:
+                raise ValueError('Out of range.')
 
-        self.set_state(
-            AdcDevice.State(
-                channel=channel,
-                value=value
-            )
-        )
+            # rescale if a range is provided for the channel
+            rescaled_range = self.channel_rescaled_range[channel]
+            if rescaled_range is not None:
+                native_range_total = self.digital_range[1] - self.digital_range[0]
+                native_range_fraction = (value - self.digital_range[0]) / native_range_total
+                rescaled_range_total = rescaled_range[1] - rescaled_range[0]
+                value = round(rescaled_range[0] + native_range_fraction * rescaled_range_total)
+
+            channel_value[channel] = value
+
+        self.set_state(AdcDevice.State(channel_value=channel_value))
 
     def __init__(
             self,
@@ -143,7 +142,7 @@ class AdcDevice(Component, ABC):
             cmd: int,
             address: int,
             digital_range: Tuple[int, int],
-            digital_range_scale: Optional[Tuple[int, int]]
+            channel_rescaled_range: Dict[int, Optional[Tuple[int, int]]]
     ):
         """
         Initialize the ADC.
@@ -151,19 +150,20 @@ class AdcDevice(Component, ABC):
         :param bus: Bus.
         :param cmd: Command.
         :param address: Address.
-        :param digital_range: ADC range low and high values, or None to use raw digital values.
-        :param digital_range_scale: Scale.
+        :param digital_range: Native range of ADC.
+        :param channel_rescaled_range: Channels to use and their rescaled output ranges. Pass None for the ranges to use
+        the native digital range of the ADC device.
         """
 
         super().__init__(
-            state=AdcDevice.State(None, None)
+            state=AdcDevice.State(None)
         )
 
         self.bus = bus
         self.cmd = cmd
         self.address = address
         self.digital_range = digital_range
-        self.digital_range_scale = digital_range_scale
+        self.channel_rescaled_range = channel_rescaled_range
 
     def close(self):
         """
@@ -186,7 +186,7 @@ class PCF8591(AdcDevice):
             bus: SMBus,
             cmd: int,
             address: int,
-            digital_range_scale: Optional[Tuple[int, int]]
+            channel_rescaled_range: Dict[int, Optional[Tuple[int, int]]]
     ):
         """
         Initialize the PCF8591.
@@ -194,7 +194,8 @@ class PCF8591(AdcDevice):
         :param bus: Bus.
         :param cmd: Command.
         :param address: Address.
-        :param digital_range_scale: Scale.
+        :param channel_rescaled_range: Channels to use and their rescaled output ranges. Pass None for the ranges to use
+        the native digital range of the ADC device.
         """
 
         super().__init__(
@@ -202,7 +203,7 @@ class PCF8591(AdcDevice):
             cmd=cmd,
             address=address,
             digital_range=(0, 255),
-            digital_range_scale=digital_range_scale
+            channel_rescaled_range=channel_rescaled_range
         )
 
     def analog_read(
@@ -248,7 +249,7 @@ class ADS7830(AdcDevice):
             bus: SMBus,
             cmd: int,
             address: int,
-            digital_range_scale: Optional[Tuple[int, int]]
+            channel_rescaled_range: Dict[int, Optional[Tuple[int, int]]]
     ):
         """
         Initialize the ADS7830.
@@ -256,7 +257,8 @@ class ADS7830(AdcDevice):
         :param bus: Bus.
         :param cmd: Command.
         :param address: Address.
-        :param digital_range_scale: Scale.
+        :param channel_rescaled_range: Channels to use and their rescaled output ranges. Pass None for the ranges to use
+        the native digital range of the ADC device.
         """
 
         super().__init__(
@@ -264,7 +266,7 @@ class ADS7830(AdcDevice):
             cmd=cmd,
             address=address,
             digital_range=(0, 255),
-            digital_range_scale=digital_range_scale
+            channel_rescaled_range=channel_rescaled_range
         )
 
     def analog_read(

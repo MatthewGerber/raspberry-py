@@ -265,3 +265,110 @@ class LedBar(Component):
         """
 
         return len(self.leds)
+
+
+class MulticoloredLED(Component):
+    """
+    Multicolored LED.
+    """
+
+    class State(Component.State):
+
+        def __init__(
+                self,
+                r: float,
+                g: float,
+                b: float
+        ):
+            """
+            Initialize the state.
+
+            :param r: Red in [0.0, 100.0].
+            :param g: Green in [0.0, 100.0].
+            :param b: Blue in [0.0, 100.0].
+            """
+
+            self.r = r
+            self.g = g
+            self.b = b
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
+            """
+            Check equality with another state.
+
+            :param other: State.
+            :return: True if equal and False otherwise.
+            """
+
+            if not isinstance(other, MulticoloredLED.State):
+                raise ValueError(f'Expected a {MulticoloredLED.State}')
+
+            return self.r == other.r and self.g == other.g and self.b == other.b
+
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'r={self.r}, g={self.g}, b={self.b}'
+
+    def set(
+            self,
+            r: float,
+            g: float,
+            b: float
+    ):
+        """
+        Set color components.
+
+        :param r: Red in [0.0, 100.0].
+        :param g: Green in [0.0, 100.0].
+        :param b: Blue in [0.0, 100.0].
+        """
+
+        # invert components for a common anode
+        self.pwm_r.ChangeDutyCycle(100.0 - r if self.common_anode else r)
+        self.pwm_g.ChangeDutyCycle(100.0 - g if self.common_anode else g)
+        self.pwm_b.ChangeDutyCycle(100.0 - b if self.common_anode else b)
+        self.set_state(MulticoloredLED.State(r=r, g=g, b=b))
+
+    def __init__(
+            self,
+            r_pin: int,
+            g_pin: int,
+            b_pin: int,
+            common_anode: bool
+    ):
+        """
+        Initialize the LED.
+
+        :param common_anode: True if the LED pins have a common anode (+) and False if thee pins have a common cathode
+        (-).
+        """
+
+        super().__init__(MulticoloredLED.State(0.0, 0.0, 0.0))
+
+        # create leds and their pulse-wave modulators
+        self.led_r = LED(output_pin=r_pin)
+        self.led_r.turn_on()
+        self.pwm_r = gpio.PWM(self.led_r.output_pin, 2000)
+        self.pwm_r.start(0)
+
+        self.led_g = LED(output_pin=g_pin)
+        self.led_g.turn_on()
+        self.pwm_g = gpio.PWM(self.led_g.output_pin, 2000)
+        self.pwm_g.start(0)
+
+        self.led_b = LED(output_pin=b_pin)
+        self.led_b.turn_on()
+        self.pwm_b = gpio.PWM(self.led_b.output_pin, 2000)
+        self.pwm_b.start(0)
+
+        self.common_anode = common_anode

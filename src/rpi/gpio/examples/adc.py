@@ -5,10 +5,11 @@ from rpi.gpio.adc import AdcDevice
 
 def main():
     """
-    This example displays the value provided by an analog-to-digital converter, as shown on page 115 of the tutorial.
+    This example displays the value of a potentiometer via an analog-to-digital converter, as shown on page 115 of the
+    tutorial.
     """
 
-    adc = AdcDevice.detect_i2c('/dev/i2c-1', None)
+    adc = AdcDevice.detect_i2c('/dev/i2c-1', {0: None})
 
     try:
         while True:
