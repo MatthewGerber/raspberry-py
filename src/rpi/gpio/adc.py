@@ -74,6 +74,7 @@ class AdcDevice(Component, ABC):
 
         try:
             sm_bus.write_byte(PCF8591.ADDRESS, 0)
+            logging.info(f'Found a {PCF8591} ADC')
             return PCF8591(
                 bus=sm_bus,
                 cmd=PCF8591.COMMAND,
@@ -81,10 +82,11 @@ class AdcDevice(Component, ABC):
                 channel_rescaled_range=channel_rescaled_range
             )
         except Exception as e:
-            logging.info(f'{e}')
+            logging.info(f'Did not find a {PCF8591} ADC')
 
         try:
             sm_bus.write_byte(ADS7830.ADDRESS, 0)
+            logging.info(f'Found a {ADS7830} ADC')
             return ADS7830(
                 bus=sm_bus,
                 cmd=ADS7830.COMMAND,
@@ -92,7 +94,7 @@ class AdcDevice(Component, ABC):
                 channel_rescaled_range=channel_rescaled_range
             )
         except Exception as e:
-            logging.info(f'{e}')
+            logging.info(f'Did not find a {ADS7830} ADC')
 
         raise ValueError('Failed to detect ADC.')
 
