@@ -1,4 +1,3 @@
-import logging
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple, Dict
 
@@ -55,48 +54,6 @@ class AdcDevice(Component, ABC):
             """
 
             return str(self.channel_value)
-
-    @staticmethod
-    def detect_i2c(
-            bus: str,
-            channel_rescaled_range: Dict[int, Optional[Tuple[int, int]]]
-    ) -> 'AdcDevice':
-        """
-        Detect an ADC device.
-
-        :param bus: Bus (e.g., /dev/i2c-1).
-        :param channel_rescaled_range: Channels to use and their rescaled output ranges. Pass None for the ranges to use
-        the native digital range of the ADC device.
-        :return: ADC Device.
-        """
-
-        sm_bus = SMBus(bus)
-
-        try:
-            sm_bus.write_byte(PCF8591.ADDRESS, 0)
-            logging.info(f'Found a {PCF8591} ADC')
-            return PCF8591(
-                bus=sm_bus,
-                cmd=PCF8591.COMMAND,
-                address=PCF8591.ADDRESS,
-                channel_rescaled_range=channel_rescaled_range
-            )
-        except Exception as e:
-            logging.info(f'Did not find a {PCF8591} ADC')
-
-        try:
-            sm_bus.write_byte(ADS7830.ADDRESS, 0)
-            logging.info(f'Found a {ADS7830} ADC')
-            return ADS7830(
-                bus=sm_bus,
-                cmd=ADS7830.COMMAND,
-                address=ADS7830.ADDRESS,
-                channel_rescaled_range=channel_rescaled_range
-            )
-        except Exception as e:
-            logging.info(f'Did not find a {ADS7830} ADC')
-
-        raise ValueError('Failed to detect ADC.')
 
     @abstractmethod
     def analog_read(
@@ -180,7 +137,10 @@ class PCF8591(AdcDevice):
     PCF8591 ADC.
     """
 
+    # default command.
     COMMAND = 0x40
+
+    # default address. check the address with `i2cdetect -y 1`.
     ADDRESS = 0x48
 
     def __init__(
@@ -243,7 +203,10 @@ class ADS7830(AdcDevice):
     ADS7830 ADC.
     """
 
+    # default command.
     COMMAND = 0x84
+
+    # default address. check the address with `i2cdetect -y 1`.
     ADDRESS = 0x4b
 
     def __init__(

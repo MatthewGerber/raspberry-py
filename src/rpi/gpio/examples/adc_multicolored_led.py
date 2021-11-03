@@ -1,7 +1,9 @@
 import time
 
+from smbus2 import SMBus
+
 from rpi.gpio import Clock, setup, CkPin, cleanup
-from rpi.gpio.adc import AdcDevice
+from rpi.gpio.adc import ADS7830
 from rpi.gpio.lights import MulticoloredLED
 
 
@@ -21,8 +23,13 @@ def main():
         common_anode=True
     )
 
-    # detect the adc and rescale its digital outputs to be in [0, 100]
-    adc = AdcDevice.detect_i2c('/dev/i2c-1', {0: (0, 100), 1: (0, 100), 2: (0, 100)})
+    # create adc and rescale its digital outputs to be in [0, 100]
+    adc = ADS7830(
+        SMBus('/dev/i2c-1'),
+        ADS7830.COMMAND,
+        ADS7830.ADDRESS,
+        {0: (0, 100), 1: (0, 100), 2: (0, 100)}
+    )
 
     # set up a clock and update the adc each tick
     clock = Clock(tick_interval_seconds=0.5)

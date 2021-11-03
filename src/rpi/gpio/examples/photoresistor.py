@@ -1,9 +1,10 @@
 import time
 
 import RPi.GPIO as gpio
+from smbus2 import SMBus
 
 from rpi.gpio import setup, cleanup, CkPin, Clock
-from rpi.gpio.adc import AdcDevice
+from rpi.gpio.adc import ADS7830
 from rpi.gpio.lights import LED
 
 
@@ -21,7 +22,12 @@ def main():
     led_pwm.start(0)
 
     # read value from photoresistor
-    adc = AdcDevice.detect_i2c('/dev/i2c-1', {0: (0, 100)})
+    adc = ADS7830(
+        SMBus('/dev/i2c-1'),
+        ADS7830.COMMAND,
+        ADS7830.ADDRESS,
+        {0: (0, 100)}
+    )
     adc.event(lambda s: led_pwm.ChangeDutyCycle(100.0 - s.channel_value[0]))
     clock = Clock(tick_interval_seconds=0.5)
     clock.event(lambda _: adc.update_state())

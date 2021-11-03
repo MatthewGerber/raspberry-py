@@ -1,15 +1,21 @@
 import time
 
-from rpi.gpio.adc import AdcDevice
+from rpi.gpio.adc import ADS7830
+from smbus2 import SMBus
 
 
 def main():
     """
-    This example displays the value of a potentiometer via an analog-to-digital converter, as shown on page 115 of the
-    tutorial.
+    This example displays the value of an analog component (e.g., potentiometer) via an analog-to-digital converter, as
+    shown on page 115 of the tutorial.
     """
 
-    adc = AdcDevice.detect_i2c('/dev/i2c-1', {0: None})
+    adc = ADS7830(
+        SMBus('/dev/i2c-1'),
+        ADS7830.COMMAND,
+        ADS7830.ADDRESS,
+        {0: None}
+    )
 
     try:
         while True:
