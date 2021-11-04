@@ -61,10 +61,10 @@ class AdcDevice(Component, ABC):
             channel: int
     ) -> int:
         """
-        Read a value.
+        Read a byte.
 
         :param channel: Channel.
-        :return: Value.
+        :return: Digital value.
         """
 
     def update_state(
@@ -95,20 +95,35 @@ class AdcDevice(Component, ABC):
 
         self.set_state(AdcDevice.State(channel_value=channel_value))
 
+    def get_voltage(
+            self,
+            digital_output: int
+    ) -> float:
+        """
+        Get analog voltage corresponding to a digital output.
+
+        :param digital_output: Digital output.
+        :return: Approximate voltage.
+        """
+
+        return self.input_voltage * (digital_output / self.digital_range[1])
+
     def __init__(
             self,
+            input_voltage: float,
             bus: SMBus,
-            cmd: int,
             address: int,
+            command: int,
             digital_range: Tuple[int, int],
             channel_rescaled_range: Dict[int, Optional[Tuple[int, int]]]
     ):
         """
         Initialize the ADC.
 
+        :param input_voltage: Input voltage (typically 3.3).
         :param bus: Bus.
-        :param cmd: Command.
         :param address: Address.
+        :param command: Command.        
         :param digital_range: Native range of ADC.
         :param channel_rescaled_range: Channels to use and their rescaled output ranges. Pass None for the ranges to use
         the native digital range of the ADC device.
@@ -118,8 +133,9 @@ class AdcDevice(Component, ABC):
             state=AdcDevice.State(None)
         )
 
+        self.input_voltage = input_voltage
         self.bus = bus
-        self.cmd = cmd
+        self.cmd = command
         self.address = address
         self.digital_range = digital_range
         self.channel_rescaled_range = channel_rescaled_range
@@ -145,25 +161,28 @@ class PCF8591(AdcDevice):
 
     def __init__(
             self,
+            input_voltage: float,
             bus: SMBus,
-            cmd: int,
             address: int,
+            command: int,
             channel_rescaled_range: Dict[int, Optional[Tuple[int, int]]]
     ):
         """
         Initialize the PCF8591.
 
+        :param input_voltage: Input voltage (typically 3.3).
         :param bus: Bus.
-        :param cmd: Command.
         :param address: Address.
+        :param command: Command.        
         :param channel_rescaled_range: Channels to use and their rescaled output ranges. Pass None for the ranges to use
         the native digital range of the ADC device.
         """
 
         super().__init__(
+            input_voltage=input_voltage,
             bus=bus,
-            cmd=cmd,
             address=address,
+            command=command,
             digital_range=(0, 255),
             channel_rescaled_range=channel_rescaled_range
         )
@@ -176,7 +195,7 @@ class PCF8591(AdcDevice):
         Read a byte.
 
         :param channel: The PCF8591 has 4 ADC input pins:  0, 1, 2, and 3.
-        :return: Value.
+        :return: Digital value.
         """
 
         return self.bus.read_byte_data(self.address, self.cmd + channel)
@@ -200,35 +219,39 @@ class PCF8591(AdcDevice):
 
 class ADS7830(AdcDevice):
     """
-    ADS7830 ADC.
+    ADS7830 ADC. See the docs/ads7830.pdf datasheet for full information.
     """
 
-    # default command.
-    COMMAND = 0x84
-
-    # default address. check the address with `i2cdetect -y 1`.
+    # default address:  bin(0x4b) == 10000100. check the address with `i2cdetect -y 1`.
     ADDRESS = 0x4b
+
+    # default command (single-ended inputs, internal reference off, A/D on):  bin(0x84) == 10000100. see page 13 of the
+    # datasheet for the layout of this byte.
+    COMMAND = 0x84
 
     def __init__(
             self,
+            input_voltage: float,
             bus: SMBus,
-            cmd: int,
             address: int,
+            command: int,
             channel_rescaled_range: Dict[int, Optional[Tuple[int, int]]]
     ):
         """
         Initialize the ADS7830.
 
+        :param input_voltage: Input voltage (typically 3.3).
         :param bus: Bus.
-        :param cmd: Command.
         :param address: Address.
+        :param command: Command.        
         :param channel_rescaled_range: Channels to use and their rescaled output ranges. Pass None for the ranges to use
         the native digital range of the ADC device.
         """
 
         super().__init__(
+            input_voltage=input_voltage,
             bus=bus,
-            cmd=cmd,
+            command=command,
             address=address,
             digital_range=(0, 255),
             channel_rescaled_range=channel_rescaled_range
@@ -242,7 +265,11 @@ class ADS7830(AdcDevice):
         Read a byte.
 
         :param channel: The ADS7830 has 8 ADC input pins:  0, 1, 2, 3, 4, 5, 6, and 7.
-        :return: Value.
+        :return: Digital value.
         """
 
+        # see page 14 of the datasheet for channel selection control. there are 8 channels and thus 3 channel selection
+        # bits. the MSB of the channel selection bits indicates whether an even or odd channel is selected, and the
+        # final two bits indicate which of the even (or odd) channels is selected. then we shift the resulting 3 bits
+        # over 4 places to put them into correct position within the byte (see page 13).
         return self.bus.read_byte_data(self.address, self.cmd | (((channel << 2 | channel >> 1) & 0x07) << 4))

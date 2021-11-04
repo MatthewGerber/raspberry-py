@@ -23,12 +23,13 @@ def main():
         common_anode=True
     )
 
-    # create adc and rescale its digital outputs to be in [0, 100]
+    # create adc and rescale its three digital outputs to be in [0, 100]
     adc = ADS7830(
-        SMBus('/dev/i2c-1'),
-        ADS7830.COMMAND,
-        ADS7830.ADDRESS,
-        {0: (0, 100), 1: (0, 100), 2: (0, 100)}
+        input_voltage=3.3,
+        bus=SMBus('/dev/i2c-1'),
+        address=ADS7830.ADDRESS,
+        command=ADS7830.COMMAND,
+        channel_rescaled_range={0: (0, 100), 1: (0, 100), 2: (0, 100)}
     )
 
     # set up a clock and update the adc each tick

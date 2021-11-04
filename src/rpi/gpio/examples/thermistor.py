@@ -1,9 +1,9 @@
-import math
 import time
 
 from smbus2 import SMBus
 
 from rpi.gpio.adc import ADS7830
+from rpi.gpio.sensors import Thermistor
 
 
 def main():
@@ -13,20 +13,18 @@ def main():
     """
 
     adc = ADS7830(
-        SMBus('/dev/i2c-1'),
-        ADS7830.COMMAND,
-        ADS7830.ADDRESS,
-        {0: None}
+        input_voltage=3.3,
+        bus=SMBus('/dev/i2c-1'),
+        address=ADS7830.ADDRESS,
+        command=ADS7830.COMMAND,
+        channel_rescaled_range={0: None}
     )
 
     try:
         while True:
             value = adc.analog_read(0)
-            voltage = value / 255.0 * 3.3
-            Rt = 10 * voltage / (3.3 - voltage)
-            temp_k = 1 / (1 / (273.15 + 25) + math.log(Rt / 10) / 3950.0)
-            temp_c = temp_k - 273.15
-            temp_f = temp_c * (9.0/5.0) + 32.0
+            voltage = adc.get_voltage(value)
+            temp_f = Thermistor.get_temperature(voltage, adc.input_voltage)
             print(f'ADC Value: {value}, Degrees (F) : {temp_f:.2f}')
             time.sleep(0.1)
     except KeyboardInterrupt:

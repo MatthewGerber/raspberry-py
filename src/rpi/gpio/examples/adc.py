@@ -11,17 +11,18 @@ def main():
     """
 
     adc = ADS7830(
-        SMBus('/dev/i2c-1'),
-        ADS7830.COMMAND,
-        ADS7830.ADDRESS,
-        {0: None}
+        input_voltage=3.3,
+        bus=SMBus('/dev/i2c-1'),
+        address=ADS7830.ADDRESS,
+        command=ADS7830.COMMAND,
+        channel_rescaled_range={0: None}
     )
 
     try:
         while True:
-            value = adc.analog_read(0)
-            voltage = value / 255.0 * 3.3
-            print(f'ADC Value: {value}, Voltage : {voltage:.2f}')
+            digital_value = adc.analog_read(0)
+            voltage = adc.get_voltage(digital_value)
+            print(f'ADC Value: {digital_value}, Voltage : {voltage:.2f}')
             time.sleep(0.1)
     except KeyboardInterrupt:
         adc.close()
