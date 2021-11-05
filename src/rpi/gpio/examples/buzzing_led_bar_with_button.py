@@ -30,14 +30,13 @@ def main():
             CkPin.GPIO6,
             CkPin.GPIO13,
             CkPin.GPIO19,
-            CkPin.GPIO26,
+            CkPin.GPIO26
         ],
-        reverse=True,
-        delay_seconds=0.03
+        reverse=True
     )
 
     # flow the led bar back and forth 10 times when the button is pressed
-    button.event(lambda s: [led_bar.flow() for _ in range(10)] if s.pressed else None)
+    button.event(lambda s: [led_bar.flow(0.03) for _ in range(10)] if s.pressed else None)
 
     # create buzzer
     buzzer = ActiveBuzzer(output_pin=CkPin.GPIO17)

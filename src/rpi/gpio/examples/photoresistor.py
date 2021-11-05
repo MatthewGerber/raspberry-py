@@ -23,10 +23,11 @@ def main():
 
     # read value from photoresistor
     adc = ADS7830(
-        SMBus('/dev/i2c-1'),
-        ADS7830.COMMAND,
-        ADS7830.ADDRESS,
-        {0: (0, 100)}
+        input_voltage=3.3,
+        bus=SMBus('/dev/i2c-1'),
+        address=ADS7830.ADDRESS,
+        command=ADS7830.COMMAND,
+        channel_rescaled_range={0: (0, 100)}
     )
     adc.event(lambda s: led_pwm.ChangeDutyCycle(100.0 - s.channel_value[0]))
     clock = Clock(tick_interval_seconds=0.5)

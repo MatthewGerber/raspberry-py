@@ -21,15 +21,14 @@ def main():
             CkPin.GPIO25,
             CkPin.SDA1,
             CkPin.SCL1,
-            CkPin.CE0,
+            CkPin.CE0
         ],
-        reverse=True,
-        delay_seconds=0.03
+        reverse=True
     )
 
     try:
         while True:
-            led_bar.flow()
+            led_bar.flow(0.03)
     except KeyboardInterrupt:
         pass
 

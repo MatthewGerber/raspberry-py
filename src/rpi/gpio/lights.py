@@ -196,10 +196,13 @@ class LedBar(Component):
             return f'illuminated={self.illuminated_led_index}'
 
     def flow(
-            self
+            self,
+            delay_seconds: float
     ):
         """
         Flow light back and forth one time across the LED bar.
+
+        :param delay_seconds: How long to keep each LED on.
         """
 
         # turn all leds off
@@ -212,34 +215,64 @@ class LedBar(Component):
 
         # turn each led on in forward sequence
         for i in range(1, len(self.leds)):
-            time.sleep(self.delay_seconds)
+            time.sleep(delay_seconds)
             self.leds[i - 1].turn_off()
             self.leds[i].turn_on()
             self.set_state(LedBar.State(self.leds[i], i))
 
         # turn each led on in reversed sequence
         for i in reversed(range(len(self.leds) - 1)):
-            time.sleep(self.delay_seconds)
+            time.sleep(delay_seconds)
             self.leds[i + 1].turn_off()
             self.leds[i].turn_on()
             self.set_state(LedBar.State(self.leds[i], i))
 
-        time.sleep(self.delay_seconds)
+        time.sleep(delay_seconds)
         self.leds[0].turn_off()
         self.set_state(LedBar.State(None, None))
+
+    def turn_on(
+            self,
+            indices: Optional[List[int]] = None
+    ):
+        """
+        Turn on LEDs.
+
+        :param indices: LEDs to turn on, or None to turn all on.
+        """
+
+        if indices is None:
+            indices = list(range(len(self.leds)))
+
+        for i in indices:
+            self.leds[i].turn_on()
+
+    def turn_off(
+            self,
+            indices: Optional[List[int]] = None
+    ):
+        """
+        Turn off LEDs.
+
+        :param indices: LEDs to turn off, or None to turn all off.
+        """
+
+        if indices is None:
+            indices = list(range(len(self.leds)))
+
+        for i in indices:
+            self.leds[i].turn_off()
 
     def __init__(
             self,
             output_pins: List[int],
-            reverse: bool,
-            delay_seconds: float
+            reverse: bool
     ):
         """
         Initialize the LED bar.
 
         :param output_pins: Output pins in the order in which they are wired to GPIO ports.
         :param reverse: Whether or not the GPIO ports are wired to the cathodes of the LED bar.
-        :param delay_seconds: How long to keep each LED on.
         """
 
         super().__init__(
@@ -248,7 +281,6 @@ class LedBar(Component):
 
         self.output_pins = output_pins
         self.reverse = reverse
-        self.delay_seconds = delay_seconds
 
         self.leds = [
             LED(output_pin=pin, reverse=self.reverse)

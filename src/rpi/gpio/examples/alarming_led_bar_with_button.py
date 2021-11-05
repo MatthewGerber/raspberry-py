@@ -30,10 +30,9 @@ def main():
             CkPin.GPIO6,
             CkPin.GPIO13,
             CkPin.GPIO19,
-            CkPin.GPIO26,
+            CkPin.GPIO26
         ],
-        reverse=True,
-        delay_seconds=0.25
+        reverse=True
     )
 
     # create buzzer
@@ -44,7 +43,7 @@ def main():
         lambda s:
         (
             buzzer.start(0.0),
-            led_bar.flow(),
+            led_bar.flow(0.25),
             buzzer.stop()
         ) if s.pressed else None,
         synchronous=False

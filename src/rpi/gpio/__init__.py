@@ -234,7 +234,7 @@ class Component(ABC):
         """
 
         if state == self.state:
-            logging.info(f'State of {self} is already {state}. Not setting state or triggering events.')
+            logging.debug(f'State of {self} is already {state}. Not setting state or triggering events.')
         else:
             logging.debug(f'Setting state of {self} to {state}.')
             self.state = state
