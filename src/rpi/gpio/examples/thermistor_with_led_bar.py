@@ -11,12 +11,13 @@ from rpi.gpio.sensors import Thermistor
 
 def main():
     """
-    This example displays the value of a thermistor via an analog-to-digital converter, as shown on page 145 of the
-    tutorial.
+    This example displays the value of a thermistor on an LED bar. The thermistor is read via analog-to-digital
+    converter, as shown on page 145 of the tutorial.
     """
 
     setup()
 
+    # create a/d converter
     adc = ADS7830(
         input_voltage=3.3,
         bus=SMBus('/dev/i2c-1'),
@@ -25,6 +26,13 @@ def main():
         channel_rescaled_range={0: None}
     )
 
+    # create thermistor on adc
+    thermistor = Thermistor(
+        adc=adc,
+        channel=0
+    )
+
+    # create led bar
     led_bar = LedBar(
         output_pins=[
             CkPin.GPIO17,
@@ -40,28 +48,43 @@ def main():
         ],
         reverse=True
     )
-
-    num_leds = len(led_bar.leds)
-    temp_display_low_f = 70.0
-    temp_display_high_f = 85.0
-    temp_display_range_f = temp_display_high_f - temp_display_low_f
     led_bar.turn_off()
-    leds_to_illuminate = None
-    logging.getLogger().setLevel(logging.INFO)
+
+    # set display range
+    num_leds = len(led_bar)
+    temp_low_f = 70.0
+    temp_high_f = 98.6
+    temp_range_f = temp_high_f - temp_low_f
+    num_leds_on = None
+
+    # define function to update number of leds illuminated on the bar
+    def update_led_bar(
+            temp_f: float
+    ):
+        """
+        Update the LED bar based on new temperature.
+
+        :param temp_f: New temperature.
+        """
+
+        nonlocal num_leds_on
+
+        frac_temp_range = (temp_f - temp_low_f) / temp_range_f
+        new_num_leds_on = min(num_leds, max(0, int(num_leds * frac_temp_range)))
+        if num_leds_on is None or num_leds_on != new_num_leds_on:
+            logging.info(f'Temp: {temp_f}, LEDs: {new_num_leds_on}')
+            num_leds_on = new_num_leds_on
+            led_bar.turn_off()
+            led_bar.turn_on(list(range(0, num_leds_on)))
+
+    # update the led bar when the temperature changes
+    thermistor.event(lambda s: update_led_bar(s.temperature_f))
+
+    # update the adc
     try:
         while True:
-            value = adc.analog_read(0)
-            voltage = adc.get_voltage(value)
-            temp_f = Thermistor.get_temperature(voltage, adc.input_voltage)
-            new_leds_to_illuminate = int(num_leds * (temp_f - temp_display_low_f) / temp_display_range_f)
-            new_leds_to_illuminate = max(0, new_leds_to_illuminate)
-            new_leds_to_illuminate = min(num_leds, new_leds_to_illuminate)
-            if leds_to_illuminate is None or leds_to_illuminate != new_leds_to_illuminate:
-                logging.info(f'Temp: {temp_f}, LEDs: {new_leds_to_illuminate}')
-                leds_to_illuminate = new_leds_to_illuminate
-                led_bar.turn_off()
-                led_bar.turn_on(list(range(0, leds_to_illuminate)))
-            time.sleep(0.5)
+            adc.update_state()
+            time.sleep(0.25)
     except KeyboardInterrupt:
         adc.close()
         led_bar.turn_off()

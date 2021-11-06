@@ -12,6 +12,7 @@ def main():
     tutorial.
     """
 
+    # create a/d converter
     adc = ADS7830(
         input_voltage=3.3,
         bus=SMBus('/dev/i2c-1'),
@@ -20,12 +21,16 @@ def main():
         channel_rescaled_range={0: None}
     )
 
+    # create thermistor on adc
+    thermistor = Thermistor(
+        adc=adc,
+        channel=0
+    )
+
     try:
         while True:
-            value = adc.analog_read(0)
-            voltage = adc.get_voltage(value)
-            temp_f = Thermistor.get_temperature(voltage, adc.input_voltage)
-            print(f'ADC Value: {value}, Degrees (F) : {temp_f:.2f}')
+            adc.update_state()
+            print(f'Degrees (F) : {thermistor.get_temperature_f():.1f}')
             time.sleep(0.1)
     except KeyboardInterrupt:
         adc.close()
