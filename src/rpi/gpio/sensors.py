@@ -56,23 +56,32 @@ class Thermistor(Component):
 
     @staticmethod
     def convert_voltage_to_temperature(
-            voltage: float,
-            input_voltage: float
+            input_voltage: float,
+            output_voltage: float
     ) -> float:
         """
-        Convert temperature to voltage.
+        Convert voltage to temperature.
 
-        :param voltage: Voltage.
-        :param input_voltage: Input voltage.
+        :param input_voltage: Input voltage to thermistor.
+        :param output_voltage: Output voltage from thermistor.
         :return: Temperature (F).
         """
 
-        rt = 10.0 * voltage / (input_voltage - voltage)
+        rt = 10.0 * output_voltage / (input_voltage - output_voltage)
         temp_k = 1 / (1 / (273.15 + 25) + math.log(rt / 10.0) / 3950.0)
         temp_c = temp_k - 273.15
         temp_f = temp_c * (9.0 / 5.0) + 32.0
 
         return temp_f
+
+    def update_temperature(
+            self
+    ):
+        """
+        Update temperature.
+        """
+
+        self.adc.update_state()
 
     def get_temperature_f(
             self
@@ -82,6 +91,8 @@ class Thermistor(Component):
 
         :return: Temperature (F).
         """
+
+        self.adc.update_state()
 
         state: Thermistor.State = self.state
 
@@ -96,7 +107,7 @@ class Thermistor(Component):
         Initialize the thermistor.
 
         :param adc: Analog-to-digital converter.
-        :param channel: Analog-to-digital channel on which to monitor values.
+        :param channel: Analog-to-digital channel on which to monitor values from the thermistor.
         """
 
         super().__init__(Thermistor.State(temperature_f=None))
@@ -104,14 +115,15 @@ class Thermistor(Component):
         self.adc = adc
         self.channel = channel
 
+        # listen for events from the adc and update temperature when they occur
         self.adc.event(
             lambda s: self.set_state(
                 Thermistor.State(
                     temperature_f=self.convert_voltage_to_temperature(
-                        voltage=adc.get_voltage(
+                        input_voltage=self.adc.input_voltage,
+                        output_voltage=adc.get_voltage(
                             digital_output=s.channel_value[self.channel]
-                        ),
-                        input_voltage=self.adc.input_voltage
+                        )
                     )
                 )
             )
