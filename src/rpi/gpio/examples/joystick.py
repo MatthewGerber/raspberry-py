@@ -2,6 +2,7 @@ import time
 
 from smbus2 import SMBus
 
+from rpi.gpio import setup, cleanup
 from rpi.gpio.adc import ADS7830
 
 
@@ -10,6 +11,8 @@ def main():
     This example displays the value of an analog component (e.g., potentiometer) via an analog-to-digital converter, as
     shown on page 115 of the tutorial.
     """
+
+    setup()
 
     adc = ADS7830(
         input_voltage=3.3,
@@ -27,6 +30,7 @@ def main():
             time.sleep(0.5)
     except KeyboardInterrupt:
         adc.close()
+        cleanup()
 
 
 if __name__ == '__main__':
