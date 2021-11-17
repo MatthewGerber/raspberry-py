@@ -84,7 +84,7 @@ def main():
     # update the temperature reading
     try:
         while True:
-            thermistor.update_temperature()
+            thermistor.update_state()
             time.sleep(0.25)
     except KeyboardInterrupt:
         adc.close()

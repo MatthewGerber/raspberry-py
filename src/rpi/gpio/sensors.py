@@ -74,11 +74,11 @@ class Thermistor(Component):
 
         return temp_f
 
-    def update_temperature(
+    def update_state(
             self
     ):
         """
-        Update temperature.
+        Update state.
         """
 
         self.adc.update_state()

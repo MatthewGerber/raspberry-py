@@ -22,12 +22,13 @@ led.turn_off()
 cleanup()
 ```
 A button-switched LED is shown below:
+
 ```python
 import time
 
 from rpi.gpio import setup, cleanup
 from rpi.gpio.lights import LED
-from rpi.gpio.switches import TwoPoleButton
+from rpi.gpio.controls import TwoPoleButton
 
 setup()
 

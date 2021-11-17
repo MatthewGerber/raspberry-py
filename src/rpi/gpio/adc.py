@@ -18,7 +18,7 @@ class AdcDevice(Component, ABC):
 
         def __init__(
                 self,
-                channel_value: Optional[Dict[int, int]]
+                channel_value: Optional[Dict[int, float]]
         ):
             """
             Initialize the state.
@@ -89,11 +89,34 @@ class AdcDevice(Component, ABC):
                 native_range_total = self.digital_range[1] - self.digital_range[0]
                 native_range_fraction = (value - self.digital_range[0]) / native_range_total
                 rescaled_range_total = rescaled_range[1] - rescaled_range[0]
-                value = round(rescaled_range[0] + native_range_fraction * rescaled_range_total)
+                value = rescaled_range[0] + native_range_fraction * rescaled_range_total
 
             channel_value[channel] = value
 
         self.set_state(AdcDevice.State(channel_value=channel_value))
+
+    def invert_digital_value(
+            self,
+            value: float,
+            channel: int
+    ) -> float:
+        """
+        Invert a digital value.
+
+        :param value: Value.
+        :param channel: Channel.
+        :return: Inverted value.
+        """
+
+        value_range = self.channel_rescaled_range[channel]
+        if value_range is None:
+            value_range = self.digital_range
+
+        range_min, range_max = value_range
+        range_total = range_max - range_min
+        range_fraction = 1.0 - (value - range_min) / range_total
+
+        return range_min + range_fraction * range_total
 
     def get_voltage(
             self,
@@ -108,6 +131,19 @@ class AdcDevice(Component, ABC):
 
         return self.input_voltage * (digital_output / self.digital_range[1])
 
+    def get_channel_value(
+            self
+    ) -> Dict[int, float]:
+        """
+        Get channel-value dictionary from current state.
+
+        :return: Channel-value dictionary.
+        """
+
+        state: AdcDevice.State = self.get_state()
+
+        return state.channel_value
+
     def __init__(
             self,
             input_voltage: float,
@@ -115,7 +151,7 @@ class AdcDevice(Component, ABC):
             address: int,
             command: int,
             digital_range: Tuple[int, int],
-            channel_rescaled_range: Dict[int, Optional[Tuple[int, int]]]
+            channel_rescaled_range: Dict[int, Optional[Tuple[float, float]]]
     ):
         """
         Initialize the ADC.
@@ -165,7 +201,7 @@ class PCF8591(AdcDevice):
             bus: SMBus,
             address: int,
             command: int,
-            channel_rescaled_range: Dict[int, Optional[Tuple[int, int]]]
+            channel_rescaled_range: Dict[int, Optional[Tuple[float, float]]]
     ):
         """
         Initialize the PCF8591.
@@ -235,7 +271,7 @@ class ADS7830(AdcDevice):
             bus: SMBus,
             address: int,
             command: int,
-            channel_rescaled_range: Dict[int, Optional[Tuple[int, int]]]
+            channel_rescaled_range: Dict[int, Optional[Tuple[float, float]]]
     ):
         """
         Initialize the ADS7830.

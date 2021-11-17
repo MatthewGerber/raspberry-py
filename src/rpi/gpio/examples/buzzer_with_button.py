@@ -2,7 +2,7 @@ import time
 
 from rpi.gpio import setup, cleanup, CkPin
 from rpi.gpio.sounds import ActiveBuzzer
-from rpi.gpio.switches import TwoPoleButton
+from rpi.gpio.controls import TwoPoleButton
 
 
 def main():
