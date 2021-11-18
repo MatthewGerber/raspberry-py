@@ -16,8 +16,6 @@ def setup():
 
     gpio.setmode(gpio.BOARD)
 
-    logging.getLogger().setLevel(logging.DEBUG)
-
 
 def cleanup():
     """
@@ -221,7 +219,8 @@ class Component(ABC):
         :return: State.
         """
 
-        return self.state
+        with self.state_lock:
+            return self.state
 
     def set_state(
             self,
@@ -233,17 +232,18 @@ class Component(ABC):
         :param state: State.
         """
 
-        if state == self.state:
-            logging.debug(f'State of {self} is already {state}. Not setting state or triggering events.')
-        else:
-            logging.debug(f'Setting state of {self} to {state}.')
-            self.state = state
-            for event in self.events:
-                if event.trigger is None or event.trigger(self.state):
-                    if event.synchronous:
-                        event.action(self.state)
-                    else:
-                        Thread(target=event.action, args=[self.state]).start()
+        with self.state_lock:
+            if state == self.state:
+                logging.debug(f'State of {self} is already {state}. Not setting state or triggering events.')
+            else:
+                logging.debug(f'Setting state of {self} to {state}.')
+                self.state = state
+                for event in self.events:
+                    if event.trigger is None or event.trigger(self.state):
+                        if event.synchronous:
+                            event.action(self.state)
+                        else:
+                            Thread(target=event.action, args=[self.state]).start()
 
     def __init__(
             self,
@@ -258,6 +258,7 @@ class Component(ABC):
         self.state = state
 
         self.events: List[Event] = []
+        self.state_lock = Lock()
 
     def __str__(
             self
@@ -379,7 +380,6 @@ class Clock(Component):
         self.tick_interval_seconds = tick_interval_seconds
 
         self.run_thread: Optional[Thread] = None
-        self.state_lock = Lock()
 
     def __run__(
             self

@@ -90,12 +90,10 @@ class TwoPoleButton(Component):
             self.input_pin,
             gpio.BOTH,
             callback=lambda channel: self.set_state(
-                TwoPoleButton.State(pressed=True)
-            ) if gpio.input(self.input_pin) == gpio.LOW else
-            self.set_state(
-                TwoPoleButton.State(pressed=False)
-            ) if gpio.input(self.input_pin) == gpio.HIGH else
-            None,
+                TwoPoleButton.State(
+                    pressed=gpio.input(self.input_pin) == gpio.LOW
+                )
+            ),
             bouncetime=bounce_time_ms
         )
 
@@ -237,7 +235,7 @@ class Joystick(Component):
         # create button on z pin and update joystick state when it gets pressed
         self.button = TwoPoleButton(
             input_pin=self.z_pin,
-            bounce_time_ms=200
+            bounce_time_ms=10
         )
 
         self.button.event(

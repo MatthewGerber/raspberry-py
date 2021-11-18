@@ -101,7 +101,9 @@ class AdcDevice(Component, ABC):
             channel: int
     ) -> float:
         """
-        Invert a digital value.
+        Invert a digital value within its range. If the given value is 23% of its range, then the inverted value will be
+        77% of its range (and vice-versa). The range used will either be the native range of the A/D converter, or it
+        will be the rescaled range if one was provided for the channel to __init__.
 
         :param value: Value.
         :param channel: Channel.
