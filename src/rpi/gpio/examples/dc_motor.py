@@ -1,3 +1,4 @@
+import logging
 import time
 
 from smbus2 import SMBus
@@ -12,6 +13,8 @@ def main():
     This example drives a DC motor as shown on page 164 of the tutorial.
     """
 
+    logging.getLogger().setLevel(logging.DEBUG)
+
     setup()
 
     adc = ADS7830(
@@ -25,7 +28,8 @@ def main():
     dc_motor = DcMotor(
         enable_pin=CkPin.GPIO22,
         in_1_pin=CkPin.GPIO27,
-        in_2_pin=CkPin.GPIO17
+        in_2_pin=CkPin.GPIO17,
+        speed=0
     )
 
     dc_motor.start()
