@@ -1,5 +1,6 @@
-from rpi.gpio import Component
 import RPi.GPIO as gpio
+
+from rpi.gpio import Component
 
 
 class DcMotor(Component):

@@ -1,8 +1,8 @@
 import time
 
 from rpi.gpio import setup, cleanup, CkPin
-from rpi.gpio.lights import LED
 from rpi.gpio.controls import TwoPoleButton
+from rpi.gpio.lights import LED
 
 
 def main():

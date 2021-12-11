@@ -1,8 +1,8 @@
 import time
 
 from rpi.gpio import setup, cleanup, CkPin
-from rpi.gpio.lights import LedBar
 from rpi.gpio.controls import TwoPoleButton
+from rpi.gpio.lights import LedBar
 
 
 def main():

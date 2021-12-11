@@ -2,9 +2,9 @@ import time
 from datetime import timedelta
 
 from rpi.gpio import setup, cleanup, CkPin
+from rpi.gpio.controls import TwoPoleButton
 from rpi.gpio.lights import LedBar
 from rpi.gpio.sounds import ActiveBuzzer
-from rpi.gpio.controls import TwoPoleButton
 
 
 def main():

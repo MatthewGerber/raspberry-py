@@ -1,15 +1,11 @@
-from os import path
-
 from setuptools import (
     setup,
     find_namespace_packages
 )
 
 INSTALL_REQUIREMENTS = [
-
     'RPi.GPIO==0.7.0',
     'smbus2==0.4.1 '
-
 ]
 
 TEST_REQUIREMENTS = [
