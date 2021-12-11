@@ -17,6 +17,7 @@ def main():
 
     setup()
 
+    # create a/d converter for potentiometer. rescale potentiometer to the speed values expected by the motor.
     adc = ADS7830(
         input_voltage=3.3,
         bus=SMBus('/dev/i2c-1'),
@@ -32,6 +33,7 @@ def main():
         speed=0
     )
 
+    # start motor and update its speed on a/d events
     dc_motor.start()
     adc.event(lambda s: dc_motor.set_speed(s.channel_value[0]))
 
