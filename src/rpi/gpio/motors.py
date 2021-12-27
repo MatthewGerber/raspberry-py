@@ -78,6 +78,8 @@ class DcMotor(Component):
         elif state.speed > 0:
             gpio.output(self.in_1_pin, gpio.LOW)
             gpio.output(self.in_2_pin, gpio.HIGH)
+
+        # zero speed does not rotate
         else:
             gpio.output(self.in_1_pin, gpio.LOW)
             gpio.output(self.in_2_pin, gpio.LOW)
