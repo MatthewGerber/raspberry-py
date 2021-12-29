@@ -4,6 +4,7 @@ from setuptools import (
 )
 
 INSTALL_REQUIREMENTS = [
+    'numpy==1.21.5',
     'RPi.GPIO==0.7.0',
     'smbus2==0.4.1 '
 ]
