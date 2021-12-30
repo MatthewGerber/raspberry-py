@@ -1,4 +1,8 @@
+import time
+from datetime import timedelta
+
 import RPi.GPIO as gpio
+import numpy as np
 
 from rpi.gpio import Component
 
@@ -326,3 +330,189 @@ class Servo(Component):
         gpio.setup(self.signal_pin, gpio.OUT)
         gpio.output(self.signal_pin, gpio.LOW)
         self.pwm_signal = gpio.PWM(self.signal_pin, self.pwm_hz)
+
+
+class Stepper(Component):
+    """
+    Stepper motor.
+    """
+
+    class State(Component.State):
+        """
+        Stepper motor state.
+        """
+
+        def __init__(
+                self,
+                step: int,
+                time_to_step: timedelta
+        ):
+            """
+            Initialize the state.
+
+            :param step: Step to position at.
+            :param time_to_step: Amount of time to take to position at step.
+            """
+
+            self.step = step
+            self.time_to_step = time_to_step
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
+            """
+            Check equality with another state.
+
+            :param other: State.
+            :return: True if equal and False otherwise.
+            """
+
+            if not isinstance(other, Stepper.State):
+                raise ValueError(f'Expected a {Stepper.State}')
+
+            return self.step == other.step
+
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'Step:  {self.step}'
+
+    def set_state(
+            self,
+            state: 'Component.State'
+    ):
+        """
+        Set the state and trigger events.
+
+        :param state: State.
+        """
+
+        if not isinstance(state, Stepper.State):
+            raise ValueError(f'Expected a {Stepper.State}')
+
+        state: Stepper.State
+        self.state: Stepper.State
+
+        # get number of steps to move and how long to take for each step
+        num_steps = state.step - self.state.step
+        delay_seconds_per_step = state.time_to_step.total_seconds() / abs(num_steps)
+
+        # execute steps
+        direction = np.sign(num_steps)
+        for _ in range(abs(num_steps)):
+            self.current_driver_pin_idx = (self.current_driver_pin_idx + direction) % len(self.driver_pins)
+            self.drive()
+            time.sleep(delay_seconds_per_step)
+
+        # trigger events now that steps are complete
+        super().set_state(state)
+
+    def step(
+            self,
+            degrees: float,
+            time_to_step: timedelta
+    ):
+        """
+        Step the motor.
+
+        :param degrees:  Number of degrees.
+        :param time_to_step: Amount of time to take.
+        """
+
+        self.state: Stepper.State
+
+        self.set_state(Stepper.State(self.state.step + round(degrees * self.steps_per_degree), time_to_step))
+
+    def start(
+            self
+    ):
+        """
+        Start the motor.
+        """
+
+        self.drive()
+
+    def stop(
+            self
+    ):
+        """
+        Stop the motor.
+        """
+
+        for driver_pin in self.driver_pins:
+            gpio.output(driver_pin, gpio.LOW)
+
+    def drive(
+            self
+    ):
+        """
+        Drive the motor with the currently selected driver pin.
+        """
+
+        for i, driver_pin in enumerate(self.driver_pins):
+            gpio.output(driver_pin, gpio.HIGH if i == self.current_driver_pin_idx else gpio.LOW)
+
+    def get_degrees(
+            self
+    ) -> float:
+        """
+        Get current degree rotation of the output shaft.
+
+        :return: Degrees.
+        """
+
+        self.state: Stepper.State
+
+        return (self.state.step / self.steps_per_degree) % 360.0
+
+    def __init__(
+            self,
+            poles: int,
+            output_rotor_ratio: float,
+            driver_pin_1: int,
+            driver_pin_2: int,
+            driver_pin_3: int,
+            driver_pin_4: int
+    ):
+        """
+        Initialize the motor.
+
+        :param poles: Number of poles in the stepper.
+        :param output_rotor_ratio: Rotor/output ratio (e.g., if the output shaft rotates one time per 100 rotations of
+        the internal rotor, then this value would be 1/100).
+        :param driver_pin_1: Driver GPIO pin 1.
+        :param driver_pin_2: Driver GPIO pin 2.
+        :param driver_pin_3: Driver GPIO pin 3.
+        :param driver_pin_4: Driver GPIO pin 4.
+        """
+
+        super().__init__(Stepper.State(0, timedelta(seconds=0)))
+
+        self.poles = poles
+        self.output_rotor_ratio = output_rotor_ratio
+        self.driver_pin_1 = driver_pin_1
+        self.driver_pin_2 = driver_pin_2
+        self.driver_pin_3 = driver_pin_3
+        self.driver_pin_4 = driver_pin_4
+
+        self.steps_per_degree = (poles / output_rotor_ratio) / 360.0
+
+        self.driver_pins = [
+            self.driver_pin_1,
+            self.driver_pin_2,
+            self.driver_pin_3,
+            self.driver_pin_4
+        ]
+
+        for driver_pin in self.driver_pins:
+            gpio.setup(driver_pin, gpio.OUT)
+            gpio.output(driver_pin, gpio.LOW)
+
+        self.current_driver_pin_idx = 0
