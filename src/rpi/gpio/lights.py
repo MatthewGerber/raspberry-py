@@ -1,9 +1,11 @@
 import time
-from typing import List, Optional
+from enum import Enum, auto
+from typing import List, Optional, Union, Dict
 
 import RPi.GPIO as gpio
 
 from rpi.gpio import Component
+from rpi.gpio.ic_chips import ShiftRegister
 
 
 class LED(Component):
@@ -404,3 +406,96 @@ class MulticoloredLED(Component):
         self.pwm_b.start(0)
 
         self.common_anode = common_anode
+
+
+class SevenSegmentWithDpLED(Component):
+
+    class State(Component.State):
+
+        def __init__(
+                self,
+                character: Optional[Union[int, str]]
+        ):
+            if character is not None and character not in SevenSegmentWithDpLED.CHARACTER_SEGMENTS:
+                raise ValueError(f'Invalid character:  {character}')
+
+            self.character = character
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
+
+            if not isinstance(other, SevenSegmentWithDpLED.State):
+                raise ValueError(f'Expected a {SevenSegmentWithDpLED.State}')
+
+            return self.character == other.character
+
+        def __str__(
+                self
+        ) -> str:
+
+            return f'Value:  {self.character}'
+
+    class Segment(Enum):
+        A = auto()
+        B = auto()
+        C = auto()
+        D = auto()
+        E = auto()
+        F = auto()
+        G = auto()
+        DECIMAL_POINT = auto()
+
+    CHARACTER_SEGMENTS = {
+        0: [],
+        1: [],
+        2: [],
+        3: [],
+        4: [],
+        5: [],
+        6: [],
+        7: [],
+        8: [],
+        9: [],
+        'A': [],
+        'B': [],
+        'C': [],
+        'D': [],
+        'E': [],
+        'F': []
+    }
+
+    def set_state(
+            self,
+            state: 'Component.State'
+    ):
+        if not isinstance(state, SevenSegmentWithDpLED.State):
+            raise ValueError(f'Expected a {SevenSegmentWithDpLED.State}')
+
+        state: SevenSegmentWithDpLED.State
+
+        segments = self.CHARACTER_SEGMENTS[state.character]
+
+        shift_register_output_pins = list(sorted([
+            self.segment_shift_register_output[segment]
+            for segment in segments
+        ]))
+
+
+
+    def display(
+            self,
+            character: str
+    ):
+        self.set_state(SevenSegmentWithDpLED.State(character))
+
+    def __init__(
+            self,
+            shift_register: ShiftRegister,
+            segment_shift_register_output: Dict[Segment, int]
+    ):
+        super().__init__(SevenSegmentWithDpLED.State(None))
+
+        self.shift_register = shift_register
+        self.segment_shift_register_output = segment_shift_register_output
