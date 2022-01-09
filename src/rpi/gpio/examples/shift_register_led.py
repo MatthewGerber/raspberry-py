@@ -5,6 +5,10 @@ from rpi.gpio.ic_chips import ShiftRegister
 
 
 def main():
+    """
+    This example drives an LED bar with an 8-bit shift register. It runs with the circuit shown on page 204 of the
+    tutorial.
+    """
 
     setup()
 

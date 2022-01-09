@@ -408,36 +408,66 @@ class MulticoloredLED(Component):
         self.common_anode = common_anode
 
 
-class SevenSegmentWithDpLED(Component):
+class SevenSegmentLedShiftRegister(Component):
+    """
+    A 7-segment LED driven by an 8-bit shift register.
+    """
 
     class State(Component.State):
+        """
+        State.
+        """
 
         def __init__(
                 self,
-                character: Optional[Union[int, str]]
+                character: Optional[Union[int, str]],
+                decimal_point: bool
         ):
-            if character is not None and character not in SevenSegmentWithDpLED.CHARACTER_SEGMENTS:
+            """
+            Initialize the state.
+
+            :param character: Character.
+            :param decimal_point: Show decimal point.
+            """
+
+            if character is not None and character not in SevenSegmentLedShiftRegister.CHARACTER_SEGMENTS:
                 raise ValueError(f'Invalid character:  {character}')
 
             self.character = character
+            self.decimal_point = decimal_point
 
         def __eq__(
                 self,
                 other: object
         ) -> bool:
+            """
+            Check equality with another state.
 
-            if not isinstance(other, SevenSegmentWithDpLED.State):
-                raise ValueError(f'Expected a {SevenSegmentWithDpLED.State}')
+            :param other: State.
+            :return: True if equal and False otherwise.
+            """
 
-            return self.character == other.character
+            if not isinstance(other, SevenSegmentLedShiftRegister.State):
+                raise ValueError(f'Expected a {SevenSegmentLedShiftRegister.State}')
+
+            return self.character == other.character and self.decimal_point == other.decimal_point
 
         def __str__(
                 self
         ) -> str:
+            """
+            Get string.
 
-            return f'Value:  {self.character}'
+            :return: String.
+            """
+
+            return f'Value:  {self.character}{"." if self.decimal_point else ""}'
 
     class Segment(Enum):
+        """
+        LED segments.
+        """
+
         A = auto()
         B = auto()
         C = auto()
@@ -447,55 +477,94 @@ class SevenSegmentWithDpLED(Component):
         G = auto()
         DECIMAL_POINT = auto()
 
+    # mapping of display characters to led segments
     CHARACTER_SEGMENTS = {
-        0: [],
-        1: [],
-        2: [],
-        3: [],
-        4: [],
-        5: [],
-        6: [],
-        7: [],
-        8: [],
-        9: [],
-        'A': [],
-        'B': [],
-        'C': [],
-        'D': [],
-        'E': [],
-        'F': []
+        0: [Segment.A, Segment.B, Segment.C, Segment.D, Segment.E, Segment.F],
+        1: [Segment.B, Segment.C],
+        2: [Segment.A, Segment.B, Segment.G, Segment.E, Segment.D],
+        3: [Segment.A, Segment.B, Segment.G, Segment.C, Segment.D],
+        4: [Segment.F, Segment.G, Segment.B, Segment.C],
+        5: [Segment.A, Segment.F, Segment.G, Segment.C, Segment.D],
+        6: [Segment.A, Segment.F, Segment.E, Segment.D, Segment.C, Segment.G],
+        7: [Segment.A, Segment.B, Segment.C],
+        8: [Segment.A, Segment.F, Segment.G, Segment.C, Segment.D, Segment.E, Segment.B],
+        9: [Segment.A, Segment.F, Segment.G, Segment.B, Segment.C],
+        'A': [Segment.A, Segment.F, Segment.E, Segment.G, Segment.B, Segment.C],
+        'b': [Segment.F, Segment.E, Segment.G, Segment.C, Segment.D],
+        'C': [Segment.A, Segment.F, Segment.E, Segment.D],
+        'd': [Segment.B, Segment.C, Segment.G, Segment.E, Segment.D],
+        'E': [Segment.A, Segment.F, Segment.E, Segment.D, Segment.G],
+        'F': [Segment.F, Segment.E, Segment.A, Segment.G]
     }
 
     def set_state(
             self,
             state: 'Component.State'
     ):
-        if not isinstance(state, SevenSegmentWithDpLED.State):
-            raise ValueError(f'Expected a {SevenSegmentWithDpLED.State}')
+        """
+        Set the state and trigger events.
 
-        state: SevenSegmentWithDpLED.State
+        :param state: State.
+        """
 
+        if not isinstance(state, SevenSegmentLedShiftRegister.State):
+            raise ValueError(f'Expected a {SevenSegmentLedShiftRegister.State}')
+
+        state: SevenSegmentLedShiftRegister.State
+
+        # get segments for display character
         segments = self.CHARACTER_SEGMENTS[state.character]
 
-        shift_register_output_pins = list(sorted([
+        # add segment for decimal point if needed
+        if state.decimal_point:
+            segments.append(SevenSegmentLedShiftRegister.Segment.DECIMAL_POINT)
+
+        # get shift register pins that should be turned on for segments
+        shift_register_output_pins = list([
             self.segment_shift_register_output[segment]
             for segment in segments
+        ])
+
+        # get bit string for shift register pins with msb on left
+        bit_string = ''.join(reversed([
+            '0' if i in shift_register_output_pins else '1'
+            for i in range(self.shift_register.bits)
         ]))
 
-
+        # write integer for bit string to shift register
+        bit_string_int = int(bit_string, 2)
+        self.shift_register.write(bit_string_int)
 
     def display(
             self,
-            character: str
+            character: str,
+            decimal_point: bool
     ):
-        self.set_state(SevenSegmentWithDpLED.State(character))
+        """
+        Display a character on the LED.
+
+        :param character: Character.
+        :param decimal_point: Whether to show the decimal point.
+        """
+
+        self.set_state(SevenSegmentLedShiftRegister.State(character, decimal_point))
 
     def __init__(
             self,
             shift_register: ShiftRegister,
             segment_shift_register_output: Dict[Segment, int]
     ):
-        super().__init__(SevenSegmentWithDpLED.State(None))
+        """
+        Initialize the LED.
+
+        :param shift_register: Shift register (must be at least 8 bits).
+        :param segment_shift_register_output: Mapping of LED segments to shift-register output lines.
+        """
+
+        if shift_register.bits < 8:
+            raise ValueError(f'Expected a shift register with at least 8 bits but got one with {shift_register.bits}.')
+
+        super().__init__(SevenSegmentLedShiftRegister.State(None, False))
 
         self.shift_register = shift_register
         self.segment_shift_register_output = segment_shift_register_output
