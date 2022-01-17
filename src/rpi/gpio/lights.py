@@ -1,6 +1,8 @@
 import time
+from datetime import timedelta
 from enum import Enum, auto
-from typing import List, Optional, Union, Dict
+from threading import Thread
+from typing import List, Optional, Union, Dict, Tuple
 
 import RPi.GPIO as gpio
 
@@ -568,3 +570,195 @@ class SevenSegmentLedShiftRegister(Component):
 
         self.shift_register = shift_register
         self.segment_shift_register_output = segment_shift_register_output
+
+
+class FourDigitSevenSegmentLED(Component):
+
+    class State(Component.State):
+        """
+        State.
+        """
+
+        def get(
+                self,
+                led_idx: int
+        ) -> Tuple[Optional[Union[int, str]], bool]:
+
+            if led_idx == 0:
+                return self.character_0, self.decimal_point_0
+            elif led_idx == 1:
+                return self.character_1, self.decimal_point_1
+            elif led_idx == 2:
+                return self.character_2, self.decimal_point_2
+            elif led_idx == 3:
+                return self.character_3, self.decimal_point_3
+
+        def __init__(
+                self,
+                character_0: Optional[Union[int, str]],
+                decimal_point_0: bool,
+                character_1: Optional[Union[int, str]],
+                decimal_point_1: bool,
+                character_2: Optional[Union[int, str]],
+                decimal_point_2: bool,
+                character_3: Optional[Union[int, str]],
+                decimal_point_3: bool
+        ):
+            """
+            Initialize the state.
+
+            :param character_0: Character 0.
+            :param decimal_point_0: Show decimal point.
+            :param character_1: Character 1.
+            :param decimal_point_1: Show decimal point.
+            :param character_2: Character 2.
+            :param decimal_point_2: Show decimal point.
+            :param character_3: Character 3.
+            :param decimal_point_3: Show decimal point.
+            """
+
+            self.character_0 = character_0
+            self.decimal_point_0 = decimal_point_0
+            self.character_1 = character_1
+            self.decimal_point_1 = decimal_point_1
+            self.character_2 = character_2
+            self.decimal_point_2 = decimal_point_2
+            self.character_3 = character_3
+            self.decimal_point_3 = decimal_point_3
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
+            """
+            Check equality with another state.
+
+            :param other: State.
+            :return: True if equal and False otherwise.
+            """
+
+            if not isinstance(other, FourDigitSevenSegmentLED.State):
+                raise ValueError(f'Expected a {FourDigitSevenSegmentLED.State}')
+
+            return self.character_0 == other.character_0 and self.decimal_point_0 == other.decimal_point_0 and self.character_1 == other.character_1 and self.decimal_point_1 == other.decimal_point_1 and self.character_2 == other.character_2 and self.decimal_point_2 == other.decimal_point_2 and self.character_3 == other.character_3 and self.decimal_point_3 == other.decimal_point_3
+
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'Value:  {self.character_0}{"." if self.decimal_point_0 else ""}{self.character_1}{"." if self.decimal_point_1 else ""}{self.character_2}{"." if self.decimal_point_2 else ""}{self.character_3}{"." if self.decimal_point_3 else ""}'
+
+    def set_state(
+            self,
+            state: 'Component.State'
+    ):
+        """
+        Set the state and trigger events.
+
+        :param state: State.
+        """
+
+        if not isinstance(state, FourDigitSevenSegmentLED.State):
+            raise ValueError(f'Expected a {FourDigitSevenSegmentLED.State}')
+
+        state: FourDigitSevenSegmentLED.State
+
+        # exit the display thread
+        if self.display_thread is not None:
+            self.run_display_thread = False
+            self.display_thread.join()
+
+        # start a display thread
+        self.run_display_thread = True
+        self.display_thread = Thread(target=self.display_thread_target)
+        self.display_thread.start()
+
+    def display_thread_target(
+            self
+    ):
+        self.state: FourDigitSevenSegmentLED.State
+
+        led = 0
+        while self.run_display_thread:
+
+            # activate the current led by setting its associated transistor base pin to low and all other transistor
+            # base pins to high. they're pnp transistors, and low will send high current to the associated led anode.
+            for pin_idx, pin in enumerate(self.led_transistor_base_pins):
+                if pin_idx == led:
+
+                    gpio.output(pin, gpio.LOW)
+                else:
+                    gpio.output(pin, gpio.HIGH)
+
+            # display the current led's character and decimal point via the shift register
+            self.led_shift_register.display(*self.state.get(led))
+
+            # hold the current led for a bit
+            time.sleep(self.led_display_time.total_seconds())
+
+    def display(
+            self,
+            character_0: str,
+            decimal_point_0: bool,
+            character_1: str,
+            decimal_point_1: bool,
+            character_2: str,
+            decimal_point_2: bool,
+            character_3: str,
+            decimal_point_3: bool
+    ):
+        """
+        Display a character on the LED.
+
+        :param character_0: Character 0.
+        :param decimal_point_0: Whether to show the decimal point.
+        :param character_1: Character 1.
+        :param decimal_point_1: Whether to show the decimal point.
+        :param character_2: Character 2.
+        :param decimal_point_2: Whether to show the decimal point.
+        :param character_3: Character 3.
+        :param decimal_point_3: Whether to show the decimal point.
+        """
+
+        self.set_state(FourDigitSevenSegmentLED.State(
+            character_0,
+            decimal_point_0,
+            character_1,
+            decimal_point_1,
+            character_2,
+            decimal_point_2,
+            character_3,
+            decimal_point_3
+        ))
+
+    def __init__(
+            self,
+            led_0_transistor_base_pin: int,
+            led_1_transistor_base_pin: int,
+            led_2_transistor_base_pin: int,
+            led_3_transistor_base_pin: int,
+            led_shift_register: SevenSegmentLedShiftRegister,
+            led_display_time: timedelta
+    ):
+        super().__init__(FourDigitSevenSegmentLED.State(None, False, None, False, None, False, None, False))
+
+        self.led_0_transistor_base_pin = led_0_transistor_base_pin
+        self.led_1_transistor_base_pin = led_1_transistor_base_pin
+        self.led_2_transistor_base_pin = led_2_transistor_base_pin
+        self.led_3_transistor_base_pin = led_3_transistor_base_pin
+        self.led_shift_register = led_shift_register
+        self.led_display_time = led_display_time
+
+        self.led_transistor_base_pins = [
+            self.led_0_transistor_base_pin,
+            self.led_1_transistor_base_pin,
+            self.led_2_transistor_base_pin,
+            self.led_3_transistor_base_pin
+        ]
+        self.display_thread = None
+        self.run_display_thread = False
