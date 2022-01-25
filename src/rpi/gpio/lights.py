@@ -592,6 +592,8 @@ class FourDigitSevenSegmentLED(Component):
                 return self.character_2, self.decimal_point_2
             elif led_idx == 3:
                 return self.character_3, self.decimal_point_3
+            else:
+                raise ValueError(f'Invalid LED index:  {led_idx}')
 
         def __init__(
                 self,
@@ -666,12 +668,12 @@ class FourDigitSevenSegmentLED(Component):
         if not isinstance(state, FourDigitSevenSegmentLED.State):
             raise ValueError(f'Expected a {FourDigitSevenSegmentLED.State}')
 
+        super().set_state(state)
+
         state: FourDigitSevenSegmentLED.State
 
-        # exit the display thread
-        if self.display_thread is not None:
-            self.run_display_thread = False
-            self.display_thread.join()
+        # stop the display thread
+        self.stop_display()
 
         # start a display thread
         self.run_display_thread = True
@@ -690,7 +692,6 @@ class FourDigitSevenSegmentLED(Component):
             # base pins to high. they're pnp transistors, and low will send high current to the associated led anode.
             for pin_idx, pin in enumerate(self.led_transistor_base_pins):
                 if pin_idx == led:
-
                     gpio.output(pin, gpio.LOW)
                 else:
                     gpio.output(pin, gpio.HIGH)
@@ -700,6 +701,9 @@ class FourDigitSevenSegmentLED(Component):
 
             # hold the current led for a bit
             time.sleep(self.led_display_time.total_seconds())
+
+            # advance to the next led
+            led = (led + 1) % len(self.led_transistor_base_pins)
 
     def display(
             self,
@@ -736,6 +740,13 @@ class FourDigitSevenSegmentLED(Component):
             decimal_point_3
         ))
 
+    def stop_display(
+            self
+    ):
+        if self.display_thread is not None:
+            self.run_display_thread = False
+            self.display_thread.join()
+
     def __init__(
             self,
             led_0_transistor_base_pin: int,
@@ -762,3 +773,6 @@ class FourDigitSevenSegmentLED(Component):
         ]
         self.display_thread = None
         self.run_display_thread = False
+
+        for led_transistor_base_pin in self.led_transistor_base_pins:
+            gpio.setup(led_transistor_base_pin, gpio.OUT)
