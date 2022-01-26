@@ -26,7 +26,7 @@ def main():
     shift_register.enable()
     shift_register.clear()
 
-    # create led
+    # create a 7-segment led to be used across the 4-digits
     led = SevenSegmentLedShiftRegister(
         shift_register=shift_register,
         segment_shift_register_output={
@@ -47,15 +47,15 @@ def main():
         led_2_transistor_base_pin=CkPin.GPIO22,
         led_3_transistor_base_pin=CkPin.MOSI,
         led_shift_register=led,
-        led_display_time=timedelta(seconds=0.006)
+        led_display_time=timedelta(seconds=0.006)  # increase to reveal the cycling behavior
     )
 
     # display all characters and alternate decimal point
     for i, character in enumerate(led.CHARACTER_SEGMENTS):
         four_digit_led.display(*([character, i % 2 == 0] * 4))
-        time.sleep(0.75)
+        time.sleep(1)
 
-    four_digit_led.stop_display()
+    four_digit_led.stop_display_thread()
 
     cleanup()
 

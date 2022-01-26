@@ -573,6 +573,9 @@ class SevenSegmentLedShiftRegister(Component):
 
 
 class FourDigitSevenSegmentLED(Component):
+    """
+    A four-digit, sevent-segment LED driven by a cycling shift register.
+    """
 
     class State(Component.State):
         """
@@ -583,6 +586,12 @@ class FourDigitSevenSegmentLED(Component):
                 self,
                 led_idx: int
         ) -> Tuple[Optional[Union[int, str]], bool]:
+            """
+            Get the character and decimal boolean for an LED.
+
+            :param led_idx: LED index.
+            :return: 2-tuple of character and decimal boolean.
+            """
 
             if led_idx == 0:
                 return self.character_0, self.decimal_point_0
@@ -670,12 +679,9 @@ class FourDigitSevenSegmentLED(Component):
 
         super().set_state(state)
 
-        state: FourDigitSevenSegmentLED.State
+        self.stop_display_thread()
 
-        # stop the display thread
-        self.stop_display()
-
-        # start a display thread
+        # start a new display thread
         self.run_display_thread = True
         self.display_thread = Thread(target=self.display_thread_target)
         self.display_thread.start()
@@ -683,6 +689,10 @@ class FourDigitSevenSegmentLED(Component):
     def display_thread_target(
             self
     ):
+        """
+        Cycles the transistor base pins to display the current state.
+        """
+
         self.state: FourDigitSevenSegmentLED.State
 
         led = 0
@@ -717,7 +727,7 @@ class FourDigitSevenSegmentLED(Component):
             decimal_point_3: bool
     ):
         """
-        Display a character on the LED.
+        Display characters and decimal points on the LED.
 
         :param character_0: Character 0.
         :param decimal_point_0: Whether to show the decimal point.
@@ -740,9 +750,13 @@ class FourDigitSevenSegmentLED(Component):
             decimal_point_3
         ))
 
-    def stop_display(
+    def stop_display_thread(
             self
     ):
+        """
+        Stop the display thread.
+        """
+
         if self.display_thread is not None:
             self.run_display_thread = False
             self.display_thread.join()
@@ -756,6 +770,17 @@ class FourDigitSevenSegmentLED(Component):
             led_shift_register: SevenSegmentLedShiftRegister,
             led_display_time: timedelta
     ):
+        """
+        Initialize the LED.
+
+        :param led_0_transistor_base_pin: Base pin 0.
+        :param led_1_transistor_base_pin: Base pin 1.
+        :param led_2_transistor_base_pin: Base pin 2.
+        :param led_3_transistor_base_pin: Base pin 3.
+        :param led_shift_register: Shift register for generating outputs for a single 7-segment LED.
+        :param led_display_time: Amount of time to hold each 7-segment LED.
+        """
+
         super().__init__(FourDigitSevenSegmentLED.State(None, False, None, False, None, False, None, False))
 
         self.led_0_transistor_base_pin = led_0_transistor_base_pin
@@ -765,14 +790,14 @@ class FourDigitSevenSegmentLED(Component):
         self.led_shift_register = led_shift_register
         self.led_display_time = led_display_time
 
+        self.display_thread = None
+        self.run_display_thread = False
         self.led_transistor_base_pins = [
             self.led_0_transistor_base_pin,
             self.led_1_transistor_base_pin,
             self.led_2_transistor_base_pin,
             self.led_3_transistor_base_pin
         ]
-        self.display_thread = None
-        self.run_display_thread = False
 
         for led_transistor_base_pin in self.led_transistor_base_pins:
             gpio.setup(led_transistor_base_pin, gpio.OUT)
