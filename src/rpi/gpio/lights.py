@@ -527,7 +527,8 @@ class SevenSegmentLedShiftRegister(Component):
             for segment in segments
         ])
 
-        # get bit string for shift register pins with msb on left
+        # get bit string for shift register pins with msb on left. 0 (low) will have the effect of turning the segment
+        # on, and 1 (high) will have the effect of turning the segment off.
         bit_string = ''.join(reversed([
             '0' if i in shift_register_output_pins else '1'
             for i in range(self.shift_register.bits)
@@ -709,7 +710,7 @@ class FourDigitSevenSegmentLED(Component):
             # display the current led's character and decimal point via the shift register
             self.led_shift_register.display(*self.state.get(led))
 
-            # hold the current led for a bit
+            # hold the current led for a duration
             time.sleep(self.led_display_time.total_seconds())
 
             # advance to the next led
