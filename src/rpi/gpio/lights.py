@@ -3,7 +3,7 @@ from datetime import timedelta
 from enum import Enum, auto
 from threading import Thread
 from typing import List, Optional, Union, Dict, Tuple
-
+import numpy as np
 import RPi.GPIO as gpio
 
 from rpi.gpio import Component
@@ -802,3 +802,141 @@ class FourDigitSevenSegmentLED(Component):
 
         for led_transistor_base_pin in self.led_transistor_base_pins:
             gpio.setup(led_transistor_base_pin, gpio.OUT)
+
+
+class LedMatrix(Component):
+    """
+    LED matrix.
+    """
+
+    SMILE = np.array([
+        [0, 0, 0, 1, 1, 0, 0, 0],
+        [0, 0, 1, 0, 0, 1, 0, 0],
+        [0, 1, 0, 0, 0, 0, 1, 0],
+        [1, 1, 0, 0, 0, 0, 1, 1],
+        [0, 1, 0, 0, 0, 0, 1, 0],
+        [0, 1, 0, 0, 0, 0, 1, 0],
+        [0, 0, 1, 0, 0, 1, 0, 0],
+        [0, 0, 0, 1, 1, 0, 0, 0]
+    ])
+
+    class State(Component.State):
+        """
+        LED matrix state.
+        """
+
+        def __init__(
+                self,
+                frame: np.ndarray
+        ):
+            self.frame = frame
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
+            """
+            Check equality with another state.
+
+            :param other: State.
+            :return: True if equal and False otherwise.
+            """
+
+            if not isinstance(other, LedMatrix.State):
+                raise ValueError(f'Expected a {LedMatrix.State}')
+
+            return self.frame == other.frame
+
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'{self.frame}'
+
+    def set_state(
+            self,
+            state: 'Component.State'
+    ):
+        """
+        Set the state and trigger events.
+
+        :param state: State.
+        """
+
+        if not isinstance(state, LedMatrix.State):
+            raise ValueError(f'Expected a {LedMatrix.State}')
+
+        super().set_state(state)
+
+        self.stop_display_thread()
+
+        # start a new display thread
+        self.run_display_thread = True
+        self.display_thread = Thread(target=self.display_thread_target)
+        self.display_thread.start()
+
+    def display_thread_target(
+            self
+    ):
+        """
+        Cycles over columns and displays each in turn.
+        """
+
+        self.state: LedMatrix.State
+
+        num_cols = self.state.frame.shape[1]
+        while self.run_display_thread:
+            for col in range(num_cols):
+                col_value = int(''.join('0' if i == col else '1' for i in range(num_cols)))
+                row_value = int(''.join(str(int(v)) for v in self.state.frame[:, col]), 2)
+                self.shift_register.write([row_value, col_value])
+                time.sleep(self.frame_display_time.total_seconds())
+
+    def display(
+            self,
+            frame: np.ndarray
+    ):
+        """
+        Display a frame.
+
+        :param frame: Frame.
+        """
+
+        if frame.shape != (self.rows, self.cols):
+            raise ValueError(f'Display frames must have shape ({self.rows},{self.cols}).')
+
+        self.set_state(LedMatrix.State(frame))
+
+    def stop_display_thread(
+            self
+    ):
+        """
+        Stop the display thread.
+        """
+
+        if self.display_thread is not None:
+            self.run_display_thread = False
+            self.display_thread.join()
+
+    def __init__(
+            self,
+            rows: int,
+            cols: int,
+            shift_register: ShiftRegister,
+            frame_display_time: timedelta
+    ):
+
+        super().__init__(LedMatrix.State(np.zeros((rows, cols), dtype=bool)))
+
+        self.rows = rows
+        self.cols = cols
+        self.shift_register = shift_register
+        self.frame_display_time = frame_display_time
+
+        self.display_thread = None
+        self.run_display_thread = False

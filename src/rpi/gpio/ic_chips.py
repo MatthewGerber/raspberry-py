@@ -75,7 +75,8 @@ class ShiftRegister(Component):
 
         state: ShiftRegister.State
 
-        gpio.output(self.output_disable_pin, gpio.LOW if state.enabled else gpio.HIGH)
+        if self.output_disable_pin is not None:
+            gpio.output(self.output_disable_pin, gpio.LOW if state.enabled else gpio.HIGH)
 
         if state.x is not None:
 
@@ -154,22 +155,22 @@ class ShiftRegister(Component):
     def __init__(
             self,
             bits: int,
-            output_disable_pin: int,
+            output_disable_pin: Optional[int],
             serial_data_input_pin: int,
             shift_register_pin: int,
             write_register_to_output_pin: int,
-            register_active_pin: int
+            register_active_pin: Optional[int]
     ):
         """
         Initialize the shift register.
 
         :param bits: Number of bits in the shift register.
-        :param output_disable_pin: Output disable pin. Wire to ground to keep output enabled always; otherwise, if wired
-        to GPIO port, call `enable` before `write`.
+        :param output_disable_pin: Output disable pin. Pass None and wire to ground to keep output enabled always;
+        otherwise, if wired to GPIO port, call `enable` before `write`.
         :param serial_data_input_pin: Serial data input pin.
         :param shift_register_pin: Shift register pin.
         :param write_register_to_output_pin: Write to output pin.
-        :param register_active_pin: Register activation pin. Wire to 3.3v to keep register active always.
+        :param register_active_pin: Register activation pin. Pass None and wire to 3.3v to keep register active always.
         """
 
         super().__init__(ShiftRegister.State(False, None))
@@ -181,11 +182,13 @@ class ShiftRegister(Component):
         self.write_register_to_output_pin = write_register_to_output_pin
         self.register_active_pin = register_active_pin
 
-        gpio.setup(self.output_disable_pin, gpio.OUT)
+        if self.output_disable_pin is not None:
+            gpio.setup(self.output_disable_pin, gpio.OUT)
+
         gpio.setup(self.serial_data_input_pin, gpio.OUT)
         gpio.setup(self.shift_register_pin, gpio.OUT)
         gpio.setup(self.write_register_to_output_pin, gpio.OUT)
-        gpio.setup(self.register_active_pin, gpio.OUT)
 
-        # activate the register -- will have no effect if pin is hard-wired to 3.3v
-        gpio.output(self.register_active_pin, gpio.HIGH)
+        if self.register_active_pin is not None:
+            gpio.setup(self.register_active_pin, gpio.OUT)
+            gpio.output(self.register_active_pin, gpio.HIGH)  # activate the register pin
