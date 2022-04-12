@@ -80,7 +80,7 @@ class ShiftRegister(Component):
 
         if state.x is not None:
 
-            # get values to write to a single shift-register or multiple shift-registers connected in series
+            # get value(s) to write to a single shift-register (or multiple shift-registers connected in series)
             if isinstance(state.x, int):
                 values_to_write = [state.x]
             elif isinstance(state.x, list):

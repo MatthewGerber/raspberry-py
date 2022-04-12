@@ -25,16 +25,17 @@ def main():
     )
     shift_register.clear()
 
+    # create led matrix and display a smile for 5 seconds
     led_matrix = LedMatrix(
         rows=8,
         cols=8,
         shift_register=shift_register,
-        frame_display_time=timedelta(seconds=1)
+        frame_scan_delay=timedelta(seconds=0.003)
     )
+    led_matrix.display(LedMatrix.SMILE_8x8)
+    time.sleep(10)
 
-    led_matrix.display(LedMatrix.SMILE)
-    time.sleep(5)
-
+    # cleanup
     led_matrix.stop_display_thread()
     shift_register.clear()
     cleanup()

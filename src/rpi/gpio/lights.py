@@ -809,13 +809,14 @@ class LedMatrix(Component):
     LED matrix.
     """
 
-    SMILE = np.array([
-        [0, 0, 0, 1, 1, 0, 0, 0],
-        [0, 0, 1, 0, 0, 1, 0, 0],
+    # 8x8 array of bit values that displays a smiling face
+    SMILE_8x8 = np.array([
+        [0, 0, 1, 1, 1, 1, 0, 0],
         [0, 1, 0, 0, 0, 0, 1, 0],
-        [1, 1, 0, 0, 0, 0, 1, 1],
-        [0, 1, 0, 0, 0, 0, 1, 0],
-        [0, 1, 0, 0, 0, 0, 1, 0],
+        [1, 0, 1, 0, 0, 1, 0, 1],
+        [1, 0, 0, 0, 0, 0, 0, 1],
+        [1, 0, 1, 0, 0, 1, 0, 1],
+        [0, 1, 0, 1, 1, 0, 1, 0],
         [0, 0, 1, 0, 0, 1, 0, 0],
         [0, 0, 0, 1, 1, 0, 0, 0]
     ])
@@ -829,6 +830,12 @@ class LedMatrix(Component):
                 self,
                 frame: np.ndarray
         ):
+            """
+            Initialize the state.
+
+            :param frame: Frame to display. Values must be able to cast to int.
+            """
+
             self.frame = frame
 
         def __eq__(
@@ -845,7 +852,7 @@ class LedMatrix(Component):
             if not isinstance(other, LedMatrix.State):
                 raise ValueError(f'Expected a {LedMatrix.State}')
 
-            return self.frame == other.frame
+            return np.all(self.frame == other.frame)
 
         def __str__(
                 self
@@ -891,11 +898,25 @@ class LedMatrix(Component):
 
         num_cols = self.state.frame.shape[1]
         while self.run_display_thread:
+
+            # scan across columns, displaying each in turn for the given delay.
             for col in range(num_cols):
-                col_value = int(''.join('0' if i == col else '1' for i in range(num_cols)))
+
+                # build binary string that sets only the current column to low to enable its row inputs, which will be
+                # high. convert the binary string to an integer for input to the shift register.
+                col_value = int(''.join('0' if i == col else '1' for i in range(num_cols)), 2)
+
+                # build binary string that sets the current column's rows to high (on) or low (low) according to the
+                # frame. convert the binary string to an integer for input to the shift register.
                 row_value = int(''.join(str(int(v)) for v in self.state.frame[:, col]), 2)
+
+                # write the row then the column. the circuit contains two shift registers in series. the first value
+                # (row) will end up in the second shift register, and the second (column) will end up in the first shift
+                # register.
                 self.shift_register.write([row_value, col_value])
-                time.sleep(self.frame_display_time.total_seconds())
+
+                # hold for a delay
+                time.sleep(self.frame_scan_delay.total_seconds())
 
     def display(
             self,
@@ -904,7 +925,7 @@ class LedMatrix(Component):
         """
         Display a frame.
 
-        :param frame: Frame.
+        :param frame: Frame. Must be a (self.rows, self.cols) dimensional array of values that can be cast to 0/1.
         """
 
         if frame.shape != (self.rows, self.cols):
@@ -928,15 +949,25 @@ class LedMatrix(Component):
             rows: int,
             cols: int,
             shift_register: ShiftRegister,
-            frame_display_time: timedelta
+            frame_scan_delay: timedelta
     ):
+        """
+        Initialize the matrix.
 
-        super().__init__(LedMatrix.State(np.zeros((rows, cols), dtype=bool)))
+        :param rows: Number of rows.
+        :param cols: Number of columns.
+        :param shift_register: Shift register. The circuit is assumed to contain two shift registers connected in
+        series such that only a single instance is required. See the led_matrix.py example and associated circuit in the
+        tutorial.
+        :param frame_scan_delay: Interval of time to display each column when scanning the matrix.
+        """
+
+        super().__init__(LedMatrix.State(np.zeros((rows, cols), dtype=int)))
 
         self.rows = rows
         self.cols = cols
         self.shift_register = shift_register
-        self.frame_display_time = frame_display_time
+        self.frame_scan_delay = frame_scan_delay
 
         self.display_thread = None
         self.run_display_thread = False
