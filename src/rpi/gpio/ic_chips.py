@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union, List
 
 import RPi.GPIO as gpio
 
@@ -18,13 +18,16 @@ class ShiftRegister(Component):
         def __init__(
                 self,
                 enabled: bool,
-                x: Optional[int]
+                x: Optional[Union[int, List[int]]]
         ):
             """
             Initialize the state.
 
             :param enabled: Whether the register is enabled.
-            :param x: Output value.
+            :param x: Output value, either a single integer (for one shift-register) or a list of integers (for multiple
+            shift-registers connected in series). In the latter case, the first list element will be written to the
+            first shift-register in the series, the second list element will be written to the second shift-register in
+            the series, and so on.
             """
 
             self.enabled = enabled
@@ -72,24 +75,36 @@ class ShiftRegister(Component):
 
         state: ShiftRegister.State
 
-        gpio.output(self.output_disable_pin, gpio.LOW if state.enabled else gpio.HIGH)
+        if self.output_disable_pin is not None:
+            gpio.output(self.output_disable_pin, gpio.LOW if state.enabled else gpio.HIGH)
 
-        # write serial bits to parallel output if we have a value
         if state.x is not None:
 
-            bit_length = state.x.bit_length()
-            if bit_length > self.bits:
-                raise ValueError(f'Cannot write {bit_length} bits to an 8-bit shift register.')
-            
+            # get value(s) to write to a single shift-register (or multiple shift-registers connected in series)
+            if isinstance(state.x, int):
+                values_to_write = [state.x]
+            elif isinstance(state.x, list):
+                values_to_write = state.x
+            else:
+                raise ValueError(f'Unknown value:  {state.x}')
+
             gpio.output(self.write_register_to_output_pin, gpio.LOW)
 
-            for bit_idx in reversed(range(self.bits)):
-                bit_value = (state.x >> bit_idx) & 1
-                gpio.output(self.shift_register_pin, gpio.LOW)
-                gpio.output(self.serial_data_input_pin, gpio.HIGH if bit_value == 1 else gpio.LOW)
-                gpio.output(self.shift_register_pin, gpio.HIGH)
+            # write all values
+            for value_to_write in values_to_write:
 
-            # write to output
+                bit_length = value_to_write.bit_length()
+                if bit_length > self.bits:
+                    raise ValueError(f'Cannot write {bit_length} bits to an 8-bit shift register.')
+
+                # write msb first, flipping the shift register pin each time.
+                for bit_idx in reversed(range(self.bits)):
+                    bit_value = (value_to_write >> bit_idx) & 1
+                    gpio.output(self.shift_register_pin, gpio.LOW)
+                    gpio.output(self.serial_data_input_pin, gpio.HIGH if bit_value == 1 else gpio.LOW)
+                    gpio.output(self.shift_register_pin, gpio.HIGH)
+
+            # write to parallel output(s)
             gpio.output(self.write_register_to_output_pin, gpio.HIGH)
 
         super().set_state(state)
@@ -116,12 +131,12 @@ class ShiftRegister(Component):
 
     def write(
             self,
-            x: int
+            x: Union[int, List[int]]
     ):
         """
-        Write a value to the shift register (and output it).
+        Write one or more values to the shift register(s) and output to parallel.
 
-        :param x: Value.
+        :param x: Value(s).
         """
 
         self.state: ShiftRegister.State
@@ -140,22 +155,22 @@ class ShiftRegister(Component):
     def __init__(
             self,
             bits: int,
-            output_disable_pin: int,
+            output_disable_pin: Optional[int],
             serial_data_input_pin: int,
             shift_register_pin: int,
             write_register_to_output_pin: int,
-            register_active_pin: int
+            register_active_pin: Optional[int]
     ):
         """
         Initialize the shift register.
 
         :param bits: Number of bits in the shift register.
-        :param output_disable_pin: Output disable pin. Can hard-wire to ground to keep output enabled always; otherwise,
-        will need to call `enable` before `write`.
+        :param output_disable_pin: Output disable pin. Pass None and wire to ground to keep output enabled always;
+        otherwise, if wired to GPIO port, call `enable` before `write`.
         :param serial_data_input_pin: Serial data input pin.
         :param shift_register_pin: Shift register pin.
         :param write_register_to_output_pin: Write to output pin.
-        :param register_active_pin: Register activation pin (can hard-wire to 3.3v to keep register active always).
+        :param register_active_pin: Register activation pin. Pass None and wire to 3.3v to keep register active always.
         """
 
         super().__init__(ShiftRegister.State(False, None))
@@ -167,11 +182,13 @@ class ShiftRegister(Component):
         self.write_register_to_output_pin = write_register_to_output_pin
         self.register_active_pin = register_active_pin
 
-        gpio.setup(self.output_disable_pin, gpio.OUT)
+        if self.output_disable_pin is not None:
+            gpio.setup(self.output_disable_pin, gpio.OUT)
+
         gpio.setup(self.serial_data_input_pin, gpio.OUT)
         gpio.setup(self.shift_register_pin, gpio.OUT)
         gpio.setup(self.write_register_to_output_pin, gpio.OUT)
-        gpio.setup(self.register_active_pin, gpio.OUT)
 
-        # activate the register -- will have no effect if pin is hard-wired to 3.3v
-        gpio.output(self.register_active_pin, gpio.HIGH)
+        if self.register_active_pin is not None:
+            gpio.setup(self.register_active_pin, gpio.OUT)
+            gpio.output(self.register_active_pin, gpio.HIGH)  # activate the register pin
