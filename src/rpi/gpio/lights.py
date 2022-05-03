@@ -821,6 +821,18 @@ class LedMatrix(Component):
         [0, 0, 0, 1, 1, 0, 0, 0]
     ])
 
+    # 8x8 array of bit values that displays an A
+    A_8x8 = np.array([
+        [0, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 0, 0, 0, 0, 1, 0],
+        [0, 1, 0, 0, 0, 0, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 0, 0, 0,0 , 1, 0],
+        [0, 1, 0, 0, 0, 0, 1, 0],
+        [0, 1, 0, 0, 0, 0, 1, 0],
+        [0, 1, 0, 0, 0, 0, 1, 0]
+    ])
+
     class State(Component.State):
         """
         LED matrix state.
