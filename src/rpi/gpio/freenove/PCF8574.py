@@ -91,13 +91,3 @@ class PCF8574_GPIO(object):
     def output(self, pin, value):
         # Write data to PCF8574 one port
         self.chip.digitalWrite(pin, value)
-
-
-if __name__ == '__main__':
-    print('Program is starting ... ')
-    try:
-        loop()
-    except KeyboardInterrupt:
-        destroy()
-        
-    
