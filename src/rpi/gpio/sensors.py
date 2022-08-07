@@ -199,7 +199,7 @@ class Hygrothermograph(Component):
 
     WAKEUP_SECS = 0.02
     TIMEOUT_SECS = 0.0001  # 100us
-    BYTE_HIGH_TIME_THRESHOLD_SECS = 0.00005
+    BIT_HIGH_TIME_THRESHOLD_SECS = 0.00005
 
     def __init__(
             self,
@@ -229,10 +229,10 @@ class Hygrothermograph(Component):
 
         for _ in range(0, num_attempts):
             if self.__read_bytes__():
-                humidity = self.bytes[0]
-                temperature_c = (self.bytes[2] + self.bytes[3] * 0.1)
+                humidity = self.bytes[0] + self.bytes[1] * 0.1
+                temperature_c = self.bytes[2] + self.bytes[3] * 0.1
                 temperature_f = temperature_c * 9.0/5.0 + 32.0
-                checksum = (self.bytes[0] + self.bytes[1] + self.bytes[2] + self.bytes[3]) & 0xFF
+                checksum = (self.bytes[0] + self.bytes[1] + self.bytes[2] + self.bytes[3]) & 0xFF  # only retain the lowest 8 bits
                 if self.bytes[4] == checksum:
                     state = Hygrothermograph.State(temperature_f, humidity, Hygrothermograph.State.Status.OK)
                 else:
@@ -256,42 +256,44 @@ class Hygrothermograph(Component):
         :return: True if bytes were read and False if the read timed out.
         """
 
-        # clear sda
+        # output a high-low-high sequence to the component
         gpio.setup(self.pin, gpio.OUT)
         gpio.output(self.pin, gpio.HIGH)
         time.sleep(0.5)
-
-        # start signal
         gpio.output(self.pin, gpio.LOW)
         time.sleep(Hygrothermograph.WAKEUP_SECS)
         gpio.output(self.pin, gpio.HIGH)
-        gpio.setup(self.pin, gpio.IN)
 
-        # wait for a low-high-low sequence
+        # wait for a low-high-low sequence input sequence
+        gpio.setup(self.pin, gpio.IN)
         for value in [gpio.LOW, gpio.HIGH, gpio.LOW]:
             if not self.wait_for(value):
                 return False
 
         # read each byte bit-by-bit
         self.bytes = [0, 0, 0, 0, 0]
-        mask = 0x80
+        bit_mask = 0x80  # 10000000
         byte_idx = 0
         for _ in range(0, 8 * len(self.bytes)):
 
+            # the chip communicates a 1 or 0 back to us by means of staying high for a long (1) or short (0) interval of
+            # time. wait for the high signal.
             if not self.wait_for(gpio.HIGH):
                 return False
 
-            t = time.time()
-
+            # now, time how long it stays high.
+            high_start = time.time()
             if not self.wait_for(gpio.LOW):
                 return False
 
-            if time.time() - t > self.BYTE_HIGH_TIME_THRESHOLD_SECS:
-                self.bytes[byte_idx] |= mask
+            # if the time spent high exceeds the threshold, then record a 1 in the current bit location.
+            if time.time() - high_start > self.BIT_HIGH_TIME_THRESHOLD_SECS:
+                self.bytes[byte_idx] |= bit_mask
 
-            mask >>= 1
-            if mask == 0:
-                mask = 0x80
+            # shift mask to next bit or reset it to first bit if we're moving to the next byte
+            bit_mask >>= 1
+            if bit_mask == 0:
+                bit_mask = 0x80
                 byte_idx += 1
 
         gpio.setup(self.pin, gpio.OUT)

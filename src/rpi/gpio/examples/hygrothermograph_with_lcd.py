@@ -27,7 +27,7 @@ def main():
         """
 
         lcd.set_cursor(0, 0)  # set cursor position
-        lcd.message(f'{state.humidity}% (H) @ {state.temperature_f:.0f} (F)\n')
+        lcd.message(f'{state.humidity:.0f}% (H) @ {state.temperature_f:.0f} (F)\n')
         lcd.message(datetime.now().strftime('    %H:%M:%S'))
 
     sensor = Hygrothermograph(pin=CkPin.GPIO17)
