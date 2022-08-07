@@ -1,4 +1,7 @@
+from typing import List
+
 import RPi.GPIO as gpio
+import numpy as np
 
 from rpi.gpio import Component
 from rpi.gpio.adc import AdcDevice
@@ -264,3 +267,98 @@ class Joystick(Component):
                 )
             )
         )
+
+
+class MatrixKeypad(Component):
+    """
+    A matrix keypad.
+    """
+
+    class State(Component.State):
+        """
+        Keypad state.
+        """
+
+        def __init__(
+                self,
+                keys_pressed: np.ndarray
+        ):
+            """
+            Initialize the state.
+
+            :param keys_pressed: Keys that are pressed.
+            """
+
+            self.keys_pressed = keys_pressed
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
+            """
+            Check equality with another state.
+
+            :param other: Other state.
+            :return: True if equal and False otherwise.
+            """
+
+            if not isinstance(other, MatrixKeypad.State):
+                raise ValueError(f'Expected a {MatrixKeypad.State}')
+
+            return self.keys_pressed == other.keys_pressed
+
+        def __str__(self) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'Keys pressed:  {self.keys_pressed}'
+
+    def scan(
+            self
+    ):
+        key_matrix = np.empty_like(self.key_matrix)
+        for col, scan_col_pin in enumerate(self.col_pins):
+
+            for col_pin in self.col_pins:
+                gpio.output(scan_col_pin, gpio.LOW if col_pin == scan_col_pin else gpio.HIGH)
+
+            for row, scan_row_pin in enumerate(self.row_pins):
+                row_pressed = not bool(gpio.input(scan_row_pin))
+                key_matrix[row, col] = self.key_matrix[row, col] if row_pressed else None
+
+        self.set_state(MatrixKeypad.State(key_matrix))
+
+    def __init__(
+            self,
+            key_matrix: np.ndarray,
+            row_pins: List[int],
+            col_pins: List[int]
+    ):
+        """
+        Initialize the keypad.
+
+        :param key_matrix: Key matrix values.
+        :param row_pins: Row pins, in order of bottom to top.
+        :param col_pins: Column pins, in order of right to left.
+        """
+
+        pin_shape = (len(row_pins), len(col_pins))
+        if key_matrix.shape != pin_shape:
+            raise ValueError(f'Pin shape {pin_shape} does not match matrix shape {key_matrix.shape}')
+
+        super().__init__(MatrixKeypad.State(np.empty_like(key_matrix)))
+
+        self.key_matrix = key_matrix
+        self.row_pins = row_pins
+        self.col_pins = col_pins
+
+        # read input from the rows
+        for row_pin in self.row_pins:
+            gpio.setup(row_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
+
+        # send output to the columns
+        for col_pin in self.col_pins:
+            gpio.setup(col_pin, gpio.OUT)
