@@ -1,7 +1,8 @@
+import time
+from threading import Thread
 from typing import List
 
 import RPi.GPIO as gpio
-import numpy as np
 
 from rpi.gpio import Component
 from rpi.gpio.adc import AdcDevice
@@ -281,7 +282,7 @@ class MatrixKeypad(Component):
 
         def __init__(
                 self,
-                keys_pressed: np.ndarray
+                keys_pressed: List[List[str]]
         ):
             """
             Initialize the state.
@@ -319,23 +320,47 @@ class MatrixKeypad(Component):
     def scan(
             self
     ):
-        key_matrix = np.empty_like(self.key_matrix)
-        for col, scan_col_pin in enumerate(self.col_pins):
+        while not self.stop_scan:
+            for scan_col_pin in self.col_pins:
+                self.scan_col_pin = None
+                for col_pin in self.col_pins:
+                    gpio.output(col_pin, gpio.HIGH)
+                self.scan_col_pin = scan_col_pin
+                gpio.output(scan_col_pin, gpio.LOW)
+                time.sleep(0.5)
 
-            for col_pin in self.col_pins:
-                gpio.output(scan_col_pin, gpio.LOW if col_pin == scan_col_pin else gpio.HIGH)
+    def start(self):
 
-            for row, scan_row_pin in enumerate(self.row_pins):
-                row_pressed = not bool(gpio.input(scan_row_pin))
-                key_matrix[row, col] = self.key_matrix[row, col] if row_pressed else None
+        self.scan_thread.start()
 
-        self.set_state(MatrixKeypad.State(key_matrix))
+    def stop(self):
+
+        self.stop_scan = True
+        self.scan_thread.join()
+
+    def row_callback(
+            self,
+            row: int,
+            pressed: bool
+    ):
+        if self.scan_col_pin is not None:
+            state: MatrixKeypad.State = self.get_state()
+            state.keys_pressed[row][self.scan_col_pin] = self.key_matrix[row][self.scan_col_pin] if pressed else ''
+            self.set_state(state)
+
+    def empty_key_matrix(self) -> List[List[str]]:
+
+        return [
+            [''] * len(row)
+            for row in self.key_matrix
+        ]
 
     def __init__(
             self,
-            key_matrix: np.ndarray,
+            key_matrix: List[List[str]],
             row_pins: List[int],
-            col_pins: List[int]
+            col_pins: List[int],
+            bounce_time_ms: int
     ):
         """
         Initialize the keypad.
@@ -343,22 +368,37 @@ class MatrixKeypad(Component):
         :param key_matrix: Key matrix values.
         :param row_pins: Row pins, in order of bottom to top.
         :param col_pins: Column pins, in order of right to left.
+        :param bounce_time_ms: Bounce time (ms).
         """
 
-        pin_shape = (len(row_pins), len(col_pins))
-        if key_matrix.shape != pin_shape:
-            raise ValueError(f'Pin shape {pin_shape} does not match matrix shape {key_matrix.shape}')
+        if len(key_matrix) != len(row_pins):
+            raise ValueError('Number of key matrix rows must equal number of row pins.')
 
-        super().__init__(MatrixKeypad.State(np.empty_like(key_matrix)))
+        if not all(len(row) == len(col_pins) for row in key_matrix):
+            raise ValueError('Number of columns in each row must equal number of column pins.')
+
+        super().__init__(MatrixKeypad.State(self.empty_key_matrix()))
 
         self.key_matrix = key_matrix
         self.row_pins = row_pins
         self.col_pins = col_pins
+        self.bounce_time_ms = bounce_time_ms
 
-        # read input from the rows
-        for row_pin in self.row_pins:
-            gpio.setup(row_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
+        self.scan_col_pin = None
+        self.stop_scan = False
+        self.scan_thread = Thread(target=self.scan)
 
-        # send output to the columns
+        # send output to the columns when scanning
         for col_pin in self.col_pins:
             gpio.setup(col_pin, gpio.OUT)
+            gpio.output(col_pin, gpio.HIGH)
+
+        # detect events on row pins
+        for row_pin in self.row_pins:
+            gpio.setup(row_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
+            gpio.add_event_detect(
+                row_pin,
+                gpio.BOTH,
+                callback=lambda channel: self.row_callback(row_pin, gpio.input(row_pin) == gpio.LOW),
+                bouncetime=bounce_time_ms
+            )
