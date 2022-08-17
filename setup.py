@@ -1,6 +1,6 @@
 from setuptools import (
     setup,
-    find_namespace_packages
+    find_packages
 )
 
 INSTALL_REQUIREMENTS = [
@@ -23,7 +23,7 @@ setup(
     description='Raspberry Pi',
     author='Matthew Gerber',
     author_email='gerber.matthew@gmail.com',
-    packages=find_namespace_packages(where='src'),
+    packages=find_packages('src'),
     package_dir={'': 'src'},
     python_requires='~=3.7',
     install_requires=[

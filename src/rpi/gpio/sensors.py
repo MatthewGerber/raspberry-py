@@ -1,5 +1,9 @@
 import math
+import time
+from enum import Enum, auto
 from typing import Optional
+
+import RPi.GPIO as gpio
 
 from rpi.gpio import Component
 from rpi.gpio.adc import AdcDevice
@@ -128,3 +132,191 @@ class Thermistor(Component):
                 )
             )
         )
+
+
+class Hygrothermograph(Component):
+    """
+    Hygrothermograph (DHT11).
+    """
+
+    class State(Component.State):
+        """
+        Hygrothermograph state.
+        """
+
+        class Status(Enum):
+            """
+            State statuses.
+            """
+
+            OK = auto()
+            CHECKSUM_ERROR = auto()
+            TIMEOUT_ERROR = auto()
+            INVALID_VALUE = auto()
+
+        def __init__(
+                self,
+                temperature_f: Optional[float],
+                humidity: Optional[float],
+                status: Status
+        ):
+            """
+            Initialize the state.
+
+            :param temperature_f: Temperature (F).
+            :param humidity: Humidity.
+            :param status: Status.
+            """
+
+            self.temperature_f = temperature_f
+            self.humidity = humidity
+            self.status = status
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
+            """
+            Check equality with another state.
+
+            :param other: Other state.
+            :return: True if equal and False otherwise.
+            """
+
+            if not isinstance(other, Hygrothermograph.State):
+                raise ValueError(f'Expected a {Hygrothermograph.State}')
+
+            return self.temperature_f == other.temperature_f and self.humidity == other.humidity and self.status == other.status
+
+        def __str__(self) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'Temp (F):  {self.temperature_f} (F), Humidity:  {self.humidity}, Status:  {self.status}'
+
+    WAKEUP_SECS = 0.02
+    TIMEOUT_SECS = 0.0001  # 100us
+    BIT_HIGH_TIME_THRESHOLD_SECS = 0.00005
+
+    def __init__(
+            self,
+            pin: int
+    ):
+        """
+        Initialize the hygrothermograph.
+
+        :param pin: GPIO pin connected to the SDA port of the hygrothermograph.
+        """
+
+        super().__init__(Hygrothermograph.State(None, None, Hygrothermograph.State.Status.INVALID_VALUE))
+
+        self.pin = pin
+
+        self.bytes = [0, 0, 0, 0, 0]
+
+    def read(
+            self,
+            num_attempts: int = 1
+    ):
+        """
+        Read the sensor.
+
+        :param num_attempts: Number of attempts.
+        """
+
+        for _ in range(0, num_attempts):
+            if self.__read_bytes__():
+                humidity = self.bytes[0] + self.bytes[1] * 0.1
+                temperature_c = self.bytes[2] + self.bytes[3] * 0.1
+                temperature_f = temperature_c * 9.0/5.0 + 32.0
+                checksum = (self.bytes[0] + self.bytes[1] + self.bytes[2] + self.bytes[3]) & 0xFF  # only retain the lowest 8 bits
+                if self.bytes[4] == checksum:
+                    state = Hygrothermograph.State(temperature_f, humidity, Hygrothermograph.State.Status.OK)
+                else:
+                    state = Hygrothermograph.State(None, None, Hygrothermograph.State.Status.CHECKSUM_ERROR)
+            else:
+                state = Hygrothermograph.State(None, None, Hygrothermograph.State.Status.TIMEOUT_ERROR)
+
+            self.set_state(state)
+
+            if state.status == Hygrothermograph.State.Status.OK:
+                break
+            else:
+                time.sleep(0.1)
+
+    def __read_bytes__(
+            self
+    ) -> bool:
+        """
+        Read bytes from sensor.
+
+        :return: True if bytes were read and False if the read timed out.
+        """
+
+        # output a high-low-high sequence to the component
+        gpio.setup(self.pin, gpio.OUT)
+        gpio.output(self.pin, gpio.HIGH)
+        time.sleep(0.5)
+        gpio.output(self.pin, gpio.LOW)
+        time.sleep(Hygrothermograph.WAKEUP_SECS)
+        gpio.output(self.pin, gpio.HIGH)
+
+        # wait for a low-high-low sequence input sequence
+        gpio.setup(self.pin, gpio.IN)
+        for value in [gpio.LOW, gpio.HIGH, gpio.LOW]:
+            if not self.wait_for(value):
+                return False
+
+        # read each byte bit-by-bit
+        self.bytes = [0, 0, 0, 0, 0]
+        bit_mask = 0x80  # 10000000
+        byte_idx = 0
+        for _ in range(0, 8 * len(self.bytes)):
+
+            # the chip communicates a 1 or 0 back to us by means of staying high for a long (1) or short (0) interval of
+            # time. wait for the high signal.
+            if not self.wait_for(gpio.HIGH):
+                return False
+
+            # now, time how long it stays high.
+            high_start = time.time()
+            if not self.wait_for(gpio.LOW):
+                return False
+
+            # if the time spent high exceeds the threshold, then record a 1 in the current bit location.
+            if time.time() - high_start > self.BIT_HIGH_TIME_THRESHOLD_SECS:
+                self.bytes[byte_idx] |= bit_mask
+
+            # shift mask to next bit or reset it to first bit if we're moving to the next byte
+            bit_mask >>= 1
+            if bit_mask == 0:
+                bit_mask = 0x80
+                byte_idx += 1
+
+        gpio.setup(self.pin, gpio.OUT)
+        gpio.output(self.pin, gpio.HIGH)
+
+        return True
+
+    def wait_for(
+            self,
+            value: int
+    ) -> bool:
+        """
+        Wait for a GPIO value on the SDA pin.
+
+        :param value: Value to wait for.
+        :return: True if value was received within the timeout limit and False if the wait timed out.
+        """
+
+        t = time.time()
+        while time.time() - t < self.TIMEOUT_SECS:
+            if gpio.input(self.pin) == value:
+                break
+        else:
+            return False
+
+        return True

@@ -1,3 +1,7 @@
+import time
+from threading import Thread
+from typing import List
+
 import RPi.GPIO as gpio
 
 from rpi.gpio import Component
@@ -264,3 +268,137 @@ class Joystick(Component):
                 )
             )
         )
+
+
+class MatrixKeypad(Component):
+    """
+    A matrix keypad.
+    """
+
+    class State(Component.State):
+        """
+        Keypad state.
+        """
+
+        def __init__(
+                self,
+                keys_pressed: List[List[str]]
+        ):
+            """
+            Initialize the state.
+
+            :param keys_pressed: Keys that are pressed.
+            """
+
+            self.keys_pressed = keys_pressed
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
+            """
+            Check equality with another state.
+
+            :param other: Other state.
+            :return: True if equal and False otherwise.
+            """
+
+            if not isinstance(other, MatrixKeypad.State):
+                raise ValueError(f'Expected a {MatrixKeypad.State}')
+
+            return self.keys_pressed == other.keys_pressed
+
+        def __str__(self) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'Keys pressed:  {self.keys_pressed}'
+
+    def scan(
+            self
+    ):
+        while not self.stop_scan:
+            for scan_col_pin in self.col_pins:
+                self.scan_col_pin = None
+                for col_pin in self.col_pins:
+                    gpio.output(col_pin, gpio.HIGH)
+                self.scan_col_pin = scan_col_pin
+                gpio.output(scan_col_pin, gpio.LOW)
+                time.sleep(0.5)
+
+    def start(self):
+
+        self.scan_thread.start()
+
+    def stop(self):
+
+        self.stop_scan = True
+        self.scan_thread.join()
+
+    def row_callback(
+            self,
+            row: int,
+            pressed: bool
+    ):
+        if self.scan_col_pin is not None:
+            state: MatrixKeypad.State = self.get_state()
+            state.keys_pressed[row][self.scan_col_pin] = self.key_matrix[row][self.scan_col_pin] if pressed else ''
+            self.set_state(state)
+
+    def empty_key_matrix(self) -> List[List[str]]:
+
+        return [
+            [''] * len(row)
+            for row in self.key_matrix
+        ]
+
+    def __init__(
+            self,
+            key_matrix: List[List[str]],
+            row_pins: List[int],
+            col_pins: List[int],
+            bounce_time_ms: int
+    ):
+        """
+        Initialize the keypad.
+
+        :param key_matrix: Key matrix values.
+        :param row_pins: Row pins, in order of bottom to top.
+        :param col_pins: Column pins, in order of right to left.
+        :param bounce_time_ms: Bounce time (ms).
+        """
+
+        if len(key_matrix) != len(row_pins):
+            raise ValueError('Number of key matrix rows must equal number of row pins.')
+
+        if not all(len(row) == len(col_pins) for row in key_matrix):
+            raise ValueError('Number of columns in each row must equal number of column pins.')
+
+        super().__init__(MatrixKeypad.State(self.empty_key_matrix()))
+
+        self.key_matrix = key_matrix
+        self.row_pins = row_pins
+        self.col_pins = col_pins
+        self.bounce_time_ms = bounce_time_ms
+
+        self.scan_col_pin = None
+        self.stop_scan = False
+        self.scan_thread = Thread(target=self.scan)
+
+        # send output to the columns when scanning
+        for col_pin in self.col_pins:
+            gpio.setup(col_pin, gpio.OUT)
+            gpio.output(col_pin, gpio.HIGH)
+
+        # detect events on row pins
+        for row_pin in self.row_pins:
+            gpio.setup(row_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
+            gpio.add_event_detect(
+                row_pin,
+                gpio.BOTH,
+                callback=lambda channel: self.row_callback(row_pin, gpio.input(row_pin) == gpio.LOW),
+                bouncetime=bounce_time_ms
+            )
