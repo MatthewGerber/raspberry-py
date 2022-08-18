@@ -315,19 +315,28 @@ class MatrixKeypad(Component):
             :return: String.
             """
 
-            return f'Keys pressed:  {self.keys_pressed}'
+            return '\n'.join(
+                '\t'.join(
+                    '-' if v == '' else v
+                    for v in row
+                )
+                for row in self.keys_pressed
+            )
 
     def scan(
             self
     ):
         while not self.stop_scan:
-            for scan_col_pin in self.col_pins:
-                self.scan_col_pin = None
+            self.current_scan = self.empty(self.key_matrix)
+            for scan_col, scan_col_pin in enumerate(self.col_pins):
+                self.scan_col = None
                 for col_pin in self.col_pins:
                     gpio.output(col_pin, gpio.HIGH)
-                self.scan_col_pin = scan_col_pin
+                self.scan_col = scan_col
                 gpio.output(scan_col_pin, gpio.LOW)
-                time.sleep(0.5)
+                time.sleep(0.05)
+
+            self.set_state(MatrixKeypad.State(self.current_scan))
 
     def start(self):
 
@@ -338,21 +347,21 @@ class MatrixKeypad(Component):
         self.stop_scan = True
         self.scan_thread.join()
 
-    def row_callback(
+    def process_row_press(
             self,
-            row: int,
-            pressed: bool
+            pressed_row: int
     ):
-        if self.scan_col_pin is not None:
-            state: MatrixKeypad.State = self.get_state()
-            state.keys_pressed[row][self.scan_col_pin] = self.key_matrix[row][self.scan_col_pin] if pressed else ''
-            self.set_state(state)
+        scanned_column = self.scan_col
+        if scanned_column is not None:
+            self.current_scan[pressed_row][scanned_column] = self.key_matrix[pressed_row][scanned_column]
 
-    def empty_key_matrix(self) -> List[List[str]]:
-
+    @staticmethod
+    def empty(
+            key_matrix: List[List[str]]
+    ) -> List[List[str]]:
         return [
             [''] * len(row)
-            for row in self.key_matrix
+            for row in key_matrix
         ]
 
     def __init__(
@@ -377,14 +386,15 @@ class MatrixKeypad(Component):
         if not all(len(row) == len(col_pins) for row in key_matrix):
             raise ValueError('Number of columns in each row must equal number of column pins.')
 
-        super().__init__(MatrixKeypad.State(self.empty_key_matrix()))
+        super().__init__(MatrixKeypad.State(self.empty(key_matrix)))
 
         self.key_matrix = key_matrix
         self.row_pins = row_pins
         self.col_pins = col_pins
         self.bounce_time_ms = bounce_time_ms
 
-        self.scan_col_pin = None
+        self.current_scan = None
+        self.scan_col = None
         self.stop_scan = False
         self.scan_thread = Thread(target=self.scan)
 
@@ -393,12 +403,13 @@ class MatrixKeypad(Component):
             gpio.setup(col_pin, gpio.OUT)
             gpio.output(col_pin, gpio.HIGH)
 
-        # detect events on row pins
-        for row_pin in self.row_pins:
+        # detect input events on row pins. the lambda needs to have bound arguments since it's in a loop. without
+        # bound arguments, the variables will take on their final values for all callback lambdas.
+        for row, row_pin in enumerate(self.row_pins):
             gpio.setup(row_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
             gpio.add_event_detect(
                 row_pin,
-                gpio.BOTH,
-                callback=lambda channel: self.row_callback(row_pin, gpio.input(row_pin) == gpio.LOW),
+                gpio.FALLING,
+                callback=lambda channel, cb_row=row, cb_row_pin=row_pin: self.process_row_press(cb_row),
                 bouncetime=bounce_time_ms
             )

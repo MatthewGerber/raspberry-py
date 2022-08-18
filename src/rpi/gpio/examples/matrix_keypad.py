@@ -10,10 +10,10 @@ def main():
 
     keypad = MatrixKeypad(
         key_matrix=[
-            ['', '', '', ''],
-            ['', '', '', ''],
-            ['', '', '', ''],
-            ['', '', '', '']
+            ['1', '2', '3', 'A'],
+            ['4', '5', '6', 'B'],
+            ['7', '8', '9', 'C'],
+            ['*', '0', '#', 'D']
         ],
         row_pins=[
             CkPin.GPIO18,
@@ -30,12 +30,13 @@ def main():
         bounce_time_ms=200
     )
 
-    keypad.event(lambda s: print(f'New state:  {s}'))
+    keypad.event(lambda s: print(f'{s}\n'))
     keypad.start()
-    time.sleep(30)
-    keypad.stop()
-
-    cleanup()
+    try:
+        time.sleep(300)
+    except KeyboardInterrupt:
+        keypad.stop()
+        cleanup()
 
 
 if __name__ == '__main__':
