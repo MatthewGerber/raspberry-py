@@ -293,10 +293,10 @@ class MatrixKeypad(Component):
             self.key_matrix = key_matrix
 
             self.keys_pressed = sorted([
-                k
+                value
                 for row in self.key_matrix
-                for k in row
-                if k != ''
+                for value in row
+                if value != ''
             ])
 
         def __eq__(
@@ -333,31 +333,38 @@ class MatrixKeypad(Component):
     def scan(
             self
     ):
+        """
+        Scan the GPIO pins connected to the keypad for pressed keys. This will continue to scan until `stop_scan`
+        becomes False.
+        """
+
         while not self.stop_scan:
             current_scan = self.empty(self.key_matrix)
             for scan_col, scan_col_pin in enumerate(self.col_pins):
+
+                # set the column low and check rows for low
                 gpio.output(scan_col_pin, gpio.LOW)
-                print(f'Scanning column {scan_col} on pin {scan_col_pin}.')
-                time.sleep(1)
                 for row, row_pin in enumerate(self.row_pins):
-                    row_value = gpio.input(row_pin)
-                    print(f'Row {row} on pin {row_pin}:  {row_value}')
-                    time.sleep(1)
-                    if row_value == gpio.LOW:
+                    if gpio.input(row_pin) == gpio.LOW:
                         current_scan[row][scan_col] = self.key_matrix[row][scan_col]
+
+                # switch column back to high
                 gpio.output(scan_col_pin, gpio.HIGH)
-                print(f'Switched {scan_col_pin} back to HIGH.')
-                time.sleep(1)
 
             self.set_state(MatrixKeypad.State(current_scan))
-            print(str(current_scan))
-            time.sleep(1.0)
+            time.sleep(self.scan_sleep_seconds)
 
     def start(self):
+        """
+        Start scanning the keypad.
+        """
 
         self.scan_thread.start()
 
     def stop(self):
+        """
+        Stop scanning the keypad.
+        """
 
         self.stop_scan = True
         self.scan_thread.join()
@@ -366,6 +373,13 @@ class MatrixKeypad(Component):
     def empty(
             key_matrix: List[List[str]]
     ) -> List[List[str]]:
+        """
+        Create an empty key matrix like a reference.
+
+        :param key_matrix: Reference keys.
+        :return: Empty key matrix.
+        """
+
         return [
             [''] * len(row)
             for row in key_matrix
@@ -376,15 +390,15 @@ class MatrixKeypad(Component):
             key_matrix: List[List[str]],
             row_pins: List[int],
             col_pins: List[int],
-            bounce_time_ms: int
+            scans_per_second: int
     ):
         """
         Initialize the keypad.
 
         :param key_matrix: Key matrix values.
-        :param row_pins: Row pins, in order of bottom to top.
-        :param col_pins: Column pins, in order of right to left.
-        :param bounce_time_ms: Bounce time (ms).
+        :param row_pins: Row pins, in order of top to bottom of the keypad.
+        :param col_pins: Column pins, in order of left to right of the keypad.
+        :param scans_per_second: Number of scans per second.
         """
 
         if len(key_matrix) != len(row_pins):
@@ -398,8 +412,9 @@ class MatrixKeypad(Component):
         self.key_matrix = key_matrix
         self.row_pins = row_pins
         self.col_pins = col_pins
-        self.bounce_time_ms = bounce_time_ms
+        self.scans_per_second = scans_per_second
 
+        self.scan_sleep_seconds = 1.0 / self.scans_per_second
         self.stop_scan = False
         self.scan_thread = Thread(target=self.scan)
 
