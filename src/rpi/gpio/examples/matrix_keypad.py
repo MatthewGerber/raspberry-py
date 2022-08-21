@@ -31,11 +31,11 @@ def main():
     )
 
     keypad.event(lambda s: print(f'{s.keys_pressed}'))
-    keypad.start()
+    keypad.start_scanning()
     try:
         time.sleep(300)
     except KeyboardInterrupt:
-        keypad.stop()
+        keypad.stop_scanning()
         cleanup()
 
 

@@ -330,44 +330,58 @@ class MatrixKeypad(Component):
                 for row in self.key_matrix
             )
 
-    def scan(
+    def scan_once(
             self
     ):
         """
-        Scan the GPIO pins connected to the keypad for pressed keys. This will continue to scan until `stop_scan`
-        becomes False.
+        Scan the keypad once and update state accordingly.
         """
 
-        while not self.stop_scan:
-            current_scan = self.empty(self.key_matrix)
-            for scan_col, scan_col_pin in enumerate(self.col_pins):
+        key_matrix = self.empty(self.key_matrix)
 
-                # set the column low and check rows for low
-                gpio.output(scan_col_pin, gpio.LOW)
-                for row, row_pin in enumerate(self.row_pins):
-                    if gpio.input(row_pin) == gpio.LOW:
-                        current_scan[row][scan_col] = self.key_matrix[row][scan_col]
+        # scan each column
+        for scan_col, scan_col_pin in enumerate(self.col_pins):
 
-                # switch column back to high
-                gpio.output(scan_col_pin, gpio.HIGH)
+            # set the column low and check rows for low, indicating that the button has been pressed.
+            gpio.output(scan_col_pin, gpio.LOW)
+            for row, row_pin in enumerate(self.row_pins):
+                if gpio.input(row_pin) == gpio.LOW:
+                    key_matrix[row][scan_col] = self.key_matrix[row][scan_col]
 
-            self.set_state(MatrixKeypad.State(current_scan))
+            # set column back to high to scan next column
+            gpio.output(scan_col_pin, gpio.HIGH)
+
+        self.set_state(MatrixKeypad.State(key_matrix))
+
+    def __scan_repeatedly__(
+            self
+    ):
+        """
+        Scan the keypad repeatedly and update state accordingly. This will continue to scan until `continue_scanning`
+        becomes false. This is not intended to be called directly; instead, call `start_scanning` and `stop_scanning`.
+        """
+
+        while self.continue_scanning:
+            self.scan_once()
             time.sleep(self.scan_sleep_seconds)
 
-    def start(self):
+    def start_scanning(self):
         """
         Start scanning the keypad.
         """
 
-        self.scan_thread.start()
+        self.stop_scanning()
+        self.continue_scanning = True
+        self.scan_repeatedly_thread.start()
 
-    def stop(self):
+    def stop_scanning(self):
         """
         Stop scanning the keypad.
         """
 
-        self.stop_scan = True
-        self.scan_thread.join()
+        if self.scan_repeatedly_thread.is_alive():
+            self.continue_scanning = False
+            self.scan_repeatedly_thread.join()
 
     @staticmethod
     def empty(
@@ -415,8 +429,8 @@ class MatrixKeypad(Component):
         self.scans_per_second = scans_per_second
 
         self.scan_sleep_seconds = 1.0 / self.scans_per_second
-        self.stop_scan = False
-        self.scan_thread = Thread(target=self.scan)
+        self.continue_scanning = True
+        self.scan_repeatedly_thread = Thread(target=self.__scan_repeatedly__)
 
         # send output to the columns when scanning
         for col_pin in self.col_pins:
