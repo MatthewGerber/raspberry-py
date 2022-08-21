@@ -30,7 +30,7 @@ def main():
         bounce_time_ms=200
     )
 
-    keypad.event(lambda s: print(f'{s}\n'))
+    #keypad.event(lambda s: print(f'{s.keys_pressed}'))
     keypad.start()
     try:
         time.sleep(300)
