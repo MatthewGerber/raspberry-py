@@ -5,6 +5,9 @@ from rpi.gpio.controls import MatrixKeypad
 
 
 def main():
+    """
+    This example accepts input from a matrix keypad. It runs with the circuit described on page 263 of the tutorial.
+    """
 
     setup()
 

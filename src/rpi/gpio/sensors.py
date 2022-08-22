@@ -3,6 +3,7 @@ import time
 from enum import Enum, auto
 from typing import Optional
 
+import datetime
 import RPi.GPIO as gpio
 
 from rpi.gpio import Component
@@ -320,3 +321,178 @@ class Hygrothermograph(Component):
             return False
 
         return True
+
+
+class InfraredMotionSensor(Component):
+    """
+    Infrared motion sensor (HC SR501).
+    """
+
+    class State(Component.State):
+        """
+        State of sensor.
+        """
+
+        def __init__(
+                self,
+                motion_detected: bool
+        ):
+            """
+            Initialize the state.
+
+            :param motion_detected: Motion is detected.
+            """
+
+            self.motion_detected = motion_detected
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
+            """
+            Check equality with another state.
+
+            :param other: Other state.
+            :return: True if equal and False otherwise.
+            """
+
+            if not isinstance(other, InfraredMotionSensor.State):
+                raise ValueError(f'Expected a {InfraredMotionSensor.State}')
+
+            return self.motion_detected == other.motion_detected
+
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'Motion detected:  {self.motion_detected}'
+
+    def __init__(
+            self,
+            sensor_pin: int
+    ):
+        """
+        Initialize the sensor.
+
+        :param sensor_pin: Sensor pin.
+        """
+
+        super().__init__(InfraredMotionSensor.State(False))
+
+        self.sensor_pin = sensor_pin
+
+        gpio.setup(sensor_pin, gpio.IN)
+        gpio.add_event_detect(
+            self.sensor_pin,
+            gpio.BOTH,
+            callback=lambda channel: self.set_state(
+                InfraredMotionSensor.State(gpio.input(self.sensor_pin) == gpio.HIGH)
+            ),
+            bouncetime=10
+        )
+
+
+class UltrasonicRangeFinder(Component):
+    """
+    Ultrasonic range finder (HC SR04).
+    """
+
+    class State(Component.State):
+        """
+        State of sensor.
+        """
+
+        def __init__(
+                self,
+                distance_cm: Optional[float]
+        ):
+            """
+            Initialize the state.
+
+            :param distance_cm: Distance from surface (cm).
+            """
+
+            self.distance_cm = distance_cm
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
+            """
+            Check equality with another state.
+
+            :param other: Other state.
+            :return: True if equal and False otherwise.
+            """
+
+            if not isinstance(other, UltrasonicRangeFinder.State):
+                raise ValueError(f'Expected a {UltrasonicRangeFinder.State}')
+
+            return self.distance_cm == other.distance_cm
+
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'Distance:  {self.distance_cm}'
+
+    def measure_distance(
+            self
+    ):
+        """
+        Measure distance to surface.
+        """
+
+        gpio.output(self.trigger_pin, gpio.HIGH)
+        time.sleep(10.0 * 1e-6)
+        gpio.output(self.trigger_pin, gpio.LOW)
+
+    def echo_pin_changed(
+            self,
+            high: bool
+    ):
+        if high:
+            self.trigger_time = datetime.datetime.now()
+        elif self.trigger_time is not None:
+            echo_time = datetime.datetime.now() - self.trigger_time
+            distance_cm = (340.0 * echo_time.total_seconds()) / 1000.0
+            self.set_state(UltrasonicRangeFinder.State(distance_cm=distance_cm))
+            self.trigger_time = None
+
+    def __init__(
+            self,
+            trigger_pin: int,
+            echo_pin: int
+    ):
+        """
+        Initialize the sensor.
+
+        :param trigger_pin: Trigger pin.
+        :param echo_pin: Echo pin.
+        """
+
+        super().__init__(UltrasonicRangeFinder.State(None))
+
+        self.trigger_pin = trigger_pin
+        self.echo_pin = echo_pin
+
+        self.trigger_time = None
+
+        gpio.setup(trigger_pin, gpio.OUT, initial=gpio.LOW)
+        gpio.setup(self.echo_pin, gpio.IN)
+        gpio.add_event_detect(
+            self.echo_pin,
+            gpio.BOTH,
+            callback=lambda channel: self.echo_pin_changed(gpio.input(self.echo_pin) == gpio.HIGH),
+            bounce_time_ms=0
+        )
