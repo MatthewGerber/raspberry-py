@@ -1,6 +1,7 @@
 import math
 import time
 from enum import Enum, auto
+from threading import Thread
 from typing import Optional
 
 import datetime
@@ -446,7 +447,7 @@ class UltrasonicRangeFinder(Component):
 
             return f'Distance:  {self.distance_cm}'
 
-    def measure_distance(
+    def measure_distance_once(
             self
     ):
         """
@@ -456,6 +457,23 @@ class UltrasonicRangeFinder(Component):
         gpio.output(self.trigger_pin, gpio.HIGH)
         time.sleep(10.0 * 1e-6)
         gpio.output(self.trigger_pin, gpio.LOW)
+
+    def measure_distance(
+            self
+    ):
+        while self.continue_measuring_distance:
+            self.measure_distance_once()
+            time.sleep(1.0 / self.measurements_per_second)
+
+    def start_measuring_distance(
+            self
+    ):
+        pass
+
+    def stop_measuring_distance(
+            self
+    ):
+        pass
 
     def echo_pin_changed(
             self,
@@ -472,21 +490,26 @@ class UltrasonicRangeFinder(Component):
     def __init__(
             self,
             trigger_pin: int,
-            echo_pin: int
+            echo_pin: int,
+            measurements_per_second: float
     ):
         """
         Initialize the sensor.
 
         :param trigger_pin: Trigger pin.
         :param echo_pin: Echo pin.
+        :param measurements_per_second: Measurements per second.
         """
 
         super().__init__(UltrasonicRangeFinder.State(None))
 
         self.trigger_pin = trigger_pin
         self.echo_pin = echo_pin
+        self.measurements_per_second = measurements_per_second
 
         self.trigger_time = None
+        self.continue_measuring_distance = True
+        self.measure_distance_thread = Thread(target=self.measure_distance)
 
         gpio.setup(trigger_pin, gpio.OUT, initial=gpio.LOW)
         gpio.setup(self.echo_pin, gpio.IN)
