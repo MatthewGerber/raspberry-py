@@ -465,7 +465,7 @@ class UltrasonicRangeFinder(Component):
             self.trigger_time = datetime.datetime.now()
         elif self.trigger_time is not None:
             echo_time = datetime.datetime.now() - self.trigger_time
-            distance_cm = (340.0 * echo_time.total_seconds()) / 1000.0
+            distance_cm = (340.0 * echo_time.total_seconds()) * 1000.0
             self.set_state(UltrasonicRangeFinder.State(distance_cm=distance_cm))
             self.trigger_time = None
 
