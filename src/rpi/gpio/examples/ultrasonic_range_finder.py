@@ -15,7 +15,7 @@ def main():
     sensor = UltrasonicRangeFinder(
         trigger_pin=CkPin.GPIO23,
         echo_pin=CkPin.GPIO24,
-        measurements_per_second=2.0
+        measurements_per_second=2
     )
 
     sensor.event(lambda s: print(str(s)))
