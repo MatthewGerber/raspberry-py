@@ -358,7 +358,7 @@ class MatrixKeypad(Component):
     ):
         """
         Scan the keypad repeatedly and update state accordingly. This will continue to scan until `continue_scanning`
-        becomes false. This is not intended to be called directly; instead, call `start_scanning` and `stop_scanning`.
+        becomes False. This is not intended to be called directly; instead, call `start_scanning` and `stop_scanning`.
         """
 
         while self.continue_scanning:

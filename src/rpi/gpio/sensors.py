@@ -1,10 +1,10 @@
+import datetime
 import math
 import time
 from enum import Enum, auto
 from threading import Thread
 from typing import Optional
 
-import datetime
 import RPi.GPIO as gpio
 
 from rpi.gpio import Component
@@ -403,6 +403,9 @@ class UltrasonicRangeFinder(Component):
     Ultrasonic range finder (HC SR04).
     """
 
+    SPEED_OF_SOUND_METERS_PER_SECOND = 340.0
+    TRIGGER_TIME_SECONDS = 10.0 * 1e-6
+
     class State(Component.State):
         """
         State of sensor.
@@ -445,46 +448,75 @@ class UltrasonicRangeFinder(Component):
             :return: String.
             """
 
-            return f'Distance:  {self.distance_cm}'
+            return f'Distance:  {self.distance_cm:.2f} cm'
 
     def measure_distance_once(
             self
     ):
         """
-        Measure distance to surface.
+        Measure distance to surface. This is an asyncronous function that does not return a value or directly set the
+        state. Rather, it initiates a process that should quickly result in a state update.
         """
 
         gpio.output(self.trigger_pin, gpio.HIGH)
-        time.sleep(10.0 * 1e-6)
+        time.sleep(UltrasonicRangeFinder.TRIGGER_TIME_SECONDS)
         gpio.output(self.trigger_pin, gpio.LOW)
 
-    def measure_distance(
+    def __measure_distance_repeatedly__(
             self
     ):
+        """
+        Measure distance repeatedly and update state accordingly. This will continue to measure until
+        `continue_measuring_distance` becomes False. This is not intended to be called directly; instead, call
+        `start_measuring_distance` and `stop_measuring_distance`.
+        """
+
         while self.continue_measuring_distance:
             self.measure_distance_once()
-            time.sleep(1.0 / self.measurements_per_second)
+            time.sleep(self.measure_sleep_seconds)
 
     def start_measuring_distance(
             self
     ):
-        pass
+        """
+        Start measuring distance.
+        """
+
+        self.stop_measuring_distance()
+        self.continue_measuring_distance = True
+        self.measure_distance_repeatedly_thread.start()
 
     def stop_measuring_distance(
             self
     ):
-        pass
+        """
+        Stop measuring distance.
+        """
+
+        if self.measure_distance_repeatedly_thread.is_alive():
+            self.continue_measuring_distance = False
+            self.measure_distance_repeatedly_thread.join()
 
     def echo_pin_changed(
             self,
             high: bool
     ):
+        """
+        Handle the change of the echo pin's input value.
+
+        :param high: The new input value is high.
+        """
+
+        # timestamp the trigger time if the echo pin has become high
         if high:
             self.trigger_time = datetime.datetime.now()
+
+        # measure the time that the echo pin was high and calculate distance accordingly
         elif self.trigger_time is not None:
             echo_time = datetime.datetime.now() - self.trigger_time
-            distance_cm = (340.0 * echo_time.total_seconds()) * 1000.0
-            self.set_state(UltrasonicRangeFinder.State(distance_cm=distance_cm))
+            total_distance_m = UltrasonicRangeFinder.SPEED_OF_SOUND_METERS_PER_SECOND * echo_time.total_seconds()
+            surface_distance_cm = total_distance_m * 1000.0 / 2.0
+            self.set_state(UltrasonicRangeFinder.State(distance_cm=surface_distance_cm))
             self.trigger_time = None
 
     def __init__(
@@ -507,9 +539,10 @@ class UltrasonicRangeFinder(Component):
         self.echo_pin = echo_pin
         self.measurements_per_second = measurements_per_second
 
+        self.measure_sleep_seconds = 1.0 / self.measurements_per_second
         self.trigger_time = None
         self.continue_measuring_distance = True
-        self.measure_distance_thread = Thread(target=self.measure_distance)
+        self.measure_distance_repeatedly_thread = Thread(target=self.__measure_distance_repeatedly__)
 
         gpio.setup(trigger_pin, gpio.OUT, initial=gpio.LOW)
         gpio.setup(self.echo_pin, gpio.IN)
