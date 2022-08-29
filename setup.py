@@ -1,12 +1,11 @@
-from setuptools import (
-    setup,
-    find_packages
-)
+from setuptools import setup, find_packages
+
 
 INSTALL_REQUIREMENTS = [
     'numpy==1.21.5',
     'RPi.GPIO==0.7.0',
-    'smbus2==0.4.1 '
+    'smbus2==0.4.1 ',
+    'Flask==2.2.2'
 ]
 
 TEST_REQUIREMENTS = [
