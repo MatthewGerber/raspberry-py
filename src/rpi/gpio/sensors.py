@@ -1,4 +1,3 @@
-import datetime
 import math
 import time
 from enum import Enum, auto
@@ -405,6 +404,7 @@ class UltrasonicRangeFinder(Component):
 
     SPEED_OF_SOUND_METERS_PER_SECOND = 340.0
     TRIGGER_TIME_SECONDS = 10.0 * 1e-6
+    ECHO_TIMEOUT_SECONDS = 0.01
 
     class State(Component.State):
         """
@@ -448,19 +448,44 @@ class UltrasonicRangeFinder(Component):
             :return: String.
             """
 
-            return f'Distance:  {self.distance_cm:.2f} cm'
+            return 'Distance:  ' + 'None' if self.distance_cm is None else f'{self.distance_cm:.2f} cm'
 
     def measure_distance_once(
             self
     ):
         """
-        Measure distance to surface. This is an asyncronous function that does not return a value or directly set the
-        state. Rather, it initiates a process that should quickly result in a state update.
+        Measure distance to surface.
         """
 
+        # signal the sensor to take a measurement
         gpio.output(self.trigger_pin, gpio.HIGH)
         time.sleep(UltrasonicRangeFinder.TRIGGER_TIME_SECONDS)
         gpio.output(self.trigger_pin, gpio.LOW)
+
+        # wait for the echo pin to flip to high
+        wait_start_time = time.time()
+        while time.time() - wait_start_time < UltrasonicRangeFinder.ECHO_TIMEOUT_SECONDS:
+            if gpio.input(self.echo_pin) == gpio.HIGH:
+                echo_start_time = time.time()
+                break
+        else:
+            self.set_state(UltrasonicRangeFinder.State(distance_cm=None))
+            return
+
+        # mark the time and wait for the echo pin to flip to low
+        while time.time() - echo_start_time < UltrasonicRangeFinder.ECHO_TIMEOUT_SECONDS:
+            if gpio.input(self.echo_pin) == gpio.LOW:
+                echo_end_time = time.time()
+                break
+        else:
+            self.set_state(UltrasonicRangeFinder.State(distance_cm=None))
+            return
+
+        # measure the time that the echo pin was high and calculate distance accordingly
+        echo_time_seconds = echo_end_time - echo_start_time
+        total_distance_m = UltrasonicRangeFinder.SPEED_OF_SOUND_METERS_PER_SECOND * echo_time_seconds
+        surface_distance_cm = total_distance_m * 100.0 / 2.0
+        self.set_state(UltrasonicRangeFinder.State(distance_cm=surface_distance_cm))
 
     def __measure_distance_repeatedly__(
             self
@@ -497,28 +522,6 @@ class UltrasonicRangeFinder(Component):
             self.continue_measuring_distance = False
             self.measure_distance_repeatedly_thread.join()
 
-    def echo_pin_changed(
-            self,
-            high: bool
-    ):
-        """
-        Handle the change of the echo pin's input value.
-
-        :param high: The new input value is high.
-        """
-
-        # timestamp the trigger time if the echo pin has become high
-        if high:
-            self.trigger_time = datetime.datetime.now()
-
-        # measure the time that the echo pin was high and calculate distance accordingly
-        elif self.trigger_time is not None:
-            echo_time = datetime.datetime.now() - self.trigger_time
-            total_distance_m = UltrasonicRangeFinder.SPEED_OF_SOUND_METERS_PER_SECOND * echo_time.total_seconds()
-            surface_distance_cm = total_distance_m * 1000.0 / 2.0
-            self.set_state(UltrasonicRangeFinder.State(distance_cm=surface_distance_cm))
-            self.trigger_time = None
-
     def __init__(
             self,
             trigger_pin: int,
@@ -540,15 +543,8 @@ class UltrasonicRangeFinder(Component):
         self.measurements_per_second = measurements_per_second
 
         self.measure_sleep_seconds = 1.0 / self.measurements_per_second
-        self.trigger_time = None
         self.continue_measuring_distance = True
         self.measure_distance_repeatedly_thread = Thread(target=self.__measure_distance_repeatedly__)
 
         gpio.setup(trigger_pin, gpio.OUT, initial=gpio.LOW)
         gpio.setup(self.echo_pin, gpio.IN)
-        gpio.add_event_detect(
-            self.echo_pin,
-            gpio.BOTH,
-            callback=lambda channel: self.echo_pin_changed(gpio.input(self.echo_pin) == gpio.HIGH),
-            bounce_time_ms=0
-        )
