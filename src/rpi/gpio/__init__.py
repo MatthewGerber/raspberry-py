@@ -1,5 +1,6 @@
 import logging
 import time
+import uuid
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import IntEnum
@@ -259,6 +260,7 @@ class Component(ABC):
 
         self.events: List[Event] = []
         self.state_lock = Lock()
+        self.id = str(uuid.uuid4())
 
     def __str__(
             self
