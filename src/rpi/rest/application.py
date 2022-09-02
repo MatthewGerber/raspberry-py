@@ -1,22 +1,13 @@
-from typing import Dict
-
-from flask import Flask, request, abort
 from http import HTTPStatus
+
+import flask
+from flask import Flask, request, abort, Response
 
 from rpi.gpio import Component
 
-__app__ = Flask(__name__)
+app = Flask(__name__)
+
 __components__ = {}
-
-
-def get() -> Flask:
-    """
-    Get the Flask app.
-
-    :return: Flask app.
-    """
-
-    return __app__
 
 
 def add_component(
@@ -31,25 +22,27 @@ def add_component(
     __components__[component.id] = component
 
 
-@__app__.route('/list')
-def list_components() -> Dict[str, str]:
+@app.route('/list')
+def list_components() -> Response:
     """
     List available components.
 
     :return: Dictionary of components by id and string.
     """
 
-    return {
+    response = flask.jsonify({
         component_id: str(component)
         for component_id, component in __components__.items()
-    }
+    })
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
 
 
-@__app__.route('/call/<string:component_id>/<string:function_name>', methods=['GET'])
+@app.route('/call/<string:component_id>/<string:function_name>', methods=['GET'])
 def call(
         component_id: str,
         function_name: str
-) -> Dict:
+) -> Response:
     """
     Call a function on a component.
 
@@ -67,6 +60,8 @@ def call(
     if hasattr(component, function_name):
         f = getattr(component, function_name)
         f(**args)
-        return component.get_state().__dict__
+        response = flask.jsonify(component.get_state().__dict__)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
     else:
         abort(HTTPStatus.NOT_FOUND, f'Component {component} (id={component_id}) does not have a function named {function_name}.')
