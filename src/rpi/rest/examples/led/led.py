@@ -1,4 +1,5 @@
 import os
+from os.path import join
 
 from flask_cors import CORS
 
@@ -21,8 +22,8 @@ led.id = 'led-1'
 app.add_component(led)
 
 # write javascript for the app components
-app.write_component_js(
+app.write_component_html_files(
     host='localhost',
     port=5000,
-    path=f'{os.path.splitext(__file__)[0]}.js'
+    dir_path=join(os.path.dirname(__file__), 'components')
 )
