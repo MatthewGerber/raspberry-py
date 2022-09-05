@@ -33,5 +33,10 @@ setup(
     extras_require={
         'test:': TEST_REQUIREMENTS,
         'dev:': TEST_REQUIREMENTS + DEV_REQUIREMENTS
+    },
+    entry_points={
+        'console_scripts': [
+            'write_component_files=rpi.rest.application:write_component_files'
+        ]
     }
 )

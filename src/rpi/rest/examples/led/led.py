@@ -1,6 +1,3 @@
-import os
-from os.path import join
-
 from flask_cors import CORS
 
 from rpi.gpio import setup, CkPin
@@ -20,10 +17,3 @@ led.id = 'led-1'
 
 # add led to rest application
 app.add_component(led)
-
-# write javascript for the app components
-app.write_component_html_files(
-    host='localhost',
-    port=5000,
-    dir_path=join(os.path.dirname(__file__), 'components')
-)

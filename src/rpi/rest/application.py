@@ -1,12 +1,17 @@
+import importlib
 import os.path
+import sys
+from argparse import ArgumentParser
 from http import HTTPStatus
-from os.path import join
+from os.path import join, expanduser
+from typing import List, Optional
 
 import flask
 from flask import Flask, request, abort, Response
 
 from rpi.gpio import Component
 from rpi.gpio.lights import LED
+from rpi.gpio.motors import DcMotor
 
 
 class RpiFlask(Flask):
@@ -65,17 +70,32 @@ class RpiFlask(Flask):
         if isinstance(component, LED):
             return (
                 f'<div class="form-check form-switch">\n'
-                f'  <input class="form-check-input" type="checkbox" role="switch" id="{component.id}" />\n'
                 f'  <label class="form-check-label" for="{component.id}">{component.id}</label>\n'
-                f'  <script>\n'
-                f'    $("#{component.id}").on("change", function () {{\n'
-                f'      $.ajax({{\n'
-                f'        url: $("#{component.id}").is(":checked") ? "http://{host}:{port}/call/{component.id}/turn_on" : "http://{host}:{port}/call/{component.id}/turn_off",\n'
-                f'        type: "GET"\n'
-                f'      }});\n'
-                f'    }});\n'
-                f'  </script>\n'
+                f'  <input class="form-check-input" type="checkbox" role="switch" id="{component.id}" />\n'                
                 f'</div>\n'
+                f'<script>\n'
+                f'$("#{component.id}").on("change", function () {{\n'
+                f'  $.ajax({{\n'
+                f'    url: $("#{component.id}").is(":checked") ? "http://{host}:{port}/call/{component.id}/turn_on" : "http://{host}:{port}/call/{component.id}/turn_off",\n'
+                f'    type: "GET"\n'
+                f'  }});\n'
+                f'}});\n'
+                f'</script>\n'
+            )
+        elif isinstance(component, DcMotor):
+            return (
+                f'<div class="range">\n'
+                f'  <label for="{component.id}" class="form-label">{component.id}</label>\n'
+                f'  <input type="range" class="form-range" min="-100" max="100" step="1" id="{component.id}" />\n'
+                f'</div>\n'
+                f'<script>\n'
+                f'$("#{component.id}").on("input", function () {{\n'
+                f'  $.ajax({{\n'
+                f'    url: "http://localhost:5000/call/{component.id}/set_speed?speed=int:" + $("#{component.id}")[0].value,\n'
+                f'    type: "GET"\n'
+                f'  }});\n'
+                f'}});\n'
+                f'</script>\n'
             )
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
@@ -149,3 +169,69 @@ def call(
         return response
     else:
         abort(HTTPStatus.NOT_FOUND, f'Component {component} (id={component_id}) does not have a function named {function_name}.')
+
+
+def write_component_files(
+        args: Optional[List[str]]
+):
+    """
+    Write component files for an application.
+
+    :param args: CLI arguments, or None to use sys.argv.
+    """
+
+    if args is None:
+        args = sys.argv[1:]
+
+    arg_parser = ArgumentParser(description='Write component files for an application.')
+
+    arg_parser.add_argument(
+        '--app',
+        type=str,
+        help='Path to application.'
+    )
+
+    arg_parser.add_argument(
+        '--host',
+        type=str,
+        default='localhost',
+        help='Host.'
+    )
+
+    arg_parser.add_argument(
+        '--port',
+        type=int,
+        default=5000,
+        help='Port.'
+    )
+
+    arg_parser.add_argument(
+        '--dir-path',
+        type=str,
+        help='Path.'
+    )
+
+    args = arg_parser.parse_args(args)
+
+    app_args = args.app.split(':')
+
+    app_module_name = app_args[0]
+    app_name = None
+    if len(app_args) == 2:
+        app_name = app_args[1]
+    elif len(app_args) > 2:
+        raise ValueError(f'Invalid app argument:  {args.app}')
+
+    app_module = importlib.import_module(app_module_name)
+    if app_name is None and hasattr(app_module, 'app'):
+        app_to_write = getattr(app_module, 'app')
+    elif app_name is not None and hasattr(app_module, app_name):
+        app_to_write = getattr(app_module, app_name)
+    else:
+        raise ValueError(f'Module {app_module_name} does not contain an "app" attribute, and no other name is specified.')
+
+    app_to_write.write_component_html_files(
+        host=args.host,
+        port=args.port,
+        dir_path=expanduser(args.dir_path)
+    )
