@@ -19,14 +19,17 @@ class DcMotor(Component):
 
         def __init__(
                 self,
+                on: bool,
                 speed: int
         ):
             """
             Initialize the state.
 
-            :param speed: Speed.
+            :param on: Whether the motor is on.
+            :param speed: Speed (if on).
             """
 
+            self.on = on
             self.speed = speed
 
         def __eq__(
@@ -43,7 +46,7 @@ class DcMotor(Component):
             if not isinstance(other, DcMotor.State):
                 raise ValueError(f'Expected a {DcMotor.State}')
 
-            return self.speed == other.speed
+            return self.on == other.on and self.speed == other.speed
 
         def __str__(
                 self
@@ -54,7 +57,7 @@ class DcMotor(Component):
             :return: String.
             """
 
-            return f'Speed:  {self.speed}'
+            return f'On:  {self.on}, Speed:  {self.speed}'
 
     def set_state(
             self,
@@ -69,8 +72,7 @@ class DcMotor(Component):
         if not isinstance(state, DcMotor.State):
             raise ValueError(f'Expected a {DcMotor.State}')
 
-        super().set_state(state)
-
+        self.state: DcMotor.State
         state: DcMotor.State
 
         # negative speed rotates one direction
@@ -88,8 +90,16 @@ class DcMotor(Component):
             gpio.output(self.in_1_pin, gpio.LOW)
             gpio.output(self.in_2_pin, gpio.LOW)
 
-        # update pwm
-        self.pwm_enable.ChangeDutyCycle(abs(state.speed))
+        if state.on:
+            pwm_duty_cycle = abs(state.speed)
+            if self.state.on:
+                self.pwm_enable.ChangeDutyCycle(pwm_duty_cycle)
+            else:
+                self.pwm_enable.start(pwm_duty_cycle)
+        else:
+            self.pwm_enable.stop()
+
+        super().set_state(state)
 
     def start(
             self
@@ -99,8 +109,7 @@ class DcMotor(Component):
         """
 
         self.state: DcMotor.State
-
-        self.pwm_enable.start(self.state.speed)
+        self.set_state(DcMotor.State(on=True, speed=self.state.speed))
 
     def stop(
             self
@@ -109,7 +118,8 @@ class DcMotor(Component):
         Stop the motor.
         """
 
-        self.pwm_enable.stop()
+        self.state: DcMotor.State
+        self.set_state(DcMotor.State(on=False, speed=self.state.speed))
 
     def set_speed(
             self,
@@ -121,7 +131,8 @@ class DcMotor(Component):
         :param speed: Speed (in [-100,+100]).
         """
 
-        self.set_state(DcMotor.State(speed))
+        self.state: DcMotor.State
+        self.set_state(DcMotor.State(on=self.state.on, speed=speed))
 
     def __init__(
             self,
@@ -139,7 +150,7 @@ class DcMotor(Component):
         :param speed: Initial motor speed (in [-100,+100]).
         """
 
-        super().__init__(DcMotor.State(speed))
+        super().__init__(DcMotor.State(on=False, speed=speed))
 
         self.enable_pin = enable_pin
         self.in_1_pin = in_1_pin

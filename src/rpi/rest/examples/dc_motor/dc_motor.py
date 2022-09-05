@@ -20,7 +20,6 @@ motor = DcMotor(
 )
 
 motor.id = 'motor-1'
-motor.start()
 
 # add motor to rest application
 app.add_component(motor)
