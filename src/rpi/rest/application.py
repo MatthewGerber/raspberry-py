@@ -71,7 +71,7 @@ class RpiFlask(Flask):
                 f'    $("#{component.id}").on("change", function () {{\n'
                 f'      $.ajax({{\n'
                 f'        url: $("#{component.id}").is(":checked") ? "http://{host}:{port}/call/{component.id}/turn_on" : "http://{host}:{port}/call/{component.id}/turn_off",\n'
-                f'        type: "GET",\n'
+                f'        type: "GET"\n'
                 f'      }});\n'
                 f'    }});\n'
                 f'  </script>\n'
@@ -130,7 +130,16 @@ def call(
     if component_id not in app.components:
         abort(HTTPStatus.NOT_FOUND, f'No component with id {component_id}.')
 
-    args = request.args.to_dict()
+    arg_types = {
+        'int': int,
+        'str': str,
+        'float': float
+    }
+
+    args = {
+        n: arg_types[t.split(':')[0]](t.split(':')[1])
+        for n, t in request.args.to_dict().items()
+    }
 
     component = app.components[component_id]
     if hasattr(component, function_name):
