@@ -1,8 +1,17 @@
 # RPI
-This package provides a high-level, event-driven interface for GPIO circuits running on the Raspberry Pi. Whereas
-the lower-level [RPi.GPIO](https://pypi.org/project/RPi.GPIO/) package deals with GPIO input/output pins and high/low
-values, the RPI package deals with LEDs that are on or off, button switches that are pressed or not, and so on. These
-abstractions, in combination with an event-driven framework, allow the developer to express the intended circuit 
+
+# Overview
+This package provides three related capabilities. First, it provides a high-level, event-driven interface for GPIO 
+circuits running on the Raspberry Pi. Sensors, motors, LEDs -- everything is covered. Second, this package 
+auto-generates a REST API that exposes GPIO circuits for remote interaction. Want to control your GPIO motor from your 
+phone? This is how to do it. Third, this package auto-generates HTML/JavaScript snippets (based on 
+[Material Design for Bootstrap](https://mdbootstrap.com)) the GPIO circuits. These snippets can be embedded in web 
+applications for remote interaction via the REST API. These three capabilities are described in more detail below.
+
+## Python Interface for GPIO Circuits
+Whereas the lower-level [RPi.GPIO](https://pypi.org/project/RPi.GPIO/) package deals with GPIO input/output pins and 
+high/low values, the RPI package deals with LEDs that are on or off, button switches that are pressed or not, and so on. 
+These abstractions, in combination with an event-driven framework, allow the developer to express the intended circuit 
 behavior more naturally compared with lower-level interfaces. For example, a blinking LED program is written as follows:
 ```python
 import time
@@ -54,9 +63,12 @@ Buzzing LED bar with push button (click to watch; Python code [here](https://git
 
 Python code for these and other examples can be found [here](src/rpi/gpio/examples).
 
-## Installation
+## REST API for GPIO Circuits
 
-### OS and GPIO
+## HTML/JavaScript for GPIO Circuits
+1. https://ubuntu.com/tutorials/install-and-configure-apache#1-overview
+
+# RPI Operating System and GPIO
 This package has been developed using the Ubuntu installation described 
 [here](https://matthewgerber.github.io/rlai/raspberry_pi.html#operating-system) (ignore the "Install RLAI" section). By 
 default, Ubuntu does not give the user permission to interact with the GPIO pins of the Raspberry Pi. To grant GPIO 
