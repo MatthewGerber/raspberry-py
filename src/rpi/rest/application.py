@@ -172,7 +172,7 @@ def call(
 
 
 def write_component_files(
-        args: Optional[List[str]]
+        args: Optional[List[str]] = None
 ):
     """
     Write component files for an application.
@@ -188,33 +188,33 @@ def write_component_files(
     arg_parser.add_argument(
         '--app',
         type=str,
-        help='Path to application.'
+        help='Fully-qualified module containing the RPI REST application to write component files for.'
     )
 
     arg_parser.add_argument(
         '--host',
         type=str,
         default='localhost',
-        help='Host.'
+        help='Host serving the RPI REST application.'
     )
 
     arg_parser.add_argument(
         '--port',
         type=int,
         default=5000,
-        help='Port.'
+        help='Port serving the RPI REST application.'
     )
 
     arg_parser.add_argument(
         '--dir-path',
         type=str,
-        help='Path.'
+        help='Path in which to write the component files. Will be created if it does not exist.'
     )
 
     args = arg_parser.parse_args(args)
 
+    # get the app module and attribute name
     app_args = args.app.split(':')
-
     app_module_name = app_args[0]
     app_name = None
     if len(app_args) == 2:
@@ -222,6 +222,7 @@ def write_component_files(
     elif len(app_args) > 2:
         raise ValueError(f'Invalid app argument:  {args.app}')
 
+    # load module and app
     app_module = importlib.import_module(app_module_name)
     if app_name is None and hasattr(app_module, 'app'):
         app_to_write = getattr(app_module, 'app')
