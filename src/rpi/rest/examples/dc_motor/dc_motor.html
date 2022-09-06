@@ -16,10 +16,20 @@
           <div class="text-center"><h5>This is an example of web-based control of an RPI motor circuit via REST API.</h5></div>
         </div>
       </div>
-      <div id="div-motor-1"></div>
+      <div class="row">
+        <div class="col-md">
+          <div id="div-motor-1-start-stop"></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md">
+          <div id="div-motor-1-set_speed"></div>
+        </div>
+      </div>
     </div>
     <script type="text/javascript" src="../../mdbootstrap/js/mdb.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.1.js"></script>
-    <script>$("#div-motor-1").load("components/motor-1.html");</script>
+    <script>$("#div-motor-1-start-stop").load("components/motor-1-start-stop.html");</script>
+    <script>$("#div-motor-1-set_speed").load("components/motor-1-set_speed.html");</script>
   </body>
 </html>

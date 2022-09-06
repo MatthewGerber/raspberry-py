@@ -36,7 +36,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'write_component_files=rpi.rest.application:write_component_files'
+            'write_component_files=rpi.rest.application:write_component_files_cli'
         ]
     }
 )

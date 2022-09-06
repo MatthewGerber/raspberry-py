@@ -4,7 +4,7 @@ import sys
 from argparse import ArgumentParser
 from http import HTTPStatus
 from os.path import join, expanduser
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import flask
 from flask import Flask, request, abort, Response
@@ -49,66 +49,120 @@ class RpiFlask(Flask):
             os.mkdir(dir_path)
 
         for component in self.components.values():
-            with open(join(dir_path, f'{component.id}.html'), 'w') as component_file:
-                component_file.write(f'{self.get_html(component, host, port)}')
+            element_id, html_js = self.get_html_js(component, host, port)
+            with open(join(dir_path, f'{element_id}.html'), 'w') as component_file:
+                component_file.write(html_js)
 
     @staticmethod
-    def get_html(
+    def get_html_js(
             component: Component,
             host: str,
             port: int,
-    ) -> str:
+    ) -> List[Tuple[str, str]]:
         """
         Get HTML for a component, including the UI elements and client-side JavaScript for handling UI events.
 
         :param component: Component.
         :param host: Host serving the Flask application.
         :param port: Port serving the Flask application.
-        :return: HTML.
+        :return: List of 2-tuples of (1) element keys and (2) HTML/JavaScript elements for the components.
         """
 
         if isinstance(component, LED):
-            return (
-                f'<div class="form-check form-switch">\n'
-                f'  <label class="form-check-label" for="{component.id}">{component.id}</label>\n'
-                f'  <input class="form-check-input" type="checkbox" role="switch" id="{component.id}" />\n'                
-                f'</div>\n'
-                f'<script>\n'
-                f'$("#{component.id}").on("change", function () {{\n'
-                f'  $.ajax({{\n'
-                f'    url: $("#{component.id}").is(":checked") ? "http://{host}:{port}/call/{component.id}/turn_on" : "http://{host}:{port}/call/{component.id}/turn_off",\n'
-                f'    type: "GET"\n'
-                f'  }});\n'
-                f'}});\n'
-                f'</script>\n'
-            )
+            return [
+                RpiFlask.get_switch_html_js(component.id, host, port, 'turn_on', 'turn_off')
+            ]
         elif isinstance(component, DcMotor):
-            return (
-                f'<div class="form-check form-switch">\n'
-                f'  <label class="form-check-label" for="{component.id}-start-stop">{component.id} on/off</label>\n'
-                f'  <input class="form-check-input" type="checkbox" role="switch" id="{component.id}-start-stop" />\n'
-                f'</div>\n'
-                f'<div class="range">\n'
-                f'  <label for="{component.id}-speed" class="form-label">{component.id} speed</label>\n'
-                f'  <input type="range" class="form-range" min="-100" max="100" step="1" id="{component.id}-speed" />\n'
-                f'</div>\n'
-                f'<script>\n'
-                f'$("#{component.id}-start-stop").on("change", function () {{\n'
-                f'  $.ajax({{\n'
-                f'    url: $("#{component.id}-start-stop").is(":checked") ? "http://{host}:{port}/call/{component.id}/start" : "http://{host}:{port}/call/{component.id}/stop",\n'
-                f'    type: "GET"\n'
-                f'  }});\n'
-                f'}});\n'
-                f'$("#{component.id}-speed").on("input", function () {{\n'
-                f'  $.ajax({{\n'
-                f'    url: "http://{host}:{port}/call/{component.id}/set_speed?speed=int:" + $("#{component.id}-speed")[0].value,\n'
-                f'    type: "GET"\n'
-                f'  }});\n'
-                f'}});\n'
-                f'</script>\n'
-            )
+            return [
+                RpiFlask.get_switch_html_js(component.id, host, port, 'start', 'stop'),
+                RpiFlask.get_range_html_js(component.id, -100, 100, 1, host, port, 'set_speed', 'speed')
+            ]
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
+
+    @staticmethod
+    def get_switch_html_js(
+            switch_id: str,
+            host: str,
+            port: int,
+            on_function: str,
+            off_function: str
+    ) -> Tuple[str, str]:
+        """
+        Get switch HTML/JavaScript.
+
+        :param switch_id: Switch id.
+        :param host: Host.
+        :param port: Port.
+        :param on_function: On function name.
+        :param off_function: Off function name.
+        :return: 2-tuple of (1) id and (2) HTML/JavaScript.
+        """
+
+        element_id = f'{switch_id}-{on_function}-{off_function}'
+
+        return (
+            element_id,
+            (
+                f'<div class="form-check form-switch">\n'
+                f'  <label class="form-check-label" for="{element_id}">{switch_id} {on_function}/{off_function}</label>\n'
+                f'  <input class="form-check-input" type="checkbox" role="switch" id="{element_id}" />\n'
+                f'</div>\n'
+                f'<script>\n'
+                f'$("#{element_id}").on("change", function () {{\n'
+                f'  $.ajax({{\n'
+                f'    url: $("#{element_id}").is(":checked") ? "http://{host}:{port}/call/{switch_id}/{on_function}" : "http://{host}:{port}/call/{switch_id}/{off_function}",\n'
+                f'    type: "GET"\n'
+                f'  }});\n'
+                f'}});\n'
+                f'</script>\n'
+            )
+        )
+
+    @staticmethod
+    def get_range_html_js(
+            range_id: str,
+            min_value: int,
+            max_value: int,
+            step: int,
+            host: str,
+            port: int,
+            on_input_function: str,
+            on_input_param: str
+    ) -> Tuple[str, str]:
+        """
+        Get range HTML/JavaScript.
+
+        :param range_id: Range id.
+        :param min_value: Minimum value.
+        :param max_value: Maximum value.
+        :param step: Step.
+        :param host: Host.
+        :param port: Port.
+        :param on_input_function: On input function name.
+        :param on_input_param: On input parameter name.
+        :return: 2-tuple of (1) id and (2) HTML/JavaScript.
+        """
+
+        element_id = f'{range_id}-{on_input_function}'
+
+        return (
+            element_id,
+            (
+                f'<div class="range">\n'
+                f'  <label for="{element_id}" class="form-label">{range_id} {on_input_function}</label>\n'
+                f'  <input type="range" class="form-range" min="{min_value}" max="{max_value}" step="{step}" id="{element_id}" />\n'
+                f'</div>\n'
+                f'<script>\n'
+                f'$("#{element_id}").on("input", function () {{\n'
+                f'  $.ajax({{\n'
+                f'    url: "http://{host}:{port}/call/{range_id}/{on_input_function}?{on_input_param}=int:" + $("#{element_id}")[0].value,\n'
+                f'    type: "GET"\n'
+                f'  }});\n'
+                f'}});\n'
+                f'</script>\n'
+            )
+        )
 
     def __init__(
             self,
@@ -181,7 +235,7 @@ def call(
         abort(HTTPStatus.NOT_FOUND, f'Component {component} (id={component_id}) does not have a function named {function_name}.')
 
 
-def write_component_files(
+def write_component_files_cli(
         args: Optional[List[str]] = None
 ):
     """

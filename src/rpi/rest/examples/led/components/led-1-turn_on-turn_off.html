@@ -1,0 +1,12 @@
+<div class="form-check form-switch">
+  <label class="form-check-label" for="led-1-turn_on-turn_off">led-1 turn_on/turn_off</label>
+  <input class="form-check-input" type="checkbox" role="switch" id="led-1-turn_on-turn_off" />
+</div>
+<script>
+$("#led-1-turn_on-turn_off").on("change", function () {
+  $.ajax({
+    url: $("#led-1-turn_on-turn_off").is(":checked") ? "http://10.0.0.59:5000/call/led-1/turn_on" : "http://10.0.0.59:5000/call/led-1/turn_off",
+    type: "GET"
+  });
+});
+</script>
