@@ -1,10 +1,11 @@
 import importlib
+import inspect
 import os.path
 import sys
 from argparse import ArgumentParser
 from http import HTTPStatus
 from os.path import join, expanduser
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Callable
 
 import flask
 from flask import Flask, request, abort, Response
@@ -31,136 +32,147 @@ class RpiFlask(Flask):
 
         self.components[component.id] = component
 
-    def write_component_html_files(
+    def write_ui_elements(
             self,
             host: str,
             port: int,
             dir_path: str
     ):
         """
-        Write component HTML files in the current Flask application.
+        Write UI elements for RPI components in the current Flask application.
 
         :param host: Host serving the Flask application.
         :param port: Port serving the Flask application.
-        :param dir_path: Directory in which to write component HTML files (will be created if it does not exist).
+        :param dir_path: Directory in which to write UI element files (will be created if it does not exist).
         """
 
         if not os.path.exists(dir_path):
             os.mkdir(dir_path)
 
         for component in self.components.values():
-            element_id, html_js = self.get_html_js(component, host, port)
-            with open(join(dir_path, f'{element_id}.html'), 'w') as component_file:
-                component_file.write(html_js)
+            for element_id, element in self.get_ui_elements(component, host, port):
+                with open(join(dir_path, f'{element_id}.html'), 'w') as component_file:
+                    component_file.write(f'{element}\n')
 
     @staticmethod
-    def get_html_js(
+    def get_ui_elements(
             component: Component,
             host: str,
             port: int,
     ) -> List[Tuple[str, str]]:
         """
-        Get HTML for a component, including the UI elements and client-side JavaScript for handling UI events.
+        Get UI elements for a component.
 
         :param component: Component.
         :param host: Host serving the Flask application.
         :param port: Port serving the Flask application.
-        :return: List of 2-tuples of (1) element keys and (2) HTML/JavaScript elements for the components.
+        :return: List of 2-tuples of (1) element keys and (2) UI elements for the component.
         """
 
         if isinstance(component, LED):
-            return [
-                RpiFlask.get_switch_html_js(component.id, host, port, 'turn_on', 'turn_off')
+            elements = [
+                RpiFlask.get_switch(component.id, host, port, LED.turn_on, LED.turn_off)
             ]
         elif isinstance(component, DcMotor):
-            return [
-                RpiFlask.get_switch_html_js(component.id, host, port, 'start', 'stop'),
-                RpiFlask.get_range_html_js(component.id, -100, 100, 1, host, port, 'set_speed', 'speed')
+            elements = [
+                RpiFlask.get_switch(component.id, host, port, DcMotor.start, DcMotor.stop),
+                RpiFlask.get_range(component.id, -100, 100, 1, host, port, DcMotor.set_speed)
             ]
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
 
+        return elements
+
     @staticmethod
-    def get_switch_html_js(
-            switch_id: str,
+    def get_switch(
+            component_id: str,
             host: str,
             port: int,
-            on_function: str,
-            off_function: str
+            on_function: Callable[[], None],
+            off_function: Callable[[], None]
     ) -> Tuple[str, str]:
         """
-        Get switch HTML/JavaScript.
+        Get switch UI element.
 
-        :param switch_id: Switch id.
+        :param component_id: Component id.
         :param host: Host.
         :param port: Port.
-        :param on_function: On function name.
-        :param off_function: Off function name.
-        :return: 2-tuple of (1) id and (2) HTML/JavaScript.
+        :param on_function: Function to call when switch is flipped on.
+        :param off_function: Function to call when switch is flipped off.
+        :return: 2-tuple of (1) element id and (2) UI element.
         """
 
-        element_id = f'{switch_id}-{on_function}-{off_function}'
+        on_function_name = on_function.__name__
+        off_function_name = off_function.__name__
+
+        element_id = f'{component_id}-{on_function_name}-{off_function_name}'
 
         return (
             element_id,
             (
                 f'<div class="form-check form-switch">\n'
-                f'  <label class="form-check-label" for="{element_id}">{switch_id} {on_function}/{off_function}</label>\n'
+                f'  <label class="form-check-label" for="{element_id}">{component_id} {on_function_name}/{off_function_name}</label>\n'
                 f'  <input class="form-check-input" type="checkbox" role="switch" id="{element_id}" />\n'
                 f'</div>\n'
                 f'<script>\n'
                 f'$("#{element_id}").on("change", function () {{\n'
                 f'  $.ajax({{\n'
-                f'    url: $("#{element_id}").is(":checked") ? "http://{host}:{port}/call/{switch_id}/{on_function}" : "http://{host}:{port}/call/{switch_id}/{off_function}",\n'
+                f'    url: $("#{element_id}").is(":checked") ? "http://{host}:{port}/call/{component_id}/{on_function_name}" : "http://{host}:{port}/call/{component_id}/{off_function_name}",\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'}});\n'
-                f'</script>\n'
+                f'</script>'
             )
         )
 
     @staticmethod
-    def get_range_html_js(
-            range_id: str,
+    def get_range(
+            component_id: str,
             min_value: int,
             max_value: int,
             step: int,
             host: str,
             port: int,
-            on_input_function: str,
-            on_input_param: str
+            on_input_function: Callable[[int], None]
     ) -> Tuple[str, str]:
         """
-        Get range HTML/JavaScript.
+        Get range UI element.
 
-        :param range_id: Range id.
+        :param component_id: Component id.
         :param min_value: Minimum value.
         :param max_value: Maximum value.
         :param step: Step.
         :param host: Host.
         :param port: Port.
-        :param on_input_function: On input function name.
-        :param on_input_param: On input parameter name.
-        :return: 2-tuple of (1) id and (2) HTML/JavaScript.
+        :param on_input_function: Function to call when range value changes.
+        :return: 2-tuple of (1) element id and (2) UI element.
         """
 
-        element_id = f'{range_id}-{on_input_function}'
+        on_input_function_name = on_input_function.__name__
+
+        element_id = f'{component_id}-{on_input_function_name}'
+
+        non_self_params = [k for k, v in inspect.signature(on_input_function).parameters.items() if k != 'self']
+        if len(non_self_params) != 1:
+            raise ValueError('Function for range must contain exactly 1 parameter.')
+
+        on_input_param = non_self_params[0]
 
         return (
             element_id,
             (
                 f'<div class="range">\n'
-                f'  <label for="{element_id}" class="form-label">{range_id} {on_input_function}</label>\n'
+                f'  <label for="{element_id}" class="form-label">{component_id} {on_input_function_name}</label>\n'
                 f'  <input type="range" class="form-range" min="{min_value}" max="{max_value}" step="{step}" id="{element_id}" />\n'
                 f'</div>\n'
                 f'<script>\n'
                 f'$("#{element_id}").on("input", function () {{\n'
                 f'  $.ajax({{\n'
-                f'    url: "http://{host}:{port}/call/{range_id}/{on_input_function}?{on_input_param}=int:" + $("#{element_id}")[0].value,\n'
+                f'    url: "http://{host}:{port}/call/{component_id}/{on_input_function_name}?{on_input_param}=int:" + $("#{element_id}")[0].value,\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'}});\n'
-                f'</script>\n'
+                f'</script>'
             )
         )
 
@@ -295,7 +307,7 @@ def write_component_files_cli(
     else:
         raise ValueError(f'Module {app_module_name} does not contain an "app" attribute, and no other name is specified.')
 
-    app_to_write.write_component_html_files(
+    app_to_write.write_ui_elements(
         host=args.host,
         port=args.port,
         dir_path=expanduser(args.dir_path)
