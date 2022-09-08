@@ -52,8 +52,10 @@ class RpiFlask(Flask):
 
         for component in self.components.values():
             for element_id, element in self.get_ui_elements(component, host, port):
-                with open(join(dir_path, f'{element_id}.html'), 'w') as component_file:
+                path = join(dir_path, f'{element_id}.html')
+                with open(path, 'w') as component_file:
                     component_file.write(f'{element}\n')
+                print(f'Wrote {path}')
 
     @staticmethod
     def get_ui_elements(
@@ -86,8 +88,7 @@ class RpiFlask(Flask):
             ]
         elif isinstance(component, Stepper):
             elements = [
-                RpiFlask.get_switch(component.id, host, port, component.start, component.stop),
-
+                RpiFlask.get_switch(component.id, host, port, component.start, component.stop)
             ]
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
@@ -303,28 +304,41 @@ def write_component_files_cli(
         help='Path in which to write the component files. Will be created if it does not exist.'
     )
 
-    args = arg_parser.parse_args(args)
+    parsed_args = arg_parser.parse_args(args)
 
     # get the app module and attribute name
-    app_args = args.app.split(':')
+    app_args = parsed_args.app.split(':')
     app_module_name = app_args[0]
-    app_name = None
+    app_name = 'app'
     if len(app_args) == 2:
         app_name = app_args[1]
     elif len(app_args) > 2:
-        raise ValueError(f'Invalid app argument:  {args.app}')
+        raise ValueError(f'Invalid app argument:  {parsed_args.app}')
 
     # load module and app
-    app_module = importlib.import_module(app_module_name)
-    if app_name is None and hasattr(app_module, 'app'):
-        app_to_write = getattr(app_module, 'app')
-    elif app_name is not None and hasattr(app_module, app_name):
-        app_to_write = getattr(app_module, app_name)
-    else:
-        raise ValueError(f'Module {app_module_name} does not contain an "app" attribute, and no other name is specified.')
+    app_to_write = None
+    for prefix in [''] + [f'{s}.' for s in list(reversed(os.getcwd().split(os.sep))) if s != '']:
 
-    app_to_write.write_ui_elements(
-        host=args.host,
-        port=args.port,
-        dir_path=expanduser(args.dir_path)
-    )
+        app_module_name = f'{prefix}{app_module_name}'
+
+        try:
+            app_module = importlib.import_module(app_module_name)
+            print(f'Checking module {app_module_name} for {app_name}.')
+        except ModuleNotFoundError:
+            continue
+
+        if hasattr(app_module, app_name):
+            app_to_write = getattr(app_module, app_name)
+            print(f'Found {app_name} in module {app_module_name}')
+            break
+        else:
+            print(f'Did not find {app_name} in module {app_module_name}')
+
+    if app_to_write is None:
+        print(f'Failed to find {app_name} in {parsed_args.app}. Nothing to write.')
+    else:
+        app_to_write.write_ui_elements(
+            host=parsed_args.host,
+            port=parsed_args.port,
+            dir_path=expanduser(parsed_args.dir_path)
+        )

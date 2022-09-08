@@ -15,6 +15,7 @@ def setup():
     Set up the GPIO interface.
     """
 
+    gpio.setwarnings(False)
     gpio.setmode(gpio.BOARD)
 
 
