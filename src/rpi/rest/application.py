@@ -3,6 +3,7 @@ import inspect
 import os.path
 import sys
 from argparse import ArgumentParser
+from datetime import timedelta
 from http import HTTPStatus
 from os.path import join, expanduser
 from typing import List, Optional, Tuple, Callable
@@ -12,7 +13,7 @@ from flask import Flask, request, abort, Response
 
 from rpi.gpio import Component
 from rpi.gpio.lights import LED
-from rpi.gpio.motors import DcMotor
+from rpi.gpio.motors import DcMotor, Servo, Stepper
 
 
 class RpiFlask(Flask):
@@ -71,12 +72,22 @@ class RpiFlask(Flask):
 
         if isinstance(component, LED):
             elements = [
-                RpiFlask.get_switch(component.id, host, port, LED.turn_on, LED.turn_off)
+                RpiFlask.get_switch(component.id, host, port, component.turn_on, component.turn_off)
             ]
         elif isinstance(component, DcMotor):
             elements = [
-                RpiFlask.get_switch(component.id, host, port, DcMotor.start, DcMotor.stop),
-                RpiFlask.get_range(component.id, -100, 100, 1, host, port, DcMotor.set_speed)
+                RpiFlask.get_switch(component.id, host, port, component.start, component.stop),
+                RpiFlask.get_range(component.id, -100, 100, 1, host, port, component.set_speed)
+            ]
+        elif isinstance(component, Servo):
+            elements = [
+                RpiFlask.get_switch(component.id, host, port, component.start, component.stop),
+                RpiFlask.get_range(component.id, 0, 180, 1, host, port, component.set_degrees)
+            ]
+        elif isinstance(component, Stepper):
+            elements = [
+                RpiFlask.get_switch(component.id, host, port, component.start, component.stop),
+
             ]
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
@@ -229,18 +240,23 @@ def call(
     arg_types = {
         'int': int,
         'str': str,
-        'float': float
+        'float': float,
+        'days': lambda days: timedelta(days=days),
+        'hours': lambda hours: timedelta(hours=hours),
+        'minutes': lambda minutes: timedelta(minutes=minutes),
+        'seconds': lambda seconds: timedelta(seconds=seconds),
+        'milliseconds': lambda milliseconds: timedelta(milliseconds=milliseconds)
     }
 
-    args = {
-        n: arg_types[t.split(':')[0]](t.split(':')[1])
-        for n, t in request.args.to_dict().items()
-    }
+    arg_value = {}
+    for arg_name, type_value_str in request.args.to_dict().items():
+        type_str, value_str = type_value_str.split(':', maxsplit=1)
+        arg_value[arg_name] = arg_types[type_str](value_str)
 
     component = app.components[component_id]
     if hasattr(component, function_name):
         f = getattr(component, function_name)
-        f(**args)
+        f(**arg_value)
         response = flask.jsonify(component.get_state().__dict__)
         return response
     else:
