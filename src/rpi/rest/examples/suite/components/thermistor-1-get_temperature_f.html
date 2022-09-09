@@ -1,13 +1,13 @@
 <div>
-  <label id="thermistor-1-get_temperature_f">temperature_f:  N/A</label>
+  <label id="thermistor-1-get_temperature_f">get_temperature_f:  N/A</label>
 </div>
 <script>
 function read_value() {
   $.ajax({
     url: "http://10.0.0.59:5000/call/thermistor-1/get_temperature_f",
     type: "GET",
-    success: async function (state) {
-      document.getElementById('thermistor-1-get_temperature_f').innerHTML = "temperature_f:  " + state.temperature_f;
+    success: async function (return_value) {
+      document.getElementById('thermistor-1-get_temperature_f').innerHTML = "get_temperature_f:  " + return_value;
       await new Promise(r => setTimeout(r, 5000));
       read_value();
     }
