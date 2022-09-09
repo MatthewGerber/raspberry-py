@@ -14,6 +14,7 @@ from flask import Flask, request, abort, Response
 from rpi.gpio import Component
 from rpi.gpio.lights import LED
 from rpi.gpio.motors import DcMotor, Servo, Stepper
+from rpi.gpio.sensors import Thermistor
 
 
 class RpiFlask(Flask):
@@ -89,6 +90,10 @@ class RpiFlask(Flask):
         elif isinstance(component, Stepper):
             elements = [
                 RpiFlask.get_switch(component.id, host, port, component.start, component.stop)
+            ]
+        elif isinstance(component, Thermistor):
+            elements = [
+                RpiFlask.get_refreshing_label(component.id, host, port, component.get_temperature_f)
             ]
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')

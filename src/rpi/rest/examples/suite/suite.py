@@ -1,6 +1,8 @@
 from flask_cors import CORS
+from smbus2 import SMBus
 
 from rpi.gpio import setup, CkPin
+from rpi.gpio.adc import ADS7830
 from rpi.gpio.lights import LED
 from rpi.gpio.motors import DcMotor, Servo, Stepper
 from rpi.gpio.sensors import Thermistor, Hygrothermograph, InfraredMotionSensor, UltrasonicRangeFinder
@@ -12,6 +14,18 @@ CORS(app)
 
 # set up gpio
 setup()
+
+# some components require a/d conversion
+thermistor_ad_channel = 0
+adc = ADS7830(
+    input_voltage=3.3,
+    bus=SMBus('/dev/i2c-1'),
+    address=ADS7830.ADDRESS,
+    command=ADS7830.COMMAND,
+    channel_rescaled_range={
+        thermistor_ad_channel: None
+    }
+)
 
 motor = DcMotor(
     enable_pin=CkPin.GPIO22,
@@ -49,11 +63,12 @@ app.add_component(servo)
 # stepper.id = 'stepper-1'
 # app.add_component(stepper)
 #
-# thermistor = Thermistor(
-#
-# )
-# thermistor.id = 'thermistor-1'
-# app.add_component(thermistor)
+thermistor = Thermistor(
+    adc=adc,
+    channel=thermistor_ad_channel
+)
+thermistor.id = 'thermistor-1'
+app.add_component(thermistor)
 #
 # hygrothermograph = Hygrothermograph(
 #

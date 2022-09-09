@@ -1,0 +1,17 @@
+<div>
+  <label id="thermistor-1">N/A</label>
+</div>
+<script>
+function read_value() {
+  $.ajax({
+    url: "http://10.0.0.59:5000/call/thermistor-1/get_temperature_f",
+    type: "GET",
+    success: async function (data) {
+      document.getElementById('thermistor-1').innerHTML = data.toString();
+      await new Promise(r => setTimeout(r, 1000));
+      read_value();
+    }
+  });
+}
+read_value();
+</script>
