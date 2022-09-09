@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 from datetime import timedelta
 from http import HTTPStatus
 from os.path import join, expanduser
-from typing import List, Optional, Tuple, Callable
+from typing import List, Optional, Tuple, Callable, Any
 
 import flask
 from flask import Flask, request, abort, Response
@@ -93,7 +93,7 @@ class RpiFlask(Flask):
             ]
         elif isinstance(component, Thermistor):
             elements = [
-                RpiFlask.get_refreshing_label(component.id, host, port, component.get_temperature_f, 'temperature_f', timedelta(seconds=1))
+                RpiFlask.get_refreshing_label(component.id, host, port, component.get_temperature_f, timedelta(seconds=1))
             ]
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
@@ -193,6 +193,51 @@ class RpiFlask(Flask):
             )
         )
 
+    @staticmethod
+    def get_refreshing_label(
+            component_id: str,
+            host: str,
+            port: int,
+            function: Callable[[], Any],
+            refresh_interval: timedelta
+    ):
+        """
+        Get label that refreshes periodically.
+
+        :param component_id: Component id.
+        :param host: Host.
+        :param port: Port.
+        :param function: Function to call to obtain new value.
+        :param refresh_interval: How long to wait between refresh calls.
+        :return: 2-tuple of (1) element id and (2) UI element.
+        """
+
+        function_name = function.__name__
+        element_id = f'{component_id}-{function_name}'
+
+        return (
+            element_id,
+            (
+                f'<div>\n'
+                f'  <label id="{element_id}">{function_name}:  N/A</label>\n'
+                f'</div>\n'
+                f'<script>\n'
+                f'function read_value() {{\n'
+                f'  $.ajax({{\n'
+                f'    url: "http://{host}:{port}/call/{component_id}/{function_name}",\n'
+                f'    type: "GET",\n'
+                f'    success: async function (return_value) {{\n'
+                f'      document.getElementById("{element_id}").innerHTML = "{function_name}:  " + return_value;\n'
+                f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
+                f'      read_value();\n'
+                f'    }}\n'
+                f'  }});\n'
+                f'}}\n'
+                f'read_value();\n'
+                f'</script>'
+            )
+        )
+
     def __init__(
             self,
             import_name: str
@@ -262,9 +307,7 @@ def call(
     component = app.components[component_id]
     if hasattr(component, function_name):
         f = getattr(component, function_name)
-        f(**arg_value)
-        response = flask.jsonify(component.get_state().__dict__)
-        return response
+        return flask.jsonify(f(**arg_value))
     else:
         abort(HTTPStatus.NOT_FOUND, f'Component {component} (id={component_id}) does not have a function named {function_name}.')
 
