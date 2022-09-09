@@ -93,7 +93,7 @@ class RpiFlask(Flask):
             ]
         elif isinstance(component, Thermistor):
             elements = [
-                RpiFlask.get_refreshing_label(component.id, host, port, component.get_temperature_f)
+                RpiFlask.get_refreshing_label(component.id, host, port, component.get_temperature_f, 'temperature_f', timedelta(seconds=1))
             ]
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
