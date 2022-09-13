@@ -2,6 +2,7 @@ import time
 
 from smbus2 import SMBus
 
+from rpi.gpio import cleanup
 from rpi.gpio.adc import ADS7830
 
 
@@ -26,7 +27,10 @@ def main():
             print(f'ADC Value: {digital_value}, Voltage : {voltage:.2f}')
             time.sleep(0.5)
     except KeyboardInterrupt:
-        adc.close()
+        pass
+
+    adc.close()
+    cleanup()
 
 
 if __name__ == '__main__':

@@ -10,6 +10,106 @@ from rpi.gpio import Component
 from rpi.gpio.adc import AdcDevice
 
 
+class Photoresistor(Component):
+    """
+    Photoresistor, to be connected via ADC.
+    """
+
+    class State(Component.State):
+        """
+        Photoresistor state.
+        """
+
+        def __init__(
+                self,
+                light_level: Optional[float]
+        ):
+            """
+            Initialize the state.
+
+            :param light_level: Light level (0-100, unitless).
+            """
+
+            self.light_level = light_level
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
+            """
+            Check equality with another state.
+
+            :param other: State.
+            :return: True if equal and False otherwise.
+            """
+
+            if not isinstance(other, Photoresistor.State):
+                raise ValueError(f'Expected a {Photoresistor.State}')
+
+            return self.light_level == other.light_level
+
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return str(self.light_level)
+
+    def update_state(
+            self
+    ):
+        """
+        Update state.
+        """
+
+        self.adc.update_state()
+
+    def get_light_level(
+            self
+    ) -> float:
+        """
+        Get light level.
+
+        :return: Light level.
+        """
+
+        self.adc.update_state()
+
+        state: Photoresistor.State = self.state
+
+        return state.light_level
+
+    def __init__(
+            self,
+            adc: AdcDevice,
+            channel: int
+    ):
+        """
+        Initialize the photoresistor.
+
+        :param adc: Analog-to-digital converter.
+        :param channel: Analog-to-digital channel on which to monitor values from the photoresistor.
+        """
+
+        super().__init__(Photoresistor.State(light_level=None))
+
+        self.adc = adc
+        self.channel = channel
+
+        # listen for events from the adc and update light level when they occur
+        self.adc.event(
+            lambda s: self.set_state(
+                Photoresistor.State(
+                    light_level=s.channel_value[self.channel]
+                )
+            )
+        )
+
+
 class Thermistor(Component):
     """
     Thermistor, to be connected via ADC.

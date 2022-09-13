@@ -5,6 +5,7 @@
 # auther      : www.freenove.com
 # modification: 2019/12/28
 ########################################################################
+from rpi.gpio import cleanup
 from rpi.gpio.freenove import MPU6050
 import time
 
@@ -34,6 +35,8 @@ def main():
             time.sleep(0.1)
     except KeyboardInterrupt:
         pass
+
+    cleanup()
 
 
 if __name__ == '__main__':

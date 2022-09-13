@@ -3,9 +3,10 @@ import time
 import RPi.GPIO as gpio
 from smbus2 import SMBus
 
-from rpi.gpio import setup, cleanup, CkPin, Clock
+from rpi.gpio import setup, cleanup, CkPin
 from rpi.gpio.adc import ADS7830
 from rpi.gpio.lights import LED
+from rpi.gpio.sensors import Photoresistor
 
 
 def main():
@@ -21,21 +22,31 @@ def main():
     led_pwm = gpio.PWM(led.output_pin, 500)
     led_pwm.start(0)
 
-    # read value from photoresistor
+    photoresistor_channel = 0
+
+    # create a/d converter
     adc = ADS7830(
         input_voltage=3.3,
         bus=SMBus('/dev/i2c-1'),
         address=ADS7830.ADDRESS,
         command=ADS7830.COMMAND,
-        channel_rescaled_range={0: (0, 100)}
+        channel_rescaled_range={photoresistor_channel: (0, 100)}
     )
-    adc.event(lambda s: led_pwm.ChangeDutyCycle(100.0 - s.channel_value[0]))
-    clock = Clock(tick_interval_seconds=0.5)
-    clock.event(lambda _: adc.update_state())
-    clock.start()
 
-    time.sleep(60)
-    clock.stop()
+    # create thermistor on adc
+    photoresistor = Photoresistor(
+        adc=adc,
+        channel=photoresistor_channel
+    )
+
+    try:
+        while True:
+            light_level = photoresistor.get_light_level()
+            led_pwm.ChangeDutyCycle(100.0 - light_level)
+            time.sleep(0.25)
+    except KeyboardInterrupt:
+        pass
+
     led_pwm.stop()
     adc.close()
     cleanup()

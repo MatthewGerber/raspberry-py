@@ -17,8 +17,10 @@ def main():
             lcd.message(datetime.now().strftime('    %H:%M:%S'))
             sleep(0.5)
     except KeyboardInterrupt:
-        lcd.clear()
-        lcd.pcf8574.destroy()
+        pass
+
+    lcd.clear()
+    lcd.pcf8574.destroy()
 
 
 if __name__ == '__main__':

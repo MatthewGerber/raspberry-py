@@ -4,9 +4,8 @@ from smbus2 import SMBus
 from rpi.gpio import setup, CkPin
 from rpi.gpio.adc import ADS7830
 from rpi.gpio.lights import LED
-from rpi.gpio.motors import DcMotor, Servo, Stepper
-from rpi.gpio.sensors import Thermistor, Hygrothermograph, InfraredMotionSensor, UltrasonicRangeFinder
-from rpi.gpio.sounds import ActiveBuzzer, PassiveBuzzer
+from rpi.gpio.motors import DcMotor, Servo
+from rpi.gpio.sensors import Thermistor, Photoresistor
 from rpi.rest.application import app
 
 # allow cross-site access from an html front-end
@@ -17,13 +16,15 @@ setup()
 
 # some components require a/d conversion
 thermistor_ad_channel = 0
+photoresistor_ad_channel = 1
 adc = ADS7830(
     input_voltage=3.3,
     bus=SMBus('/dev/i2c-1'),
     address=ADS7830.ADDRESS,
     command=ADS7830.COMMAND,
     channel_rescaled_range={
-        thermistor_ad_channel: None
+        thermistor_ad_channel: None,
+        photoresistor_ad_channel: (0, 100)
     }
 )
 
@@ -63,6 +64,13 @@ app.add_component(servo)
 # stepper.id = 'stepper-1'
 # app.add_component(stepper)
 #
+photoresistor = Photoresistor(
+    adc=adc,
+    channel=photoresistor_ad_channel
+)
+photoresistor.id = 'photoresistor-1'
+app.add_component(photoresistor)
+
 thermistor = Thermistor(
     adc=adc,
     channel=thermistor_ad_channel
