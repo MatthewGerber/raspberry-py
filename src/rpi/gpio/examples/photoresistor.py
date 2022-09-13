@@ -30,7 +30,9 @@ def main():
         bus=SMBus('/dev/i2c-1'),
         address=ADS7830.ADDRESS,
         command=ADS7830.COMMAND,
-        channel_rescaled_range={photoresistor_channel: (0, 100)}
+
+        # increased light -> increased resistance -> lower digital value
+        channel_rescaled_range={photoresistor_channel: (100, 0)}
     )
 
     # create thermistor on adc
@@ -42,8 +44,9 @@ def main():
     try:
         while True:
             light_level = photoresistor.get_light_level()
-            led_pwm.ChangeDutyCycle(100.0 - light_level)
-            time.sleep(0.25)
+            print(f'Light level:  {light_level}')
+            led_pwm.ChangeDutyCycle(light_level)
+            time.sleep(0.5)
     except KeyboardInterrupt:
         pass
 

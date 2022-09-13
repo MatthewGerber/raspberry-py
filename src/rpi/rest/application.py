@@ -218,6 +218,7 @@ class RpiFlask(Flask):
 
         function_name = function.__name__
         element_id = f'{component_id}-{function_name}'
+        read_value_function_name = f'read_value_{element_id}'.replace('-', '_')
 
         return (
             element_id,
@@ -226,18 +227,18 @@ class RpiFlask(Flask):
                 f'  <label id="{element_id}">{function_name}:  N/A</label>\n'
                 f'</div>\n'
                 f'<script>\n'
-                f'function read_value() {{\n'
+                f'function {read_value_function_name}() {{\n'
                 f'  $.ajax({{\n'
                 f'    url: "http://{host}:{port}/call/{component_id}/{function_name}",\n'
                 f'    type: "GET",\n'
                 f'    success: async function (return_value) {{\n'
                 f'      document.getElementById("{element_id}").innerHTML = "{function_name}:  " + return_value;\n'
                 f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
-                f'      read_value();\n'
+                f'      {read_value_function_name}();\n'
                 f'    }}\n'
                 f'  }});\n'
                 f'}}\n'
-                f'read_value();\n'
+                f'{read_value_function_name}();\n'
                 f'</script>'
             )
         )

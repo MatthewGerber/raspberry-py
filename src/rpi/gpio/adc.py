@@ -78,20 +78,28 @@ class AdcDevice(Component, ABC):
 
         for channel in self.channel_rescaled_range:
 
-            # read native value and ensure that it is in range
-            value = self.analog_read(channel)
-            if not self.digital_range[0] <= value <= self.digital_range[1]:
+            digital_value = self.analog_read(channel)
+            if not self.digital_range[0] <= digital_value <= self.digital_range[1]:
                 raise ValueError('Out of range.')
 
-            # rescale if a range is provided for the channel
+            # get rescaled range and check for reversed range
             rescaled_range = self.channel_rescaled_range[channel]
-            if rescaled_range is not None:
-                native_range_total = self.digital_range[1] - self.digital_range[0]
-                native_range_fraction = (value - self.digital_range[0]) / native_range_total
-                rescaled_range_total = rescaled_range[1] - rescaled_range[0]
-                value = rescaled_range[0] + native_range_fraction * rescaled_range_total
+            reversed_range = rescaled_range is not None and rescaled_range[0] > rescaled_range[1]
+            if reversed_range:
+                rescaled_range = sorted(rescaled_range)
 
-            channel_value[channel] = value
+            # rescale if a range is provided for the channel
+            if rescaled_range is not None:
+
+                digital_range_total = self.digital_range[1] - self.digital_range[0]
+                digital_range_fraction = (digital_value - self.digital_range[0]) / digital_range_total
+                if reversed_range:
+                    digital_range_fraction = 1.0 - digital_range_fraction
+
+                rescaled_range_total = rescaled_range[1] - rescaled_range[0]
+                digital_value = rescaled_range[0] + digital_range_fraction * rescaled_range_total
+
+            channel_value[channel] = digital_value
 
         self.set_state(AdcDevice.State(channel_value=channel_value))
 
@@ -115,6 +123,9 @@ class AdcDevice(Component, ABC):
             value_range = self.digital_range
 
         range_min, range_max = value_range
+        if range_min > range_max:
+            raise ValueError('It does not make much sense to invert a reversed range.')
+
         range_total = range_max - range_min
         range_fraction = 1.0 - (value - range_min) / range_total
 

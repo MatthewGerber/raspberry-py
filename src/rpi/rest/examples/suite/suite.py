@@ -24,7 +24,7 @@ adc = ADS7830(
     command=ADS7830.COMMAND,
     channel_rescaled_range={
         thermistor_ad_channel: None,
-        photoresistor_ad_channel: (0, 100)
+        photoresistor_ad_channel: (100, 0)
     }
 )
 
