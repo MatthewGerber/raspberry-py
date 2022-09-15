@@ -3,16 +3,19 @@ import inspect
 import os.path
 import sys
 from argparse import ArgumentParser
+from datetime import timedelta
 from http import HTTPStatus
 from os.path import join, expanduser
-from typing import List, Optional, Tuple, Callable
+from typing import List, Optional, Tuple, Callable, Any
 
 import flask
 from flask import Flask, request, abort, Response
 
 from rpi.gpio import Component
 from rpi.gpio.lights import LED
-from rpi.gpio.motors import DcMotor
+from rpi.gpio.motors import DcMotor, Servo, Stepper
+from rpi.gpio.sensors import Thermistor, Photoresistor
+from rpi.gpio.sounds import ActiveBuzzer
 
 
 class RpiFlask(Flask):
@@ -51,8 +54,10 @@ class RpiFlask(Flask):
 
         for component in self.components.values():
             for element_id, element in self.get_ui_elements(component, host, port):
-                with open(join(dir_path, f'{element_id}.html'), 'w') as component_file:
+                path = join(dir_path, f'{element_id}.html')
+                with open(path, 'w') as component_file:
                     component_file.write(f'{element}\n')
+                print(f'Wrote {path}')
 
     @staticmethod
     def get_ui_elements(
@@ -71,12 +76,33 @@ class RpiFlask(Flask):
 
         if isinstance(component, LED):
             elements = [
-                RpiFlask.get_switch(component.id, host, port, LED.turn_on, LED.turn_off)
+                RpiFlask.get_switch(component.id, host, port, component.turn_on, component.turn_off)
             ]
         elif isinstance(component, DcMotor):
             elements = [
-                RpiFlask.get_switch(component.id, host, port, DcMotor.start, DcMotor.stop),
-                RpiFlask.get_range(component.id, -100, 100, 1, host, port, DcMotor.set_speed)
+                RpiFlask.get_switch(component.id, host, port, component.start, component.stop),
+                RpiFlask.get_range(component.id, -100, 100, 1, host, port, component.set_speed)
+            ]
+        elif isinstance(component, Servo):
+            elements = [
+                RpiFlask.get_switch(component.id, host, port, component.start, component.stop),
+                RpiFlask.get_range(component.id, 0, 180, 1, host, port, component.set_degrees)
+            ]
+        elif isinstance(component, Stepper):
+            elements = [
+                RpiFlask.get_switch(component.id, host, port, component.start, component.stop)
+            ]
+        elif isinstance(component, Photoresistor):
+            elements = [
+                RpiFlask.get_label(component.id, host, port, component.get_light_level, timedelta(seconds=1))
+            ]
+        elif isinstance(component, Thermistor):
+            elements = [
+                RpiFlask.get_label(component.id, host, port, component.get_temperature_f, timedelta(seconds=1))
+            ]
+        elif isinstance(component, ActiveBuzzer):
+            elements = [
+                RpiFlask.get_button(component.id, host, port, component.buzz, 'duration=seconds:0.5')
             ]
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
@@ -176,6 +202,94 @@ class RpiFlask(Flask):
             )
         )
 
+    @staticmethod
+    def get_label(
+            component_id: str,
+            host: str,
+            port: int,
+            function: Callable[[], Any],
+            refresh_interval: timedelta
+    ) -> Tuple[str, str]:
+        """
+        Get label that refreshes periodically.
+
+        :param component_id: Component id.
+        :param host: Host.
+        :param port: Port.
+        :param function: Function to call to obtain new value.
+        :param refresh_interval: How long to wait between refresh calls.
+        :return: 2-tuple of (1) element id and (2) UI element.
+        """
+
+        function_name = function.__name__
+        element_id = f'{component_id}-{function_name}'
+        read_value_function_name = f'read_value_{element_id}'.replace('-', '_')
+
+        return (
+            element_id,
+            (
+                f'<div>\n'
+                f'  <label id="{element_id}">{function_name}:  N/A</label>\n'
+                f'</div>\n'
+                f'<script>\n'
+                f'function {read_value_function_name}() {{\n'
+                f'  $.ajax({{\n'
+                f'    url: "http://{host}:{port}/call/{component_id}/{function_name}",\n'
+                f'    type: "GET",\n'
+                f'    success: async function (return_value) {{\n'
+                f'      document.getElementById("{element_id}").innerHTML = "{function_name}:  " + return_value;\n'
+                f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
+                f'      {read_value_function_name}();\n'
+                f'    }}\n'
+                f'  }});\n'
+                f'}}\n'
+                f'{read_value_function_name}();\n'
+                f'</script>'
+            )
+        )
+
+    @staticmethod
+    def get_button(
+            component_id: str,
+            host: str,
+            port: int,
+            function: Callable[[], Any],
+            query: Optional[str]
+    ) -> Tuple[str, str]:
+        """
+        Get button.
+
+        :param component_id: Component id.
+        :param host: Host.
+        :param port: Port.
+        :param function: Function to call.
+        :param query: Query to submit with function call, or None for no query.
+        :return: 2-tuple of (1) element id and (2) UI element.
+        """
+
+        if query is not None and len(query) > 0:
+            query = f"?{query}"
+        else:
+            query = ""
+
+        function_name = function.__name__
+        element_id = f'{component_id}-{function_name}'
+
+        return (
+            element_id,
+            (
+                f'<button type="button" class="btn btn-primary" id="{element_id}">{component_id}</button>\n'
+                f'<script>\n'
+                f'$("#{element_id}").click(function () {{\n'
+                f'  $.ajax({{\n'
+                f'    url: "http://{host}:{port}/call/{component_id}/{function_name}{query}",\n'
+                f'    type: "GET"\n'
+                f'  }});\n'
+                f'}});\n'
+                f'</script>'
+            )
+        )
+
     def __init__(
             self,
             import_name: str
@@ -229,20 +343,23 @@ def call(
     arg_types = {
         'int': int,
         'str': str,
-        'float': float
+        'float': float,
+        'days': lambda days: timedelta(days=float(days)),
+        'hours': lambda hours: timedelta(hours=float(hours)),
+        'minutes': lambda minutes: timedelta(minutes=float(minutes)),
+        'seconds': lambda seconds: timedelta(seconds=float(seconds)),
+        'milliseconds': lambda milliseconds: timedelta(milliseconds=float(milliseconds))
     }
 
-    args = {
-        n: arg_types[t.split(':')[0]](t.split(':')[1])
-        for n, t in request.args.to_dict().items()
-    }
+    arg_value = {}
+    for arg_name, type_value_str in request.args.to_dict().items():
+        type_str, value_str = type_value_str.split(':', maxsplit=1)
+        arg_value[arg_name] = arg_types[type_str](value_str)
 
     component = app.components[component_id]
     if hasattr(component, function_name):
         f = getattr(component, function_name)
-        f(**args)
-        response = flask.jsonify(component.get_state().__dict__)
-        return response
+        return flask.jsonify(f(**arg_value))
     else:
         abort(HTTPStatus.NOT_FOUND, f'Component {component} (id={component_id}) does not have a function named {function_name}.')
 
@@ -287,28 +404,41 @@ def write_component_files_cli(
         help='Path in which to write the component files. Will be created if it does not exist.'
     )
 
-    args = arg_parser.parse_args(args)
+    parsed_args = arg_parser.parse_args(args)
 
     # get the app module and attribute name
-    app_args = args.app.split(':')
+    app_args = parsed_args.app.split(':')
     app_module_name = app_args[0]
-    app_name = None
+    app_name = 'app'
     if len(app_args) == 2:
         app_name = app_args[1]
     elif len(app_args) > 2:
-        raise ValueError(f'Invalid app argument:  {args.app}')
+        raise ValueError(f'Invalid app argument:  {parsed_args.app}')
 
     # load module and app
-    app_module = importlib.import_module(app_module_name)
-    if app_name is None and hasattr(app_module, 'app'):
-        app_to_write = getattr(app_module, 'app')
-    elif app_name is not None and hasattr(app_module, app_name):
-        app_to_write = getattr(app_module, app_name)
-    else:
-        raise ValueError(f'Module {app_module_name} does not contain an "app" attribute, and no other name is specified.')
+    app_to_write = None
+    for prefix in [''] + [f'{s}.' for s in list(reversed(os.getcwd().split(os.sep))) if s != '']:
 
-    app_to_write.write_ui_elements(
-        host=args.host,
-        port=args.port,
-        dir_path=expanduser(args.dir_path)
-    )
+        app_module_name = f'{prefix}{app_module_name}'
+
+        try:
+            app_module = importlib.import_module(app_module_name)
+            print(f'Checking module {app_module_name} for {app_name}.')
+        except ModuleNotFoundError:
+            continue
+
+        if hasattr(app_module, app_name):
+            app_to_write = getattr(app_module, app_name)
+            print(f'Found {app_name} in module {app_module_name}')
+            break
+        else:
+            print(f'Did not find {app_name} in module {app_module_name}')
+
+    if app_to_write is None:
+        print(f'Failed to find {app_name} in {parsed_args.app}. Nothing to write.')
+    else:
+        app_to_write.write_ui_elements(
+            host=parsed_args.host,
+            port=parsed_args.port,
+            dir_path=expanduser(parsed_args.dir_path)
+        )

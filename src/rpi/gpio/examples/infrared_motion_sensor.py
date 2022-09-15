@@ -19,8 +19,10 @@ def main():
     try:
         time.sleep(300)
     except KeyboardInterrupt:
-        led.turn_off()
-        cleanup()
+        pass
+
+    led.turn_off()
+    cleanup()
 
 
 if __name__ == '__main__':

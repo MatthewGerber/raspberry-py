@@ -48,8 +48,10 @@ def main():
             joystick.update_state()
             time.sleep(0.5)
     except KeyboardInterrupt:
-        adc.close()
-        cleanup()
+        pass
+
+    adc.close()
+    cleanup()
 
 
 if __name__ == '__main__':

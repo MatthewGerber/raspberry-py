@@ -42,9 +42,11 @@ def main():
             adc.update_state()
             time.sleep(0.5)
     except KeyboardInterrupt:
-        dc_motor.stop()
-        adc.close()
-        cleanup()
+        pass
+
+    dc_motor.stop()
+    adc.close()
+    cleanup()
 
 
 if __name__ == '__main__':

@@ -2,6 +2,7 @@ import time
 
 from smbus2 import SMBus
 
+from rpi.gpio import cleanup
 from rpi.gpio.adc import ADS7830
 from rpi.gpio.sensors import Thermistor
 
@@ -34,7 +35,10 @@ def main():
             print(f'Degrees (F) : {thermistor.get_temperature_f():.1f}')
             time.sleep(0.25)
     except KeyboardInterrupt:
-        adc.close()
+        pass
+
+    adc.close()
+    cleanup()
 
 
 if __name__ == '__main__':

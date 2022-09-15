@@ -87,9 +87,11 @@ def main():
             thermistor.update_state()
             time.sleep(0.25)
     except KeyboardInterrupt:
-        adc.close()
-        led_bar.turn_off()
-        cleanup()
+        pass
+
+    adc.close()
+    led_bar.turn_off()
+    cleanup()
 
 
 if __name__ == '__main__':

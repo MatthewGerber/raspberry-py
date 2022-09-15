@@ -1,0 +1,9 @@
+<button type="button" class="btn btn-primary" id="active_buzzer-1-buzz">active_buzzer-1</button>
+<script>
+$("#active_buzzer-1-buzz").click(function () {
+  $.ajax({
+    url: "http://10.0.0.59:5000/call/active_buzzer-1/buzz?duration=seconds:0.5",
+    type: "GET"
+  });
+});
+</script>

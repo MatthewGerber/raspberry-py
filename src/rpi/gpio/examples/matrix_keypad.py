@@ -38,8 +38,10 @@ def main():
     try:
         time.sleep(300)
     except KeyboardInterrupt:
-        keypad.stop_scanning()
-        cleanup()
+        pass
+
+    keypad.stop_scanning()
+    cleanup()
 
 
 if __name__ == '__main__':

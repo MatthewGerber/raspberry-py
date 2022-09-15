@@ -1,0 +1,7 @@
+.rpi-div {
+  border:2px solid lightgray;
+  padding: 1rem;
+  margin: 1rem;
+  border-radius:10px;
+  background-color: aliceblue;
+}

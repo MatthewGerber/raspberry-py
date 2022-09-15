@@ -37,6 +37,7 @@ def main():
     except KeyboardInterrupt:
         pass
 
+    pwm.stop()
     cleanup()
 
 

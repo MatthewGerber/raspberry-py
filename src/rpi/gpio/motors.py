@@ -264,6 +264,7 @@ class Servo(Component):
     ) -> float:
         """
         Get PWM duty cycle for the current state.
+
         :return: Duty cycle in [0%,100%].
         """
 

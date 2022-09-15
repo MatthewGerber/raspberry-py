@@ -23,8 +23,10 @@ def main():
     try:
         time.sleep(300)
     except KeyboardInterrupt:
-        sensor.stop_measuring_distance()
-        cleanup()
+        pass
+
+    sensor.stop_measuring_distance()
+    cleanup()
 
 
 if __name__ == '__main__':
