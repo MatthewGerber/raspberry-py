@@ -15,6 +15,7 @@ from rpi.gpio import Component
 from rpi.gpio.lights import LED
 from rpi.gpio.motors import DcMotor, Servo, Stepper
 from rpi.gpio.sensors import Thermistor, Photoresistor
+from rpi.gpio.sounds import ActiveBuzzer
 
 
 class RpiFlask(Flask):
@@ -98,6 +99,10 @@ class RpiFlask(Flask):
         elif isinstance(component, Thermistor):
             elements = [
                 RpiFlask.get_label(component.id, host, port, component.get_temperature_f, timedelta(seconds=1))
+            ]
+        elif isinstance(component, ActiveBuzzer):
+            elements = [
+                RpiFlask.get_button(component.id, host, port, component.buzz, 'duration=seconds:0.5')
             ]
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
@@ -204,7 +209,7 @@ class RpiFlask(Flask):
             port: int,
             function: Callable[[], Any],
             refresh_interval: timedelta
-    ):
+    ) -> Tuple[str, str]:
         """
         Get label that refreshes periodically.
 
@@ -239,6 +244,48 @@ class RpiFlask(Flask):
                 f'  }});\n'
                 f'}}\n'
                 f'{read_value_function_name}();\n'
+                f'</script>'
+            )
+        )
+
+    @staticmethod
+    def get_button(
+            component_id: str,
+            host: str,
+            port: int,
+            function: Callable[[], Any],
+            query: Optional[str]
+    ) -> Tuple[str, str]:
+        """
+        Get button.
+
+        :param component_id: Component id.
+        :param host: Host.
+        :param port: Port.
+        :param function: Function to call.
+        :param query: Query to submit with function call, or None for no query.
+        :return: 2-tuple of (1) element id and (2) UI element.
+        """
+
+        if query is not None and len(query) > 0:
+            query = f"?{query}"
+        else:
+            query = ""
+
+        function_name = function.__name__
+        element_id = f'{component_id}-{function_name}'
+
+        return (
+            element_id,
+            (
+                f'<button type="button" class="btn btn-primary" id="{element_id}">{component_id}</button>\n'
+                f'<script>\n'
+                f'$("#{element_id}").click(function () {{\n'
+                f'  $.ajax({{\n'
+                f'    url: "http://{host}:{port}/call/{component_id}/{function_name}{query}",\n'
+                f'    type: "GET"\n'
+                f'  }});\n'
+                f'}});\n'
                 f'</script>'
             )
         )
@@ -297,11 +344,11 @@ def call(
         'int': int,
         'str': str,
         'float': float,
-        'days': lambda days: timedelta(days=days),
-        'hours': lambda hours: timedelta(hours=hours),
-        'minutes': lambda minutes: timedelta(minutes=minutes),
-        'seconds': lambda seconds: timedelta(seconds=seconds),
-        'milliseconds': lambda milliseconds: timedelta(milliseconds=milliseconds)
+        'days': lambda days: timedelta(days=float(days)),
+        'hours': lambda hours: timedelta(hours=float(hours)),
+        'minutes': lambda minutes: timedelta(minutes=float(minutes)),
+        'seconds': lambda seconds: timedelta(seconds=float(seconds)),
+        'milliseconds': lambda milliseconds: timedelta(milliseconds=float(milliseconds))
     }
 
     arg_value = {}

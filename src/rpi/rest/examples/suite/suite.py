@@ -6,6 +6,7 @@ from rpi.gpio.adc import ADS7830
 from rpi.gpio.lights import LED
 from rpi.gpio.motors import DcMotor, Servo
 from rpi.gpio.sensors import Thermistor, Photoresistor
+from rpi.gpio.sounds import ActiveBuzzer
 from rpi.rest.application import app
 
 # allow cross-site access from an html front-end
@@ -96,11 +97,11 @@ app.add_component(thermistor)
 # ultrasonic_range_finder.id = 'ultrasonic_range_finder-1'
 # app.add_component(ultrasonic_range_finder)
 #
-# active_buzzer = ActiveBuzzer(
-#
-# )
-# active_buzzer.id = 'active_buzzer-1'
-# app.add_component(active_buzzer)
+active_buzzer = ActiveBuzzer(
+    output_pin=CkPin.GPIO5
+)
+active_buzzer.id = 'active_buzzer-1'
+app.add_component(active_buzzer)
 #
 # passive_buzzer = PassiveBuzzer(
 #
