@@ -1,19 +1,12 @@
-from flask_cors import CORS
 from smbus2 import SMBus
 
-from rpi.gpio import setup, CkPin
+from rpi.gpio import CkPin
 from rpi.gpio.adc import ADS7830
 from rpi.gpio.lights import LED
 from rpi.gpio.motors import DcMotor, Servo
 from rpi.gpio.sensors import Thermistor, Photoresistor
 from rpi.gpio.sounds import ActiveBuzzer
 from rpi.rest.application import app
-
-# allow cross-site access from an html front-end
-CORS(app)
-
-# set up gpio
-setup()
 
 # some components require a/d conversion
 thermistor_ad_channel = 0

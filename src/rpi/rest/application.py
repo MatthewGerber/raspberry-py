@@ -11,11 +11,12 @@ from typing import List, Optional, Tuple, Callable, Any
 import flask
 from flask import Flask, request, abort, Response
 
-from rpi.gpio import Component
+from rpi.gpio import Component, setup
 from rpi.gpio.lights import LED
 from rpi.gpio.motors import DcMotor, Servo, Stepper
 from rpi.gpio.sensors import Thermistor, Photoresistor
 from rpi.gpio.sounds import ActiveBuzzer
+from flask_cors import CORS
 
 
 class RpiFlask(Flask):
@@ -307,6 +308,12 @@ class RpiFlask(Flask):
 
 app = RpiFlask(__name__)
 
+# allow cross-site access from an html front-end
+CORS(app)
+
+# set up gpio
+setup()
+
 
 @app.route('/list')
 def list_components() -> Response:
@@ -381,7 +388,7 @@ def write_component_files_cli(
     arg_parser.add_argument(
         '--app',
         type=str,
-        help='Fully-qualified module containing the RPI REST application to write component files for.'
+        help='Name of module containing the RPI REST application to write component files for. Can either be the fully-qualified name or a name relative to the current working directory within the package.'
     )
 
     arg_parser.add_argument(
