@@ -1,14 +1,14 @@
 # RPI
 
 # Overview
-This package provides three related capabilities. First, it provides a high-level, event-driven interface for GPIO 
-circuits running on the Raspberry Pi. Sensors, motors, LEDs -- everything is covered. Second, this package 
-auto-generates a REST API that exposes GPIO circuits for remote interaction. Want to control your GPIO motor from your 
-phone? This is how to do it. Third, this package auto-generates HTML/JavaScript snippets (based on 
-[Material Design for Bootstrap](https://mdbootstrap.com)) the GPIO circuits. These snippets can be embedded in web 
-applications for remote interaction via the REST API. These three capabilities are described in more detail below.
+This package provides two related capabilities. First, it provides a high-level, event-driven Python interface for GPIO 
+circuits running on the Raspberry Pi. Sensors, motors, LEDs -- everything is covered. Second, this package enables 
+remote control of GPIO circuits via REST/HTTP servers. Want to control your GPIO motor from your phone? This is how to 
+do it. This package auto-generates HTML/JavaScript snippets (based on 
+[Material Design for Bootstrap](https://mdbootstrap.com)) for the GPIO circuits, and these snippets can be embedded in 
+web pages for remote interaction via the REST API. These two capabilities are described in more detail below.
 
-## Python Interface for GPIO Circuits
+# Python Interface for GPIO Circuits
 Whereas the lower-level [RPi.GPIO](https://pypi.org/project/RPi.GPIO/) package deals with GPIO input/output pins and 
 high/low values, the RPI package deals with LEDs that are on or off, button switches that are pressed or not, and so on. 
 These abstractions, in combination with an event-driven framework, allow the developer to express the intended circuit 
@@ -63,12 +63,32 @@ Buzzing LED bar with push button (click to watch; Python code [here](https://git
 
 Python code for these and other examples can be found [here](src/rpi/gpio/examples).
 
-## REST API for GPIO Circuits
+# Remote Control of GPIO Circuits via REST/HTML/JavaScript
+Remote control of GPIO circuits is achieved by integrating three components:
+* RpiFlask application:  Instantiates the GPIO circuit components using the Python types described above.
+* Apache HTTP server:  Serves web pages for the RpiFlask application, to be accessed from remote devices like a phone.
+* Flask REST server:  Serves REST endpoints that web page elements (e.g., toggles and sliders) can invoke to control
+the GPIO circuit (e.g., turning a servo motor on/off and setting its angular position).
 
-## HTML/JavaScript for GPIO Circuits
-1. https://ubuntu.com/tutorials/install-and-configure-apache#1-overview
+These components are depicted graphically below and described in more detail in the following sections.
 
-# RPI Operating System and GPIO
+![gpio-rest-html](rpi-flask.png)
+
+A key feature of the present package is that, once the GPIO circuit is built (bottom left of the figure) and the 
+RpiFlask application is written (top left of the figure), generating the HTML/JavaScript elements and the REST endpoints
+is almost fully automated.
+
+## RpiFlask Application
+TODO
+
+## Apache HTTP Server
+TODO 
+1. [Install and configure](https://ubuntu.com/tutorials/install-and-configure-apache#1-overview) an Apache HTTP server.
+
+## Flask REST Server
+TODO
+
+# Ubuntu for RPI with GPIO Configuration
 This package has been developed using the Ubuntu installation described 
 [here](https://matthewgerber.github.io/rlai/raspberry_pi.html#operating-system) (ignore the "Install RLAI" section). By 
 default, Ubuntu does not give the user permission to interact with the GPIO pins of the Raspberry Pi. To grant GPIO 
