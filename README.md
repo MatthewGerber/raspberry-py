@@ -2,11 +2,11 @@
 
 # Overview
 This package provides two related capabilities. First, it provides a high-level, event-driven Python interface for GPIO 
-circuits running on the Raspberry Pi. Sensors, motors, LEDs -- everything is covered. Second, this package enables 
-remote control of GPIO circuits via REST/HTTP servers. Want to control your GPIO motor from your phone? This is how to 
-do it. This package auto-generates HTML/JavaScript snippets (based on 
-[Material Design for Bootstrap](https://mdbootstrap.com)) for the GPIO circuits, and these snippets can be embedded in 
-web pages for remote interaction via the REST API. These two capabilities are described in more detail below.
+circuits running on the Raspberry Pi. Sensors, motors, LEDs, switches, and many other components are covered. 
+Second, this package enables remote control of such circuits via REST APIs invoked from HTML/JavaScript front-ends. Want 
+to control your servo motor remotely from your phone? Look no further. This package auto-generates HTML/JavaScript 
+snippets based on [Material Design for Bootstrap](https://mdbootstrap.com), and these snippets can be embedded in web 
+pages for remote control of the REST APIs. These two capabilities are described in more detail below.
 
 # Python Interface for GPIO Circuits
 Whereas the lower-level [RPi.GPIO](https://pypi.org/project/RPi.GPIO/) package deals with GPIO input/output pins and 
