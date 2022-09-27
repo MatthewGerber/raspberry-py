@@ -3,10 +3,10 @@
 # Overview
 This package provides two related capabilities. First, it provides a high-level, event-driven Python interface for GPIO 
 circuits running on the Raspberry Pi. Sensors, motors, LEDs, switches, and many other components are covered. 
-Second, this package enables remote control of such circuits via REST APIs invoked from HTML/JavaScript front-ends. Want 
-to control your servo motor remotely from your phone? Look no further. This package auto-generates HTML/JavaScript 
-snippets based on [Material Design for Bootstrap](https://mdbootstrap.com), and these snippets can be embedded in web 
-pages for remote control of the REST APIs. These two capabilities are described in more detail below.
+Second, this package enables remote control of GPIO circuits via REST APIs invoked from HTML/JavaScript front-ends. Want 
+to control your servo motor remotely from your phone? Look no further. This package auto-generates HTML/JavaScript for
+GPIO circuits based on [Material Design for Bootstrap](https://mdbootstrap.com). These HTML/JavaScript elements can be 
+embedded in full web pages for remote control of the ciruit.
 
 # Python Interface for GPIO Circuits
 Whereas the lower-level [RPi.GPIO](https://pypi.org/project/RPi.GPIO/) package deals with GPIO input/output pins and 
@@ -72,17 +72,22 @@ the GPIO circuit (e.g., turning a servo motor on/off and setting its angular pos
 
 These components are depicted graphically below and described in more detail in the following sections.
 
-![gpio-rest-html](rpi-flask.png)
+![gpio-rest-html](docs/rpi-flask.png)
 
 A key feature of the present package is that, once the GPIO circuit is built (bottom left of the figure) and the 
 RpiFlask application is written (top left of the figure), generating the HTML/JavaScript elements and the REST endpoints
 is almost fully automated.
 
 ## RpiFlask Application
-The RpiFlask application is a central element of the architecture presented above. Internally, it keep track of 
-circuit components like the servo, specifies how these components are rendered into HTML controls, and specifies how the 
-HTML controls connects back to the circuit components via the REST API. These details are hidden from the developer, who
-only sees a snippet of code like that in the top left of the figure above, reproduced below and found 
+The RpiFlask application is a central element of the architecture presented above. Internally, the RpiFlask application
+has the following responsibilities:
+* Keep track of circuit components like the servo.
+* Specify how circuit components are rendered into HTML controls.
+* Handle calls to the REST endpoints. 
+* Specify how the HTML controls connect to the circuit components via the REST endpoints. 
+
+These are general responsibilities that apply to all GPIO circuits. As such, they are almost completely hidden from the 
+developer, who only writes the code in the top left of the figure above. This code is reproduced below and found 
 [here](https://github.com/MatthewGerber/rpi/blob/main/src/rpi/rest/examples/servo/servo.py):
 ```
 from rpi.gpio import CkPin
@@ -103,28 +108,39 @@ servo.id = 'servo-1'
 
 app.add_component(servo)
 ```
-With just the above lines, the developer specifies an RpiFlask app containing a servo. This is the basis for HTML and 
-REST API generation, which are explained below.
+This code specifies an RpiFlask application containing a servo. It is the basis for HTML/JavaScript and REST API 
+generation, which are explained below.
 
 ## Apache HTTP Server
-Any modern HTTP server should suffice, but this example uses Apache. It is simple to configure on Ubuntu, which I use 
-on my RPI (see farther down the page for Ubuntu installation). 
+This example uses Apache, which is simple to configure on Ubuntu for RPI (see farther down this page for Ubuntu 
+installation on RPI). Any modern HTTP server should suffice.
 [Install and configure](https://ubuntu.com/tutorials/install-and-configure-apache#1-overview) an Apache HTTP server. 
 An example site configuration file can be found 
 [here](https://github.com/MatthewGerber/rpi/blob/main/docs/rpi-rest.conf), though beware of security vulerabilities like 
 lack of HTTPS and potential exposure of files.
 
-Once the Apache HTTP server is configured, it's time to generate some HTML/JavaScript for the RpiFlask application shown
-above. Consider the following command, which is listed above the top black arrow in the above figure:
+Once the Apache HTTP server is configured, it's time to generate HTML/JavaScript controls for the RpiFlask application 
+shown above. Consider the following command, which is listed in the top black arrow in the above figure:
 ```shell
+write_component_files --app rpi.rest.examples.servo.servo --rest-host 10.0.0.59 --rest-port 5000 --dir-path servo/components
 ```
-This command scans the specified module (`servo.servo`) for an `app` variable. If found, the app writes out HTML 
-for each circuit component in the app. A single circuit component like a servo may result in the generation of multiple
-HTML snippets for UI controls. In the case of a servo, there are 
-[two HTML snippets](https://github.com/MatthewGerber/rpi/tree/main/src/rpi/rest/examples/servo/components):
+The arguments are as follows:
+* `--app`:  Where to look for the RpiFlask application. The command scans `rpi.rest.examples.servo.servo` for an `app`
+variable, which is the RpiFlask application described above. This may be the fully-qualified module name as here, or it
+may be relative to the package in the current working directory. For example, it could be shortened to `servo.servo` if
+the current working directory were `~/rpi/src/rpi/rest/examples`.
+* `--rest-host` and `--rest-port`:  The location of the REST server to contact when the user interacts with the 
+HTML/JavaScript controls. 
+* `--dir-path`:  Directory in which to write the resulting HTML/JavaScript files. This will be created if it does not 
+already exist.
+
+The command generates HTML/JavaScript controls for each of the circuit components in the RpiFlask application. A single 
+circuit component may produce multiple such files, and in the case of our servo example there are
+[two](https://github.com/MatthewGerber/rpi/tree/main/src/rpi/rest/examples/servo/components):
 * `servo-1-start-stop.html`:  An on/off toggle for starting and stopping the servo.
 * `servo-1-set_degrees.html`:  A slider for setting the servo's angle.
-Consider the first of these in more detail:
+
+Consider the first of these in detail:
 ```html
 <div class="form-check form-switch">
   <label class="form-check-label" for="servo-1-start-stop">servo-1 start/stop</label>
@@ -139,14 +155,32 @@ $("#servo-1-start-stop").on("change", function () {
 });
 </script>
 ```
-The general pattern for all HTML snippets is to specify a UI control (a labeled toggle in this case) followed by some
-JavaScript that connects the control with the circuit component running the RpiFlask application. These HTML snippets 
-are auto-generated, and understanding the details of their content is not entirely necessary. The usual approach is to 
-embed the snippets within a full HTML page such as 
-[this](https://github.com/MatthewGerber/rpi/blob/main/src/rpi/rest/examples/servo/servo.html). 
+The general pattern for the HTML/JavaScript files is to specify an HTML control followed by JavaScript that connects the 
+control with the circuit component running in the RpiFlask application. Here we have a labeled toggle switch, and the
+JavaScript calls either the `servo-1/start` or `servo-1/stop` REST endpoints depending on the status of the switch. The 
+HTML/JavaScript files can then be embedded within a full HTML page such as 
+[this](https://github.com/MatthewGerber/rpi/blob/main/src/rpi/rest/examples/servo/servo.html), which is rendered in a 
+browser as shown below:
+
+![rpi-flask-page](docs/rpi-flask-page.png)
 
 ## Flask REST Server
-TODO
+As with the Apache HTTP server, any modern HTTP server should suffice for serving the REST endpoints that are contacted 
+by the JavaScript described above. For simplicity we use Flask's built-in server, which is started as follows:
+```
+flask --app rpi.rest.examples.servo.servo run --host 0.0.0.0
+```
+The arguments are as follows:
+* `--app`:  Where to look for the RpiFlask application. This works similarly to the `--app` argument in the previous 
+command. The sub-command `run` instructs Flask to run the server.
+* `--host`:  Specifies the IP address on which the Flask REST server should listen for incoming client connections. The
+special value of `0.0.0.0` causes Flask to listen on all of the machine's IP addresses. The default port is 5000, which
+can be modified but must match the `--rest-port` used earlier. See the Flask 
+[site](https://flask.palletsprojects.com/) for more information.
+
+## Full Example
+
+
 
 # Ubuntu for RPI with GPIO Configuration
 This package has been developed using the Ubuntu installation described 

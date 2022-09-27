@@ -392,14 +392,14 @@ def write_component_files_cli(
     )
 
     arg_parser.add_argument(
-        '--host',
+        '--rest-host',
         type=str,
         default='localhost',
         help='Host serving the RPI REST application.'
     )
 
     arg_parser.add_argument(
-        '--port',
+        '--rest-port',
         type=int,
         default=5000,
         help='Port serving the RPI REST application.'
