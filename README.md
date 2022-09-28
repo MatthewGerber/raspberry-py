@@ -178,9 +178,8 @@ special value of `0.0.0.0` causes Flask to listen on all of the machine's IP add
 can be modified but must match the `--rest-port` used earlier. See the Flask 
 [site](https://flask.palletsprojects.com/) for more information.
 
-## Full Example
-
-
+## Demonstration
+TBD
 
 # Ubuntu for RPI with GPIO Configuration
 This package has been developed using the Ubuntu installation described 

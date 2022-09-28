@@ -14,7 +14,7 @@ from flask import Flask, request, abort, Response
 from rpi.gpio import Component, setup
 from rpi.gpio.lights import LED
 from rpi.gpio.motors import DcMotor, Servo, Stepper
-from rpi.gpio.sensors import Thermistor, Photoresistor
+from rpi.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder
 from rpi.gpio.sounds import ActiveBuzzer
 from flask_cors import CORS
 
@@ -38,15 +38,15 @@ class RpiFlask(Flask):
 
     def write_ui_elements(
             self,
-            host: str,
-            port: int,
+            rest_host: str,
+            rest_port: int,
             dir_path: str
     ):
         """
-        Write UI elements for RPI components in the current Flask application.
+        Write UI elements for RPI components in the current application.
 
-        :param host: Host serving the Flask application.
-        :param port: Port serving the Flask application.
+        :param rest_host: Host serving the REST application.
+        :param rest_port: Port serving the REST application.
         :param dir_path: Directory in which to write UI element files (will be created if it does not exist).
         """
 
@@ -54,7 +54,7 @@ class RpiFlask(Flask):
             os.mkdir(dir_path)
 
         for component in self.components.values():
-            for element_id, element in self.get_ui_elements(component, host, port):
+            for element_id, element in self.get_ui_elements(component, rest_host, rest_port):
                 path = join(dir_path, f'{element_id}.html')
                 with open(path, 'w') as component_file:
                     component_file.write(f'{element}\n')
@@ -63,47 +63,51 @@ class RpiFlask(Flask):
     @staticmethod
     def get_ui_elements(
             component: Component,
-            host: str,
-            port: int,
+            rest_host: str,
+            rest_port: int,
     ) -> List[Tuple[str, str]]:
         """
         Get UI elements for a component.
 
         :param component: Component.
-        :param host: Host serving the Flask application.
-        :param port: Port serving the Flask application.
+        :param rest_host: Host serving the REST application.
+        :param rest_port: Port serving the REST application.
         :return: List of 2-tuples of (1) element keys and (2) UI elements for the component.
         """
 
         if isinstance(component, LED):
             elements = [
-                RpiFlask.get_switch(component.id, host, port, component.turn_on, component.turn_off)
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.turn_on, component.turn_off)
             ]
         elif isinstance(component, DcMotor):
             elements = [
-                RpiFlask.get_switch(component.id, host, port, component.start, component.stop),
-                RpiFlask.get_range(component.id, -100, 100, 1, host, port, component.set_speed)
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
+                RpiFlask.get_range(component.id, -100, 100, 1, rest_host, rest_port, component.set_speed)
             ]
         elif isinstance(component, Servo):
             elements = [
-                RpiFlask.get_switch(component.id, host, port, component.start, component.stop),
-                RpiFlask.get_range(component.id, 0, 180, 1, host, port, component.set_degrees)
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
+                RpiFlask.get_range(component.id, 0, 180, 1, rest_host, rest_port, component.set_degrees)
             ]
         elif isinstance(component, Stepper):
             elements = [
-                RpiFlask.get_switch(component.id, host, port, component.start, component.stop)
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop)
             ]
         elif isinstance(component, Photoresistor):
             elements = [
-                RpiFlask.get_label(component.id, host, port, component.get_light_level, timedelta(seconds=1))
+                RpiFlask.get_label(component.id, rest_host, rest_port, component.get_light_level, timedelta(seconds=1))
             ]
         elif isinstance(component, Thermistor):
             elements = [
-                RpiFlask.get_label(component.id, host, port, component.get_temperature_f, timedelta(seconds=1))
+                RpiFlask.get_label(component.id, rest_host, rest_port, component.get_temperature_f, timedelta(seconds=1))
+            ]
+        elif isinstance(component, UltrasonicRangeFinder):
+            elements = [
+                RpiFlask.get_label(component.id, rest_host, rest_port, component.measure_distance_once, timedelta(seconds=1))
             ]
         elif isinstance(component, ActiveBuzzer):
             elements = [
-                RpiFlask.get_button(component.id, host, port, component.buzz, 'duration=seconds:0.5')
+                RpiFlask.get_button(component.id, rest_host, rest_port, component.buzz, 'duration=seconds:0.5')
             ]
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
@@ -113,8 +117,8 @@ class RpiFlask(Flask):
     @staticmethod
     def get_switch(
             component_id: str,
-            host: str,
-            port: int,
+            rest_host: str,
+            rest_port: int,
             on_function: Callable[[], None],
             off_function: Callable[[], None]
     ) -> Tuple[str, str]:
@@ -122,8 +126,8 @@ class RpiFlask(Flask):
         Get switch UI element.
 
         :param component_id: Component id.
-        :param host: Host.
-        :param port: Port.
+        :param rest_host: Host.
+        :param rest_port: Port.
         :param on_function: Function to call when switch is flipped on.
         :param off_function: Function to call when switch is flipped off.
         :return: 2-tuple of (1) element id and (2) UI element.
@@ -144,7 +148,7 @@ class RpiFlask(Flask):
                 f'<script>\n'
                 f'$("#{element_id}").on("change", function () {{\n'
                 f'  $.ajax({{\n'
-                f'    url: $("#{element_id}").is(":checked") ? "http://{host}:{port}/call/{component_id}/{on_function_name}" : "http://{host}:{port}/call/{component_id}/{off_function_name}",\n'
+                f'    url: $("#{element_id}").is(":checked") ? "http://{rest_host}:{rest_port}/call/{component_id}/{on_function_name}" : "http://{rest_host}:{rest_port}/call/{component_id}/{off_function_name}",\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'}});\n'
@@ -158,8 +162,8 @@ class RpiFlask(Flask):
             min_value: int,
             max_value: int,
             step: int,
-            host: str,
-            port: int,
+            rest_host: str,
+            rest_port: int,
             on_input_function: Callable[[int], None]
     ) -> Tuple[str, str]:
         """
@@ -169,8 +173,8 @@ class RpiFlask(Flask):
         :param min_value: Minimum value.
         :param max_value: Maximum value.
         :param step: Step.
-        :param host: Host.
-        :param port: Port.
+        :param rest_host: Host.
+        :param rest_port: Port.
         :param on_input_function: Function to call when range value changes.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
@@ -195,7 +199,7 @@ class RpiFlask(Flask):
                 f'<script>\n'
                 f'$("#{element_id}").on("input", function () {{\n'
                 f'  $.ajax({{\n'
-                f'    url: "http://{host}:{port}/call/{component_id}/{on_input_function_name}?{on_input_param}=int:" + $("#{element_id}")[0].value,\n'
+                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{on_input_function_name}?{on_input_param}=int:" + $("#{element_id}")[0].value,\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'}});\n'
@@ -206,8 +210,8 @@ class RpiFlask(Flask):
     @staticmethod
     def get_label(
             component_id: str,
-            host: str,
-            port: int,
+            rest_host: str,
+            rest_port: int,
             function: Callable[[], Any],
             refresh_interval: timedelta
     ) -> Tuple[str, str]:
@@ -215,8 +219,8 @@ class RpiFlask(Flask):
         Get label that refreshes periodically.
 
         :param component_id: Component id.
-        :param host: Host.
-        :param port: Port.
+        :param rest_host: Host.
+        :param rest_port: Port.
         :param function: Function to call to obtain new value.
         :param refresh_interval: How long to wait between refresh calls.
         :return: 2-tuple of (1) element id and (2) UI element.
@@ -235,7 +239,7 @@ class RpiFlask(Flask):
                 f'<script>\n'
                 f'function {read_value_function_name}() {{\n'
                 f'  $.ajax({{\n'
-                f'    url: "http://{host}:{port}/call/{component_id}/{function_name}",\n'
+                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{function_name}",\n'
                 f'    type: "GET",\n'
                 f'    success: async function (return_value) {{\n'
                 f'      document.getElementById("{element_id}").innerHTML = "{function_name}:  " + return_value;\n'
@@ -252,8 +256,8 @@ class RpiFlask(Flask):
     @staticmethod
     def get_button(
             component_id: str,
-            host: str,
-            port: int,
+            rest_host: str,
+            rest_port: int,
             function: Callable[[], Any],
             query: Optional[str]
     ) -> Tuple[str, str]:
@@ -261,8 +265,8 @@ class RpiFlask(Flask):
         Get button.
 
         :param component_id: Component id.
-        :param host: Host.
-        :param port: Port.
+        :param rest_host: Host.
+        :param rest_port: Port.
         :param function: Function to call.
         :param query: Query to submit with function call, or None for no query.
         :return: 2-tuple of (1) element id and (2) UI element.
@@ -283,7 +287,7 @@ class RpiFlask(Flask):
                 f'<script>\n'
                 f'$("#{element_id}").click(function () {{\n'
                 f'  $.ajax({{\n'
-                f'    url: "http://{host}:{port}/call/{component_id}/{function_name}{query}",\n'
+                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{function_name}{query}",\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'}});\n'
@@ -445,7 +449,7 @@ def write_component_files_cli(
         print(f'Failed to find {app_name} in {parsed_args.app}. Nothing to write.')
     else:
         app_to_write.write_ui_elements(
-            host=parsed_args.host,
-            port=parsed_args.port,
+            rest_host=parsed_args.rest_host,
+            rest_port=parsed_args.rest_port,
             dir_path=expanduser(parsed_args.dir_path)
         )

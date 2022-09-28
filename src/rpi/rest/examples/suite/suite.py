@@ -4,7 +4,7 @@ from rpi.gpio import CkPin
 from rpi.gpio.adc import ADS7830
 from rpi.gpio.lights import LED
 from rpi.gpio.motors import DcMotor, Servo
-from rpi.gpio.sensors import Thermistor, Photoresistor
+from rpi.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder
 from rpi.gpio.sounds import ActiveBuzzer
 from rpi.rest.application import app
 
@@ -84,12 +84,14 @@ app.add_component(thermistor)
 # infrared_motion_sensor.id = 'infrared_motion_sensor-1'
 # app.add_component(infrared_motion_sensor)
 #
-# ultrasonic_range_finder = UltrasonicRangeFinder(
-#
-# )
-# ultrasonic_range_finder.id = 'ultrasonic_range_finder-1'
-# app.add_component(ultrasonic_range_finder)
-#
+ultrasonic_range_finder = UltrasonicRangeFinder(
+    trigger_pin=CkPin.GPIO23,
+    echo_pin=CkPin.GPIO24,
+    measurements_per_second=2
+)
+ultrasonic_range_finder.id = 'ultrasonic_range_finder-1'
+app.add_component(ultrasonic_range_finder)
+
 active_buzzer = ActiveBuzzer(
     output_pin=CkPin.GPIO5
 )

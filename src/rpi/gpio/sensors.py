@@ -552,9 +552,11 @@ class UltrasonicRangeFinder(Component):
 
     def measure_distance_once(
             self
-    ):
+    ) -> Optional[float]:
         """
         Measure distance to surface.
+
+        :return: Distance (cm), or None if distance was unavailable or invalid.
         """
 
         # signal the sensor to take a measurement
@@ -570,7 +572,7 @@ class UltrasonicRangeFinder(Component):
                 break
         else:
             self.set_state(UltrasonicRangeFinder.State(distance_cm=None))
-            return
+            return None
 
         # mark the time and wait for the echo pin to flip to low
         while time.time() - echo_start_time < UltrasonicRangeFinder.ECHO_TIMEOUT_SECONDS:
@@ -579,13 +581,15 @@ class UltrasonicRangeFinder(Component):
                 break
         else:
             self.set_state(UltrasonicRangeFinder.State(distance_cm=None))
-            return
+            return None
 
         # measure the time that the echo pin was high and calculate distance accordingly
         echo_time_seconds = echo_end_time - echo_start_time
         total_distance_m = UltrasonicRangeFinder.SPEED_OF_SOUND_METERS_PER_SECOND * echo_time_seconds
         surface_distance_cm = total_distance_m * 100.0 / 2.0
         self.set_state(UltrasonicRangeFinder.State(distance_cm=surface_distance_cm))
+
+        return surface_distance_cm
 
     def __measure_distance_repeatedly__(
             self
