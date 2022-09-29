@@ -234,7 +234,7 @@ class RpiFlask(Flask):
             element_id,
             (
                 f'<div>\n'
-                f'  <label id="{element_id}">{function_name}:  N/A</label>\n'
+                f'  <label id="{element_id}">{function_name}:  null</label>\n'
                 f'</div>\n'
                 f'<script>\n'
                 f'function {read_value_function_name}() {{\n'
@@ -243,6 +243,11 @@ class RpiFlask(Flask):
                 f'    type: "GET",\n'
                 f'    success: async function (return_value) {{\n'
                 f'      document.getElementById("{element_id}").innerHTML = "{function_name}:  " + return_value;\n'
+                f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
+                f'      {read_value_function_name}();\n'
+                f'    }},\n'
+                f'    error: async function(xhr, error){{\n'
+                f'      document.getElementById("{element_id}").innerHTML = "{function_name}:  null";\n'
                 f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
                 f'      {read_value_function_name}();\n'
                 f'    }}\n'

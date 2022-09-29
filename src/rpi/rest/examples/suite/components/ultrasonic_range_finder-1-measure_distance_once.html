@@ -1,5 +1,5 @@
 <div>
-  <label id="ultrasonic_range_finder-1-measure_distance_once">measure_distance_once:  N/A</label>
+  <label id="ultrasonic_range_finder-1-measure_distance_once">measure_distance_once:  null</label>
 </div>
 <script>
 function read_value_ultrasonic_range_finder_1_measure_distance_once() {
@@ -12,6 +12,7 @@ function read_value_ultrasonic_range_finder_1_measure_distance_once() {
       read_value_ultrasonic_range_finder_1_measure_distance_once();
     },
     error: async function(xhr, error){
+      document.getElementById("ultrasonic_range_finder-1-measure_distance_once").innerHTML = "measure_distance_once:  null";
       await new Promise(r => setTimeout(r, 1000.0));
       read_value_ultrasonic_range_finder_1_measure_distance_once();
     }
