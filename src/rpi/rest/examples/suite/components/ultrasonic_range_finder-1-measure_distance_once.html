@@ -10,6 +10,10 @@ function read_value_ultrasonic_range_finder_1_measure_distance_once() {
       document.getElementById("ultrasonic_range_finder-1-measure_distance_once").innerHTML = "measure_distance_once:  " + return_value;
       await new Promise(r => setTimeout(r, 1000.0));
       read_value_ultrasonic_range_finder_1_measure_distance_once();
+    },
+    error: async function(xhr, error){
+      await new Promise(r => setTimeout(r, 1000.0));
+      read_value_ultrasonic_range_finder_1_measure_distance_once();
     }
   });
 }
