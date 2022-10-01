@@ -47,17 +47,6 @@ servo = Servo(
 servo.id = 'servo-1'
 app.add_component(servo)
 
-# stepper = Stepper(
-#     poles=32,
-#     output_rotor_ratio=1/64.0,
-#     driver_pin_1=CkPin.GPIO19,
-#     driver_pin_2=CkPin.GPIO23,
-#     driver_pin_3=CkPin.GPIO24,
-#     driver_pin_4=CkPin.GPIO25
-# )
-# stepper.id = 'stepper-1'
-# app.add_component(stepper)
-#
 photoresistor = Photoresistor(
     adc=adc,
     channel=photoresistor_ad_channel
@@ -71,19 +60,7 @@ thermistor = Thermistor(
 )
 thermistor.id = 'thermistor-1'
 app.add_component(thermistor)
-#
-# hygrothermograph = Hygrothermograph(
-#
-# )
-# hygrothermograph.id = 'hygrothermograph-id'
-# app.add_component(hygrothermograph)
-#
-# infrared_motion_sensor = InfraredMotionSensor(
-#
-# )
-# infrared_motion_sensor.id = 'infrared_motion_sensor-1'
-# app.add_component(infrared_motion_sensor)
-#
+
 ultrasonic_range_finder = UltrasonicRangeFinder(
     trigger_pin=CkPin.GPIO23,
     echo_pin=CkPin.GPIO24,
@@ -97,9 +74,3 @@ active_buzzer = ActiveBuzzer(
 )
 active_buzzer.id = 'active_buzzer-1'
 app.add_component(active_buzzer)
-#
-# passive_buzzer = PassiveBuzzer(
-#
-# )
-# passive_buzzer.id = 'passive_buzzer-1'
-# app.add_component(passive_buzzer)
