@@ -1,6 +1,9 @@
+import math
+import time
 from typing import Optional, Union, List
 
 import RPi.GPIO as gpio
+from smbus2 import SMBus
 
 from rpi.gpio import Component
 
@@ -192,3 +195,121 @@ class ShiftRegister(Component):
         if self.register_active_pin is not None:
             gpio.setup(self.register_active_pin, gpio.OUT)
             gpio.output(self.register_active_pin, gpio.HIGH)  # activate the register pin
+
+
+class PulseWaveModulationDriver:
+    """
+    16-channel pulse-wave modulation driver. Compatible with the PCA9685PW IC.
+    """
+
+    PCA9685PW_ADDRESS = 0x40
+
+    # Registers/etc.
+    __SUBADR1 = 0x02
+    __SUBADR2 = 0x03
+    __SUBADR3 = 0x04
+    __MODE1 = 0x00
+    __PRESCALE = 0xFE
+    __LED0_ON_L = 0x06
+    __LED0_ON_H = 0x07
+    __LED0_OFF_L = 0x08
+    __LED0_OFF_H = 0x09
+    __ALLLED_ON_L = 0xFA
+    __ALLLED_ON_H = 0xFB
+    __ALLLED_OFF_L = 0xFC
+    __ALLLED_OFF_H = 0xFD
+
+    def write(
+            self,
+            register: int,
+            value: int
+    ):
+        """
+        Write an 8-bit value to a register.
+
+        :param register: Register to write.
+        :param value: Value to write.
+        """
+
+        self.bus.write_byte_data(self.address, register, value)
+
+    def read(
+            self,
+            register: int
+    ) -> int:
+        """
+        Read an unsigned byte from a register.
+
+        :param register: Register to read.
+        :return: Value.
+        """
+
+        return self.bus.read_byte_data(self.address, register)
+
+    def set_pwm_frequency(
+            self,
+            frequency: float
+    ):
+        """
+        Set pulse-wave modulation frequency.
+
+        :param frequency: Frequency (hz)
+        """
+
+        prescale_value = 25000000.0  # 25MHz
+        prescale_value /= 4096.0  # 12-bit
+        prescale_value /= float(frequency)
+        prescale_value -= 1.0
+        prescale_value = math.floor(prescale_value + 0.5)
+
+        oldmode = self.read(self.__MODE1)
+        newmode = (oldmode & 0x7F) | 0x10  # sleep
+        self.write(self.__MODE1, newmode)  # go to sleep
+        self.write(self.__PRESCALE, int(prescale_value))
+        self.write(self.__MODE1, oldmode)
+        time.sleep(0.005)
+        self.write(self.__MODE1, oldmode | 0x80)
+
+    def set_channel_pwm_on_off(
+            self,
+            channel: int,
+            on: int,
+            off: int
+    ):
+        """
+        Set the on/off registers for a channel.
+
+        :param channel: Channel.
+        :param on: On value.
+        :param off: Off value.
+        """
+
+        self.write(self.__LED0_ON_L + 4 * channel, on & 0xFF)
+        self.write(self.__LED0_ON_H + 4 * channel, on >> 8)
+        self.write(self.__LED0_OFF_L + 4 * channel, off & 0xFF)
+        self.write(self.__LED0_OFF_H + 4 * channel, off >> 8)
+
+    def setMotorPwm(self, channel, duty):
+        self.set_channel_pwm_on_off(channel, 0, duty)
+
+    def setServoPulse(self, channel, pulse):
+        "Sets the Servo Pulse,The PWM frequency must be 50HZ"
+        pulse = pulse * 4096 / 20000  # PWM frequency is 50HZ,the period is 20000us
+        self.set_channel_pwm_on_off(channel, 0, int(pulse))
+
+    def __init__(
+            self,
+            bus: SMBus,
+            address: int
+    ):
+        """
+        Instantiate the PWM IC.
+
+        :param bus: Bus.
+        :param address: I2C address.
+        """
+
+        self.bus = bus
+        self.address = address
+
+        self.write(self.__MODE1, 0x00)
