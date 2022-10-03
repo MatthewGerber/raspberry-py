@@ -7,7 +7,7 @@ import numpy as np
 import RPi.GPIO as gpio
 
 from rpi.gpio import Component
-from rpi.gpio.ic_chips import ShiftRegister
+from rpi.gpio.integrated_circuits import ShiftRegister74HC595
 
 
 class LED(Component):
@@ -465,6 +465,7 @@ class SevenSegmentLedShiftRegister(Component):
 
             return f'Value:  {self.character}{"." if self.decimal_point else ""}'
 
+    # noinspection PyArgumentList
     class Segment(Enum):
         """
         LED segments.
@@ -554,7 +555,7 @@ class SevenSegmentLedShiftRegister(Component):
 
     def __init__(
             self,
-            shift_register: ShiftRegister,
+            shift_register: ShiftRegister74HC595,
             segment_shift_register_output: Dict[Segment, int]
     ):
         """
@@ -827,7 +828,7 @@ class LedMatrix(Component):
         [0, 1, 0, 0, 0, 0, 1, 0],
         [0, 1, 0, 0, 0, 0, 1, 0],
         [0, 1, 1, 1, 1, 1, 1, 0],
-        [0, 1, 0, 0, 0,0 , 1, 0],
+        [0, 1, 0, 0, 0, 0, 1, 0],
         [0, 1, 0, 0, 0, 0, 1, 0],
         [0, 1, 0, 0, 0, 0, 1, 0],
         [0, 1, 0, 0, 0, 0, 1, 0]
@@ -960,7 +961,7 @@ class LedMatrix(Component):
             self,
             rows: int,
             cols: int,
-            shift_register: ShiftRegister,
+            shift_register: ShiftRegister74HC595,
             frame_scan_delay: timedelta
     ):
         """

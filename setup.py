@@ -1,14 +1,5 @@
 from setuptools import setup, find_packages
 
-
-INSTALL_REQUIREMENTS = [
-    'numpy==1.21.5',
-    'RPi.GPIO==0.7.0',
-    'smbus2==0.4.1 ',
-    'Flask==2.2.2',
-    'Flask-Cors==3.0.10'
-]
-
 TEST_REQUIREMENTS = [
 
 ]
@@ -27,7 +18,11 @@ setup(
     package_dir={'': 'src'},
     python_requires='~=3.7',
     install_requires=[
-        INSTALL_REQUIREMENTS
+        'numpy==1.21.5',
+        'RPi.GPIO==0.7.0',
+        'smbus2==0.4.1 ',
+        'Flask==2.2.2',
+        'Flask-Cors==3.0.10'
     ],
     tests_require=TEST_REQUIREMENTS,
     extras_require={

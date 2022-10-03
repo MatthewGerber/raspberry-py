@@ -2,7 +2,7 @@ import time
 from datetime import timedelta
 
 from rpi.gpio import CkPin, setup, cleanup
-from rpi.gpio.ic_chips import ShiftRegister
+from rpi.gpio.integrated_circuits import ShiftRegister74HC595
 from rpi.gpio.lights import LedMatrix
 
 
@@ -15,7 +15,7 @@ def main():
     setup()
 
     # create 8-bit shift register
-    shift_register = ShiftRegister(
+    shift_register = ShiftRegister74HC595(
         bits=8,
         output_disable_pin=None,
         serial_data_input_pin=CkPin.GPIO17,

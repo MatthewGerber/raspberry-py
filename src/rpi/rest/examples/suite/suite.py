@@ -3,7 +3,7 @@ from smbus2 import SMBus
 from rpi.gpio import CkPin
 from rpi.gpio.adc import ADS7830
 from rpi.gpio.lights import LED
-from rpi.gpio.motors import DcMotor, Servo
+from rpi.gpio.motors import DcMotor, Servo, DcMotorDriverL293D, ServoDriverSoftwarePWM
 from rpi.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder
 from rpi.gpio.sounds import ActiveBuzzer
 from rpi.rest.application import app
@@ -23,9 +23,11 @@ adc = ADS7830(
 )
 
 motor = DcMotor(
-    enable_pin=CkPin.GPIO22,
-    in_1_pin=CkPin.GPIO27,
-    in_2_pin=CkPin.GPIO17,
+    driver=DcMotorDriverL293D(
+        enable_pin=CkPin.GPIO22,
+        in_1_pin=CkPin.GPIO27,
+        in_2_pin=CkPin.GPIO17
+    ),
     speed=0
 )
 motor.id = 'motor-1'
@@ -36,12 +38,14 @@ led.id = 'led-1'
 app.add_component(led)
 
 servo = Servo(
-    signal_pin=CkPin.GPIO18,
-    min_pwm_high_ms=0.5,
-    max_pwm_high_ms=2.5,
-    pwm_high_offset_ms=0.0,
-    min_degree=0.0,
-    max_degree=180.0,
+    driver=ServoDriverSoftwarePWM(
+        signal_pin=CkPin.GPIO18,
+        min_pwm_high_ms=0.5,
+        max_pwm_high_ms=2.5,
+        pwm_high_offset_ms=0.0,
+        min_degree=0.0,
+        max_degree=180.0
+    ),
     degrees=0.0
 )
 servo.id = 'servo-1'

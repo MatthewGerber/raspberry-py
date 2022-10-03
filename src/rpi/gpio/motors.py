@@ -1,10 +1,134 @@
 import time
+from abc import ABC, abstractmethod
 from datetime import timedelta
 
 import RPi.GPIO as gpio
 import numpy as np
 
 from rpi.gpio import Component
+from rpi.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
+
+
+class DcMotorDriver(ABC):
+    """
+    DC motor driver.
+    """
+
+    @abstractmethod
+    def change_state(
+            self,
+            previous_state: 'DcMotor.State',
+            new_state: 'DcMotor.State'
+    ):
+        """
+        Change state.
+
+        :param previous_state: Previous state.
+        :param new_state: New state.
+        """
+        pass
+
+
+class DcMotorDriverL293D(DcMotorDriver):
+    """
+    Motor driver via L293D IC and software pulse-wave modulation.
+    """
+
+    def change_state(
+            self,
+            previous_state: 'DcMotor.State',
+            new_state: 'DcMotor.State'
+    ):
+        """
+        Change state.
+
+        :param previous_state: Previous state.
+        :param new_state: New state.
+        """
+
+        # negative speed rotates one direction
+        if new_state.speed < 0:
+            gpio.output(self.in_1_pin, gpio.HIGH)
+            gpio.output(self.in_2_pin, gpio.LOW)
+
+        # positive speed rotates in the other direction
+        elif new_state.speed > 0:
+            gpio.output(self.in_1_pin, gpio.LOW)
+            gpio.output(self.in_2_pin, gpio.HIGH)
+
+        # zero speed does not rotate
+        else:
+            gpio.output(self.in_1_pin, gpio.LOW)
+            gpio.output(self.in_2_pin, gpio.LOW)
+
+        if new_state.on:
+            pwm_duty_cycle = abs(new_state.speed)
+            if previous_state.on:
+                self.pwm_enable.ChangeDutyCycle(pwm_duty_cycle)
+            else:
+                self.pwm_enable.start(pwm_duty_cycle)
+        else:
+            self.pwm_enable.stop()
+
+    def __init__(
+            self,
+            enable_pin: int,
+            in_1_pin: int,
+            in_2_pin: int
+    ):
+        """
+        Initialize the driver.
+
+        :param enable_pin: GPIO pin connected to the enable pin of the L293D IC.
+        :param in_1_pin: GPIO pin connected to the in-1 pin of the L293D IC.
+        :param in_2_pin: GPIO pin connected to the in-2 pin of the L293D IC.
+        """
+
+        self.enable_pin = enable_pin
+        self.in_1_pin = in_1_pin
+        self.in_2_pin = in_2_pin
+
+        gpio.setup(self.enable_pin, gpio.OUT)
+        gpio.setup(self.in_1_pin, gpio.OUT)
+        gpio.setup(self.in_2_pin, gpio.OUT)
+
+        self.pwm_enable = gpio.PWM(self.enable_pin, 1000)
+
+
+class DcMotorDriverPCA9685PW(DcMotorDriver):
+    """
+    Motor driver via PCA9685PW IC (hardware pulse-wave modulator).
+    """
+
+    def change_state(
+            self,
+            previous_state: 'DcMotor.State',
+            new_state: 'DcMotor.State'
+    ):
+        """
+        Change state.
+
+        :param previous_state: Previous state.
+        :param new_state: New state.
+        """
+
+        # convert speed to duty cycle
+        self.pca9685pw.set_channel_pwm_on_off(self.motor_channel, 0, duty)
+
+    def __init__(
+            self,
+            pca9685pw: PulseWaveModulatorPCA9685PW,
+            motor_channel: int
+    ):
+        """
+        Initialize the driver.
+
+        :param pca9685pw: IC.
+        :param motor_channel: Channel of PCA9685PW to which the motor is connected.
+        """
+
+        self.pca9685pw = pca9685pw
+        self.motor_channel = motor_channel
 
 
 class DcMotor(Component):
@@ -75,29 +199,7 @@ class DcMotor(Component):
         self.state: DcMotor.State
         state: DcMotor.State
 
-        # negative speed rotates one direction
-        if state.speed < 0:
-            gpio.output(self.in_1_pin, gpio.HIGH)
-            gpio.output(self.in_2_pin, gpio.LOW)
-
-        # positive speed rotates in the other direction
-        elif state.speed > 0:
-            gpio.output(self.in_1_pin, gpio.LOW)
-            gpio.output(self.in_2_pin, gpio.HIGH)
-
-        # zero speed does not rotate
-        else:
-            gpio.output(self.in_1_pin, gpio.LOW)
-            gpio.output(self.in_2_pin, gpio.LOW)
-
-        if state.on:
-            pwm_duty_cycle = abs(state.speed)
-            if self.state.on:
-                self.pwm_enable.ChangeDutyCycle(pwm_duty_cycle)
-            else:
-                self.pwm_enable.start(pwm_duty_cycle)
-        else:
-            self.pwm_enable.stop()
+        self.driver.change_state(self.state, state)
 
         super().set_state(state)
 
@@ -128,7 +230,7 @@ class DcMotor(Component):
         """
         Set the motor's speed.
 
-        :param speed: Speed (in [-100,+100]).
+        :param speed: Speed in [-100,+100].
         """
 
         self.state: DcMotor.State
@@ -136,31 +238,210 @@ class DcMotor(Component):
 
     def __init__(
             self,
-            enable_pin: int,
-            in_1_pin: int,
-            in_2_pin: int,
+            driver: DcMotorDriver,
             speed: int
     ):
         """
         Initialize the motor.
 
-        :param enable_pin: GPIO pin connected to the enable pin of the L293D IC.
-        :param in_1_pin: GPIO pin connected to the in-1 pin of the L293D IC.
-        :param in_2_pin: GPIO pin connected to the in-2 pin of the L293D IC.
-        :param speed: Initial motor speed (in [-100,+100]).
+        :param driver: Driver.
+        :param speed: Initial speed in [-100,+100].
         """
 
         super().__init__(DcMotor.State(on=False, speed=speed))
 
-        self.enable_pin = enable_pin
-        self.in_1_pin = in_1_pin
-        self.in_2_pin = in_2_pin
+        self.driver = driver
 
-        gpio.setup(self.enable_pin, gpio.OUT)
-        gpio.setup(self.in_1_pin, gpio.OUT)
-        gpio.setup(self.in_2_pin, gpio.OUT)
 
-        self.pwm_enable = gpio.PWM(self.enable_pin, 1000)
+class ServoDriver(ABC):
+    """
+    Servo driver.
+    """
+
+    @abstractmethod
+    def start(
+            self,
+            degrees: float
+    ):
+        """
+        Start servo.
+
+        :param degrees: Degrees.
+        """
+
+    @abstractmethod
+    def stop(
+            self
+    ):
+        """
+        Stop servo.
+        """
+
+    @abstractmethod
+    def set_degrees(
+            self,
+            degrees: float
+    ):
+        """
+        Set degrees.
+
+        :param degrees: Degrees.
+        """
+
+
+class ServoDriverSoftwarePWM(ServoDriver):
+    """
+    Software PWM servo driver.
+    """
+
+    def start(
+            self,
+            degrees: float
+    ):
+        """
+        Start servo.
+
+        :param degrees: Degrees.
+        """
+
+        self.pwm_signal.start(self.get_duty_cycle(degrees))
+
+    def stop(
+            self
+    ):
+        """
+        Stop servo.
+        """
+
+        self.pwm_signal.stop()
+
+    def get_duty_cycle(
+            self,
+            degrees: float
+    ) -> float:
+        """
+        Get PWM duty cycle for the current state.
+
+        :param degrees: Degrees.
+        :return: Duty cycle in [0%,100%].
+        """
+
+        # get fraction into degree range
+        degree_range = self.max_degree - self.min_degree
+        range_fraction = (degrees - self.min_degree) / degree_range
+
+        # get ms with pwm set to high
+        pwm_high_range_ms = self.max_pwm_high_ms - self.min_pwm_high_ms
+        duty_cycle_high_ms = self.min_pwm_high_ms + range_fraction * pwm_high_range_ms + self.pwm_high_offset_ms
+
+        # get duty cycle percent
+        duty_cycle_percent = 100.0 * duty_cycle_high_ms / self.pwm_tick_ms
+
+        return duty_cycle_percent
+
+    def set_degrees(
+            self,
+            degrees: float
+    ):
+        """
+        Set degrees.
+
+        :param degrees: Degrees.
+        """
+
+        self.pwm_signal.ChangeDutyCycle(self.get_duty_cycle(degrees))
+
+    def __init__(
+            self,
+            signal_pin: int,
+            min_pwm_high_ms: float,
+            max_pwm_high_ms: float,
+            pwm_high_offset_ms: float,
+            min_degree: float,
+            max_degree: float
+    ):
+        """
+        Initialize the driver.
+
+        :param signal_pin: Servo signal pin on which PWM outputs.
+        :param min_pwm_high_ms: Servo's minimum PWM high time (ms).
+        :param max_pwm_high_ms: Servo's maximum PWM high time (ms).
+        :param pwm_high_offset_ms: Offset (ms).
+        :param min_degree: Servo's minimum degree angle.
+        :param max_degree: Servo's maximum degree angle.
+        """
+
+        self.signal_pin = signal_pin
+        self.min_pwm_high_ms = min_pwm_high_ms
+        self.max_pwm_high_ms = max_pwm_high_ms
+        self.pwm_high_offset_ms = pwm_high_offset_ms
+        self.min_degree = min_degree
+        self.max_degree = max_degree
+
+        self.pwm_hz = 50
+        self.pwm_tick_ms = 1000 / self.pwm_hz
+        if self.max_pwm_high_ms > self.pwm_tick_ms:
+            raise ValueError(
+                f'The value of max_pwm_high_ms ({self.max_pwm_high_ms}) must be less than the PWM tick duration ({self.pwm_tick_ms}).'
+            )
+
+        gpio.setup(self.signal_pin, gpio.OUT)
+        gpio.output(self.signal_pin, gpio.LOW)
+        self.pwm_signal = gpio.PWM(self.signal_pin, self.pwm_hz)
+
+
+class ServoDriverPCA9685PW(ServoDriver):
+    """
+    Servo driver via PCA9685PW IC (hardware pulse-wave modulator).
+    """
+
+    def start(
+            self,
+            degrees: float
+    ):
+        """
+        Start servo.
+
+        :param degrees: Degrees.
+        """
+        pass
+
+    def stop(
+            self
+    ):
+        """
+        Stop servo.
+        """
+        pass
+
+    def set_degrees(
+            self,
+            degrees: float
+    ):
+        """
+        Set degrees.
+
+        :param degrees: Degrees.
+        """
+
+        # Sets the Servo Pulse,The PWM frequency must be 50HZ
+        pulse = pulse * 4096 / 20000  # PWM frequency is 50HZ, the period is 20000us
+        self.pca9685pw.set_channel_pwm_on_off(self.servo_channel, 0, int(pulse))
+
+    def __init__(
+            self,
+            pca9685pw: PulseWaveModulatorPCA9685PW,
+            servo_channel: int
+    ):
+        """
+        Initialize the driver.
+
+        :param pca9685pw: IC.
+        :param servo_channel: Channel of PCA9685PW to which the servo is connected.
+        """
+
+        self.pca9685pw = pca9685pw
+        self.servo_channel = servo_channel
 
 
 class Servo(Component):
@@ -225,14 +506,11 @@ class Servo(Component):
         if not isinstance(state, Servo.State):
             raise ValueError(f'Expected a {Servo.State}')
 
-        super().set_state(state)
-
         state: Servo.State
 
-        if state.degrees < self.min_degree or state.degrees > self.max_degree:
-            raise ValueError(f'Degree must be in [{self.min_degree},{self.max_degree}].')
+        self.driver.set_degrees(state.degrees)
 
-        self.pwm_signal.ChangeDutyCycle(self.get_duty_cycle())
+        super().set_state(state)
 
     def set_degrees(
             self,
@@ -259,30 +537,6 @@ class Servo(Component):
 
         return self.state.degrees
 
-    def get_duty_cycle(
-            self
-    ) -> float:
-        """
-        Get PWM duty cycle for the current state.
-
-        :return: Duty cycle in [0%,100%].
-        """
-
-        self.state: Servo.State
-
-        # get fraction into degree range
-        degree_range = self.max_degree - self.min_degree
-        range_fraction = (self.state.degrees - self.min_degree) / degree_range
-
-        # get ms with pwm set to high
-        pwm_high_range_ms = self.max_pwm_high_ms - self.min_pwm_high_ms
-        duty_cycle_high_ms = self.min_pwm_high_ms + range_fraction * pwm_high_range_ms + self.pwm_high_offset_ms
-
-        # get duty cycle percent
-        duty_cycle_percent = 100.0 * duty_cycle_high_ms / self.pwm_tick_ms
-
-        return duty_cycle_percent
-
     def start(
             self
     ):
@@ -291,8 +545,7 @@ class Servo(Component):
         """
 
         self.state: Servo.State
-
-        self.pwm_signal.start(self.get_duty_cycle())
+        self.driver.start(self.state.degrees)
 
     def stop(
             self
@@ -301,47 +554,23 @@ class Servo(Component):
         Stop the servo.
         """
 
-        self.pwm_signal.stop()
+        self.driver.stop()
 
     def __init__(
             self,
-            signal_pin: int,
-            min_pwm_high_ms: float,
-            max_pwm_high_ms: float,
-            pwm_high_offset_ms: float,
-            min_degree: float,
-            max_degree: float,
+            driver: ServoDriver,
             degrees: float
     ):
         """
         Initialize the servo.
 
-        :param signal_pin: Servo signal pin on which PWM outputs.
-        :param min_pwm_high_ms: Servo's minimum PWM high time (ms).
-        :param max_pwm_high_ms: Servo's maximum PWM high time (ms).
-        :param pwm_high_offset_ms: Offset (ms).
-        :param min_degree: Servo's minimum degree angle.
-        :param max_degree: Servo's maximum degree angle.
+        :param driver: Driver.
         :param degrees: Initial degree angle.
         """
 
         super().__init__(Servo.State(degrees))
 
-        self.signal_pin = signal_pin
-        self.min_pwm_high_ms = min_pwm_high_ms
-        self.max_pwm_high_ms = max_pwm_high_ms
-        self.pwm_high_offset_ms = pwm_high_offset_ms
-        self.min_degree = min_degree
-        self.max_degree = max_degree
-
-        self.pwm_hz = 50
-        self.pwm_tick_ms = 1000 / self.pwm_hz
-        if self.max_pwm_high_ms > self.pwm_tick_ms:
-            raise ValueError(f'The value of max_pwm_high_ms ({self.max_pwm_high_ms}) must be less than the PWM tick duration ({self.pwm_tick_ms}).')
-
-        gpio.setup(self.signal_pin, gpio.OUT)
-        gpio.output(self.signal_pin, gpio.LOW)
-        self.pwm_signal = gpio.PWM(self.signal_pin, self.pwm_hz)
+        self.driver = driver
 
 
 class Stepper(Component):

@@ -8,9 +8,9 @@ from smbus2 import SMBus
 from rpi.gpio import Component
 
 
-class ShiftRegister(Component):
+class ShiftRegister74HC595(Component):
     """
-    Shift register for serial-to-parallel data conversion. Compatible with the 74HC595 IC (see datasheet in docs).
+    74HC595:  Serial-to-parallel data shift register.
     """
 
     class State(Component.State):
@@ -47,8 +47,8 @@ class ShiftRegister(Component):
             :return: True if equal and False otherwise.
             """
 
-            if not isinstance(other, ShiftRegister.State):
-                raise ValueError(f'Expected a {ShiftRegister.State}')
+            if not isinstance(other, ShiftRegister74HC595.State):
+                raise ValueError(f'Expected a {ShiftRegister74HC595.State}')
 
             return self.enabled == other.enabled and self.x == other.x
 
@@ -73,10 +73,10 @@ class ShiftRegister(Component):
         :param state: State.
         """
 
-        if not isinstance(state, ShiftRegister.State):
-            raise ValueError(f'Expected a {ShiftRegister.State}')
+        if not isinstance(state, ShiftRegister74HC595.State):
+            raise ValueError(f'Expected a {ShiftRegister74HC595.State}')
 
-        state: ShiftRegister.State
+        state: ShiftRegister74HC595.State
 
         if self.output_disable_pin is not None:
             gpio.output(self.output_disable_pin, gpio.LOW if state.enabled else gpio.HIGH)
@@ -119,8 +119,8 @@ class ShiftRegister(Component):
         Enable the shift register.
         """
 
-        self.state: ShiftRegister.State
-        self.set_state(ShiftRegister.State(True, self.state.x))
+        self.state: ShiftRegister74HC595.State
+        self.set_state(ShiftRegister74HC595.State(True, self.state.x))
 
     def disable(
             self
@@ -129,8 +129,8 @@ class ShiftRegister(Component):
         Disable the shift register.
         """
 
-        self.state: ShiftRegister.State
-        self.set_state(ShiftRegister.State(False, self.state.x))
+        self.state: ShiftRegister74HC595.State
+        self.set_state(ShiftRegister74HC595.State(False, self.state.x))
 
     def write(
             self,
@@ -142,8 +142,8 @@ class ShiftRegister(Component):
         :param x: Value(s).
         """
 
-        self.state: ShiftRegister.State
-        self.set_state(ShiftRegister.State(self.state.enabled, x))
+        self.state: ShiftRegister74HC595.State
+        self.set_state(ShiftRegister74HC595.State(self.state.enabled, x))
 
     def clear(
             self
@@ -152,8 +152,8 @@ class ShiftRegister(Component):
         Clear the shift register.
         """
 
-        self.state: ShiftRegister.State
-        self.set_state(ShiftRegister.State(True, 0))
+        self.state: ShiftRegister74HC595.State
+        self.set_state(ShiftRegister74HC595.State(True, 0))
 
     def __init__(
             self,
@@ -176,7 +176,7 @@ class ShiftRegister(Component):
         :param register_active_pin: Register activation pin. Pass None and wire to 3.3v to keep register active always.
         """
 
-        super().__init__(ShiftRegister.State(False, None))
+        super().__init__(ShiftRegister74HC595.State(False, None))
 
         self.bits = bits
         self.output_disable_pin = output_disable_pin
@@ -197,9 +197,9 @@ class ShiftRegister(Component):
             gpio.output(self.register_active_pin, gpio.HIGH)  # activate the register pin
 
 
-class PulseWaveModulationDriver:
+class PulseWaveModulatorPCA9685PW:
     """
-    16-channel pulse-wave modulation driver. Compatible with the PCA9685PW IC.
+    PCA9685PW:  16-channel pulse-wave modulator.
     """
 
     PCA9685PW_ADDRESS = 0x40
@@ -253,7 +253,7 @@ class PulseWaveModulationDriver:
         """
         Set pulse-wave modulation frequency.
 
-        :param frequency: Frequency (hz)
+        :param frequency: Frequency (Hz).
         """
 
         prescale_value = 25000000.0  # 25MHz
@@ -288,14 +288,6 @@ class PulseWaveModulationDriver:
         self.write(self.__LED0_ON_H + 4 * channel, on >> 8)
         self.write(self.__LED0_OFF_L + 4 * channel, off & 0xFF)
         self.write(self.__LED0_OFF_H + 4 * channel, off >> 8)
-
-    def setMotorPwm(self, channel, duty):
-        self.set_channel_pwm_on_off(channel, 0, duty)
-
-    def setServoPulse(self, channel, pulse):
-        "Sets the Servo Pulse,The PWM frequency must be 50HZ"
-        pulse = pulse * 4096 / 20000  # PWM frequency is 50HZ,the period is 20000us
-        self.set_channel_pwm_on_off(channel, 0, int(pulse))
 
     def __init__(
             self,

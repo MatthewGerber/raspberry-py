@@ -245,6 +245,7 @@ class Hygrothermograph(Component):
         Hygrothermograph state.
         """
 
+        # noinspection PyArgumentList
         class Status(Enum):
             """
             State statuses.

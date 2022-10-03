@@ -1,7 +1,7 @@
 import time
 
 from rpi.gpio import setup, CkPin, cleanup
-from rpi.gpio.ic_chips import ShiftRegister
+from rpi.gpio.integrated_circuits import ShiftRegister74HC595
 from rpi.gpio.lights import SevenSegmentLedShiftRegister
 
 
@@ -14,7 +14,7 @@ def main():
     setup()
 
     # create 8-bit shift register
-    shift_register = ShiftRegister(
+    shift_register = ShiftRegister74HC595(
         bits=8,
         output_disable_pin=CkPin.GPIO4,  # optional -- could hard-wire ic pin to ground instead for always enabled
         serial_data_input_pin=CkPin.GPIO17,
