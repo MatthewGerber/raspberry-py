@@ -273,21 +273,29 @@ class PulseWaveModulatorPCA9685PW:
     def set_channel_pwm_on_off(
             self,
             channel: int,
-            on: int,
-            off: int
+            on_tick: int,
+            off_tick: int
     ):
         """
-        Set the on/off registers for a channel.
+        Set the on/off ticks for an output channel.
 
-        :param channel: Channel.
-        :param on: On value.
-        :param off: Off value.
+        :param channel: Output channel (0-15)
+        :param on_tick: On tick in [0,4095].
+        :param off_tick: Off tick in [0,4095].
         """
 
-        self.write(self.__LED0_ON_L + 4 * channel, on & 0xFF)
-        self.write(self.__LED0_ON_H + 4 * channel, on >> 8)
-        self.write(self.__LED0_OFF_L + 4 * channel, off & 0xFF)
-        self.write(self.__LED0_OFF_H + 4 * channel, off >> 8)
+        # each output channel is controlled by 4 8-bit registers:  2 registers for the on time and 2 registers for the
+        # off time. each pair specifies the low and high bits of a 12-bit value. so only the lower 12 of 16 bits are
+        # used to specify each value [0,4095].
+        channel_register_offset = 4 * channel
+
+        # write lower/higher byte of the on time
+        self.write(self.__LED0_ON_L + channel_register_offset, on_tick & 0xFF)
+        self.write(self.__LED0_ON_H + channel_register_offset, on_tick >> 8)
+
+        # write lower/higher byte of the off time
+        self.write(self.__LED0_OFF_L + channel_register_offset, off_tick & 0xFF)
+        self.write(self.__LED0_OFF_H + channel_register_offset, off_tick >> 8)
 
     def __init__(
             self,

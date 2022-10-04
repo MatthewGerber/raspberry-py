@@ -112,23 +112,37 @@ class DcMotorDriverPCA9685PW(DcMotorDriver):
         :param new_state: New state.
         """
 
-        # convert speed to duty cycle
-        self.pca9685pw.set_channel_pwm_on_off(self.motor_channel, 0, duty)
+        if new_state.speed >= 0:
+            drive_channel, zero_channel = (self.motor_channel_1, self.motor_channel_2)
+        else:
+            drive_channel, zero_channel = (self.motor_channel_2, self.motor_channel_1)
+
+        if new_state.on:
+            speed_frac = abs(new_state.speed) / 100.0
+            duty = int(speed_frac * 4095)
+        else:
+            duty = 0
+
+        self.pca9685pw.set_channel_pwm_on_off(drive_channel, 0, duty)
+        self.pca9685pw.set_channel_pwm_on_off(zero_channel, 0, 0)
 
     def __init__(
             self,
             pca9685pw: PulseWaveModulatorPCA9685PW,
-            motor_channel: int
+            motor_channel_1: int,
+            motor_channel_2: int
     ):
         """
         Initialize the driver.
 
         :param pca9685pw: IC.
-        :param motor_channel: Channel of PCA9685PW to which the motor is connected.
+        :param motor_channel_1: Channel of PCA9685PW to which the motor lead 1 is connected.
+        :param motor_channel_2: Channel of PCA9685PW to which the motor lead 2 is connected.
         """
 
         self.pca9685pw = pca9685pw
-        self.motor_channel = motor_channel
+        self.motor_channel_1 = motor_channel_1
+        self.motor_channel_2 = motor_channel_2
 
 
 class DcMotor(Component):
