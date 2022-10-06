@@ -250,6 +250,19 @@ class DcMotor(Component):
         self.state: DcMotor.State
         self.set_state(DcMotor.State(on=self.state.on, speed=speed))
 
+    def get_speed(
+            self
+    ) -> int:
+        """
+        Get the current speed.
+
+        :return: Current speed in [-100,+100].
+        """
+
+        self.state: DcMotor.State
+
+        return self.state.speed
+
     def __init__(
             self,
             driver: DcMotorDriver,

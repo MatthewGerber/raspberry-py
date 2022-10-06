@@ -1,8 +1,12 @@
+from datetime import timedelta
+from threading import Thread
+from typing import Optional, List
+
 from smbus2 import SMBus
 
 from rpi.gpio import Component
 from rpi.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
-from rpi.gpio.motors import DcMotor, DcMotorDriverPCA9685PW
+from rpi.gpio.motors import DcMotor, DcMotorDriverPCA9685PW, Servo, ServoDriverPCA9685PW
 
 
 class Car(Component):
@@ -15,12 +19,54 @@ class Car(Component):
         def __str__(self) -> str:
             return ''
 
-    def set_speed(
-            self,
+    @staticmethod
+    def set_absolute_wheel_speed(
+            wheels: List[DcMotor],
             speed: int
     ):
-        for wheel in self.wheels:
+        """
+        Set an absolute wheel speed.
+
+        :param wheels: Wheels to change speed for.
+        :param speed: Speed in [-100, 100].
+        """
+
+        for wheel in wheels:
             wheel.set_speed(speed)
+
+    def set_fractional_wheel_speed(
+            self,
+            wheels: List[DcMotor],
+            speed_fraction: float,
+            duration: Optional[timedelta] = None,
+            async_duration: bool = False
+    ):
+        """
+        Set a temporary wheelspeed change.
+
+        :param wheels: Wheels to change speed for.
+        :param speed_fraction: Fraction of speed to retain in the wheels.
+        :param duration: Duration of time to retain the speed change before returning to the current speed, or None
+        to retain the speed change indefinitely.
+        :param async_duration: If duration is not None, this is whether the wait should be asynchronous. If it is
+        asynchronous, then the function call will return immediately and wait in a thread.
+        """
+
+        for wheel in wheels:
+            wheel.set_speed(int(wheel.get_speed() * speed_fraction))
+
+        if duration is not None:
+            if async_duration:
+                Thread(target=lambda: self.set_fractional_wheel_speed(wheels, 1.0 + speed_fraction, None, False)).start()
+            else:
+                self.set_fractional_wheel_speed(wheels, 1.0 + speed_fraction, None, False)
+
+    def zero_move_turn(
+            self,
+            speed: int,
+            duration
+    ):
+        pass
 
     def __init__(
             self
@@ -57,5 +103,23 @@ class Car(Component):
             self.rear_right_wheel,
             self.front_right_wheel
         ) = self.wheels
+        self.left_wheels = [self.front_left_wheel, self.rear_left_wheel]
+        self.right_wheels = [self.front_right_wheel, self.rear_right_wheel]
+        self.front_wheels = [self.front_left_wheel, self.front_right_wheel]
+        self.rear_wheels = [self.rear_left_wheel, self.rear_right_wheel]
 
         # 8 servos use PWM channels 8-15 (1 channel per servo)
+        self.servos = [
+            Servo(
+                driver=ServoDriverPCA9685PW(
+                    pca9685pw=pca9685pw,
+                    servo_channel=servo_channel
+                ),
+                degrees=90
+            )
+            for servo_channel in range(8, 16)
+        ]
+        (
+            self.camera_pan_servo,
+            self.camera_tilt_servo
+        ) = self.servos[0:2]
