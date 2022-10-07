@@ -431,7 +431,8 @@ class ServoDriverPCA9685PW(ServoDriver):
 
         :param degrees: Degrees.
         """
-        pass
+
+        self.set_degrees(degrees)
 
     def stop(
             self
@@ -439,7 +440,6 @@ class ServoDriverPCA9685PW(ServoDriver):
         """
         Stop servo.
         """
-        pass
 
     def set_degrees(
             self,
@@ -451,8 +451,10 @@ class ServoDriverPCA9685PW(ServoDriver):
         :param degrees: Degrees.
         """
 
-        # Sets the Servo Pulse,The PWM frequency must be 50HZ
+        error = 15.0
+        pulse = 2500 - int((degrees + error) / 0.09)
         pulse = pulse * 4096 / 20000  # PWM frequency is 50HZ, the period is 20000us
+
         self.pca9685pw.set_channel_pwm_on_off(self.servo_channel, 0, int(pulse))
 
     def __init__(
@@ -535,7 +537,7 @@ class Servo(Component):
 
         state: Servo.State
 
-        self.driver.set_degrees(state.degrees)
+        self.driver.set_degrees(180.0 - state.degrees if self.reverse else state.degrees)
 
         super().set_state(state)
 
@@ -548,6 +550,8 @@ class Servo(Component):
 
         :param degrees: Degrees.
         """
+
+        degrees = min(self.max_degree, max(degrees, self.min_degree))
 
         self.set_state(Servo.State(degrees))
 
@@ -586,18 +590,32 @@ class Servo(Component):
     def __init__(
             self,
             driver: ServoDriver,
-            degrees: float
+            degrees: float,
+            min_degree: float = 0.0,
+            max_degree: float = 180.0,
+            reverse: bool = False
     ):
         """
         Initialize the servo.
 
         :param driver: Driver.
         :param degrees: Initial degree angle.
+        :param min_degree: Minimum allowable degree.
+        :param max_degree: Maximum allowable degree.
+        :param reverse: Whether degrees should be reversed when actuated.
         """
 
-        super().__init__(Servo.State(degrees))
+        if min_degree > max_degree:
+            raise ValueError('Minimum degree must not be greater than maximum degree.')
 
         self.driver = driver
+        self.min_degree = min_degree
+        self.max_degree = max_degree
+        self.reverse = reverse
+
+        degrees = min(self.max_degree, max(degrees, self.min_degree))
+
+        super().__init__(Servo.State(degrees))
 
 
 class Stepper(Component):

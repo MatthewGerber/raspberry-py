@@ -61,12 +61,44 @@ class Car(Component):
             else:
                 self.set_fractional_wheel_speed(wheels, 1.0 + speed_fraction, None, False)
 
-    def zero_move_turn(
+    def stationary_turn(
             self,
             speed: int,
             duration
     ):
+        """
+        Conduct a stationary turn by moving left- and right-side wheels in opposite directions.
+
+        :param speed: Wheel speed.
+        :param duration: Duration of time to execute the turn.
+        """
         pass
+
+    def start(
+            self
+    ):
+        """
+        Start the car.
+        """
+
+        for wheel in self.wheels:
+            wheel.start()
+
+        for servo in self.servos:
+            servo.start()
+
+    def stop(
+            self
+    ):
+        """
+        Stop the car.
+        """
+
+        for wheel in self.wheels:
+            wheel.stop()
+
+        for servo in self.servos:
+            servo.stop()
 
     def __init__(
             self
@@ -115,7 +147,10 @@ class Car(Component):
                     pca9685pw=pca9685pw,
                     servo_channel=servo_channel
                 ),
-                degrees=90
+                degrees=90,
+                min_degree=80 if servo_channel == 9 else 0,  # don't permit tiling too low
+                max_degree=180,
+                reverse=servo_channel == 9  # the tilt servo is reversed, such that 180 points up
             )
             for servo_channel in range(8, 16)
         ]
