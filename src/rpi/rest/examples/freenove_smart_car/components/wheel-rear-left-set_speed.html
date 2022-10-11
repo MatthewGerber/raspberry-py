@@ -1,0 +1,12 @@
+<div class="range">
+  <label for="wheel-rear-left-set_speed" class="form-label">wheel-rear-left set_speed</label>
+  <input type="range" class="form-range" min="-100" max="100" step="1" id="wheel-rear-left-set_speed" />
+</div>
+<script>
+$("#wheel-rear-left-set_speed").on("input", function () {
+  $.ajax({
+    url: "http://10.0.0.59:5000/call/wheel-rear-left/set_speed?speed=int:" + $("#wheel-rear-left-set_speed")[0].value,
+    type: "GET"
+  });
+});
+</script>

@@ -123,8 +123,7 @@ class DcMotorDriverPCA9685PW(DcMotorDriver):
             drive_channel, zero_channel = zero_channel, drive_channel
 
         if new_state.on:
-            speed_frac = abs(new_state.speed) / 100.0
-            duty = int(speed_frac * 4095)
+            duty = int((abs(new_state.speed) / 100.0) * 4095)
         else:
             duty = 0
 

@@ -2,7 +2,7 @@ import time
 from datetime import timedelta
 
 from rpi.gpio import setup
-from rpi.gpio.freenove.smart_car import Car
+from rpi.gpio.freenove.smart_car import Car, Wheel
 
 
 def main():
@@ -12,16 +12,20 @@ def main():
     car = Car(
         camera_pan_servo_correction_degrees=5.0,
         camera_tilt_servo_correction_degrees=-15.0,
-        reverse_wheels=[1]
+        reverse_wheels=[Wheel.REAR_LEFT]
     )
 
     car.start()
 
     for wheel in car.wheels:
-        wheel.set_speed(25)
+        wheel.set_speed(50)
         time.sleep(0.5)
-        wheel.set_speed(-25)
+
+    for wheel in car.wheels:
+        wheel.set_speed(-50)
         time.sleep(0.5)
+
+    for wheel in car.wheels:
         wheel.set_speed(0)
 
     car.set_absolute_wheel_speed(car.left_wheels, 50)
@@ -33,10 +37,6 @@ def main():
     car.camera_tilt_servo.set_degrees(degrees=180.0, interval=timedelta(seconds=0.5))
     car.camera_tilt_servo.set_degrees(degrees=70.0, interval=timedelta(seconds=0.5))
     car.camera_tilt_servo.set_degrees(90)
-
-    car.camera_pan_servo.set_degrees(degrees=180.0, interval=timedelta(seconds=0.5))
-    car.camera_pan_servo.set_degrees(degrees=0.0, interval=timedelta(seconds=1.0))
-    car.camera_pan_servo.set_degrees(90)
 
     car.camera_pan_servo.set_degrees(degrees=180.0, interval=timedelta(seconds=0.5))
     car.camera_pan_servo.set_degrees(degrees=0.0, interval=timedelta(seconds=1.0))

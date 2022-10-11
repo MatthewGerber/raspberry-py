@@ -1,4 +1,5 @@
 from datetime import timedelta
+from enum import IntEnum
 from threading import Thread
 from typing import Optional, List
 
@@ -7,6 +8,17 @@ from smbus2 import SMBus
 from rpi.gpio import Component
 from rpi.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
 from rpi.gpio.motors import DcMotor, DcMotorDriverPCA9685PW, Servo, ServoDriverPCA9685PW
+
+
+class Wheel(IntEnum):
+    """
+    Wheels.
+    """
+
+    FRONT_LEFT = 0
+    REAR_LEFT = 1
+    REAR_RIGHT = 2
+    FRONT_RIGHT = 3
 
 
 class Car(Component):
@@ -100,19 +112,38 @@ class Car(Component):
         for servo in self.servos:
             servo.stop()
 
+    def get_components(
+            self
+    ) -> List[Component]:
+        """
+        Get a list of all GPIO circuit components in the car.
+
+        :return: List of components.
+        """
+
+        self.wheels: List[Component]
+
+        return self.wheels + self.servos
+
     def __init__(
             self,
             camera_pan_servo_correction_degrees: float = 0.0,
             camera_tilt_servo_correction_degrees: float = 0.0,
-            reverse_wheels: Optional[List[int]] = None
+            reverse_wheels: Optional[List[Wheel]] = None
     ):
         """
         Initialize the car.
 
-        :param camera_pan_servo_correction_degrees: Pan correction.
-        :param camera_tilt_servo_correction_degrees: Tilt correction.
-        :param reverse_wheels: List of wheel numbers to reverse direction of, or None to reverse no wheels. Wheels are
-        numbered as follows:  (0) front left, (1) rear left, (2) rear right, and (3) front right.
+        :param camera_pan_servo_correction_degrees: Pan correction. This number of degrees is added to any request to
+        position the camera pan servo, in order to correct servo assembly errors. For example, the servo threading
+        might not permit assembly at the desired angle. If the servo is a few degrees one way or the other, add or
+        subtract a few degrees here to get the desired angle.
+        :param camera_tilt_servo_correction_degrees: Tilt correction. This number of degrees is added to any request to
+        position the camera tilt servo, in order to correct servo assembly errors. For example, the servo threading
+        might not permit assembly at the desired angle. If the servo is a few degrees one way or the other, add or
+        subtract a few degrees here to get the desired angle.
+        :param reverse_wheels: List of wheels to reverse direction of, or None to reverse no wheels. Pass values here
+        so that all positive wheel speeds move the car forward and all negative wheel speeds move the car backward.
         """
 
         if reverse_wheels is None:
@@ -128,19 +159,20 @@ class Car(Component):
         )
         pca9685pw.set_pwm_frequency(50)
 
-        # 4 wheel motors use PWM channels 0-7 (2 channels per motor)
         self.wheels = [
             DcMotor(
                 driver=DcMotorDriverPCA9685PW(
                     pca9685pw=pca9685pw,
-                    motor_channel_1=motor_channel_1,
-                    motor_channel_2=motor_channel_2,
-                    reverse=i in reverse_wheels
+                    motor_channel_1=wheel.value * 2,  # 4 wheel motors use PWM channels 0-7 (2 channels per motor)
+                    motor_channel_2=wheel.value * 2 + 1,
+                    reverse=wheel in reverse_wheels
                 ),
                 speed=0
             )
-            for i, (motor_channel_1, motor_channel_2) in enumerate([(0, 1), (2, 3), (4, 5), (6, 7)])
+            for wheel in Wheel
         ]
+        for wheel, wheel_id in zip(self.wheels, Wheel):
+            wheel.id = f'wheel-{wheel_id.name.lower().replace("_", "-")}'
         (
             self.front_left_wheel,
             self.rear_left_wheel,
@@ -164,6 +196,7 @@ class Car(Component):
             min_degree=0,
             max_degree=180
         )
+        self.camera_pan_servo.id = 'camera-pan'
 
         self.camera_tilt_servo = Servo(
             driver=ServoDriverPCA9685PW(
@@ -176,6 +209,7 @@ class Car(Component):
             min_degree=75,  # don't permit tiling too low, as this will hit the servo mounts.
             max_degree=180
         )
+        self.camera_tilt_servo.id = 'camera-tilt'
 
         self.servos = [
             self.camera_pan_servo,

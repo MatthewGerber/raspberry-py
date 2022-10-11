@@ -1,0 +1,12 @@
+<div class="form-check form-switch">
+  <label class="form-check-label" for="wheel-rear-left-start-stop">wheel-rear-left start/stop</label>
+  <input class="form-check-input" type="checkbox" role="switch" id="wheel-rear-left-start-stop" />
+</div>
+<script>
+$("#wheel-rear-left-start-stop").on("change", function () {
+  $.ajax({
+    url: $("#wheel-rear-left-start-stop").is(":checked") ? "http://10.0.0.59:5000/call/wheel-rear-left/start" : "http://10.0.0.59:5000/call/wheel-rear-left/stop",
+    type: "GET"
+  });
+});
+</script>

@@ -12,6 +12,7 @@ import flask
 from flask import Flask, request, abort, Response
 
 from rpi.gpio import Component, setup
+from rpi.gpio.freenove.smart_car import Car
 from rpi.gpio.lights import LED
 from rpi.gpio.motors import DcMotor, Servo, Stepper
 from rpi.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder
@@ -109,6 +110,15 @@ class RpiFlask(Flask):
             elements = [
                 RpiFlask.get_button(component.id, rest_host, rest_port, component.buzz, 'duration=seconds:0.5')
             ]
+        elif isinstance(component, Car):
+            elements = [
+                element
+                for car_component in component.get_components()
+                for element in RpiFlask.get_ui_elements(car_component, rest_host, rest_port)
+            ]
+            elements.append(
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop)
+            )
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
 
@@ -183,7 +193,11 @@ class RpiFlask(Flask):
 
         element_id = f'{component_id}-{on_input_function_name}'
 
-        non_self_params = [k for k, v in inspect.signature(on_input_function).parameters.items() if k != 'self']
+        non_self_params = [
+            param_name
+            for param_name, param in inspect.signature(on_input_function).parameters.items()
+            if param_name != 'self' and str(param.default) == "<class 'inspect._empty'>"  # only consider params without default values
+        ]
         if len(non_self_params) != 1:
             raise ValueError('Function for range must contain exactly 1 parameter.')
 

@@ -1,0 +1,12 @@
+<div class="range">
+  <label for="camera-tilt-set_degrees" class="form-label">camera-tilt set_degrees</label>
+  <input type="range" class="form-range" min="0" max="180" step="1" id="camera-tilt-set_degrees" />
+</div>
+<script>
+$("#camera-tilt-set_degrees").on("input", function () {
+  $.ajax({
+    url: "http://10.0.0.59:5000/call/camera-tilt/set_degrees?degrees=int:" + $("#camera-tilt-set_degrees")[0].value,
+    type: "GET"
+  });
+});
+</script>
