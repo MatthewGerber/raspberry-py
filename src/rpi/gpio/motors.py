@@ -1,6 +1,8 @@
+import logging
 import time
 from abc import ABC, abstractmethod
 from datetime import timedelta
+from typing import Optional
 
 import RPi.GPIO as gpio
 import numpy as np
@@ -117,6 +119,9 @@ class DcMotorDriverPCA9685PW(DcMotorDriver):
         else:
             drive_channel, zero_channel = (self.motor_channel_2, self.motor_channel_1)
 
+        if self.reverse:
+            drive_channel, zero_channel = zero_channel, drive_channel
+
         if new_state.on:
             speed_frac = abs(new_state.speed) / 100.0
             duty = int(speed_frac * 4095)
@@ -130,7 +135,8 @@ class DcMotorDriverPCA9685PW(DcMotorDriver):
             self,
             pca9685pw: PulseWaveModulatorPCA9685PW,
             motor_channel_1: int,
-            motor_channel_2: int
+            motor_channel_2: int,
+            reverse: bool
     ):
         """
         Initialize the driver.
@@ -138,11 +144,13 @@ class DcMotorDriverPCA9685PW(DcMotorDriver):
         :param pca9685pw: IC.
         :param motor_channel_1: Channel of PCA9685PW to which the motor lead 1 is connected.
         :param motor_channel_2: Channel of PCA9685PW to which the motor lead 2 is connected.
+        :param reverse: Whether to reverse speed upon output.
         """
 
         self.pca9685pw = pca9685pw
         self.motor_channel_1 = motor_channel_1
         self.motor_channel_2 = motor_channel_2
+        self.reverse = reverse
 
 
 class DcMotor(Component):
@@ -286,33 +294,16 @@ class ServoDriver(ABC):
     """
 
     @abstractmethod
-    def start(
+    def change_state(
             self,
-            degrees: float
+            previous_state: 'Servo.State',
+            new_state: 'Servo.State'
     ):
         """
-        Start servo.
+        Change state.
 
-        :param degrees: Degrees.
-        """
-
-    @abstractmethod
-    def stop(
-            self
-    ):
-        """
-        Stop servo.
-        """
-
-    @abstractmethod
-    def set_degrees(
-            self,
-            degrees: float
-    ):
-        """
-        Set degrees.
-
-        :param degrees: Degrees.
+        :param previous_state: Previous state.
+        :param new_state: New state.
         """
 
 
@@ -321,26 +312,26 @@ class ServoDriverSoftwarePWM(ServoDriver):
     Software PWM servo driver.
     """
 
-    def start(
+    def change_state(
             self,
-            degrees: float
+            previous_state: 'Servo.State',
+            new_state: 'Servo.State'
     ):
         """
-        Start servo.
+        Change state.
 
-        :param degrees: Degrees.
+        :param previous_state: Previous state.
+        :param new_state: New state.
         """
 
-        self.pwm_signal.start(self.get_duty_cycle(degrees))
-
-    def stop(
-            self
-    ):
-        """
-        Stop servo.
-        """
-
-        self.pwm_signal.stop()
+        if new_state.on:
+            pwm_duty_cycle = self.get_duty_cycle(new_state.degrees)
+            if previous_state.on:
+                self.pwm_signal.ChangeDutyCycle(pwm_duty_cycle)
+            else:
+                self.pwm_signal.start(pwm_duty_cycle)
+        else:
+            self.pwm_signal.stop()
 
     def get_duty_cycle(
             self,
@@ -365,18 +356,6 @@ class ServoDriverSoftwarePWM(ServoDriver):
         duty_cycle_percent = 100.0 * duty_cycle_high_ms / self.pwm_tick_ms
 
         return duty_cycle_percent
-
-    def set_degrees(
-            self,
-            degrees: float
-    ):
-        """
-        Set degrees.
-
-        :param degrees: Degrees.
-        """
-
-        self.pwm_signal.ChangeDutyCycle(self.get_duty_cycle(degrees))
 
     def __init__(
             self,
@@ -422,55 +401,53 @@ class ServoDriverPCA9685PW(ServoDriver):
     Servo driver via PCA9685PW IC (hardware pulse-wave modulator).
     """
 
-    def start(
+    def change_state(
             self,
-            degrees: float
+            previous_state: 'Servo.State',
+            new_state: 'Servo.State'
     ):
         """
-        Start servo.
+        Change state.
 
-        :param degrees: Degrees.
+        :param previous_state: Previous state.
+        :param new_state: New state.
         """
 
-        self.set_degrees(degrees)
+        if new_state.on:
 
-    def stop(
-            self
-    ):
-        """
-        Stop servo.
-        """
+            if self.reverse:
+                pulse = 500 + int((new_state.degrees + self.correction_degrees) / 0.09)
+            else:
+                pulse = 2500 - int((new_state.degrees + self.correction_degrees) / 0.09)
 
-    def set_degrees(
-            self,
-            degrees: float
-    ):
-        """
-        Set degrees.
+            duty = int(pulse * 4096 / 20000)  # PWM frequency is 50HZ, the period is 20000us
 
-        :param degrees: Degrees.
-        """
+        else:
+            duty = 0
 
-        error = 15.0
-        pulse = 2500 - int((degrees + error) / 0.09)
-        pulse = pulse * 4096 / 20000  # PWM frequency is 50HZ, the period is 20000us
-
-        self.pca9685pw.set_channel_pwm_on_off(self.servo_channel, 0, int(pulse))
+        self.pca9685pw.set_channel_pwm_on_off(self.servo_channel, 0, duty)
 
     def __init__(
             self,
             pca9685pw: PulseWaveModulatorPCA9685PW,
-            servo_channel: int
+            servo_channel: int,
+            reverse: bool,
+            correction_degrees: float
     ):
         """
         Initialize the driver.
 
         :param pca9685pw: IC.
         :param servo_channel: Channel of PCA9685PW to which the servo is connected.
+        :param reverse: Whether to reverse the degrees upon output.
+        :param correction_degrees: Correction degrees to be added to any requested degrees to account for assembly
+        errors (e.g., a servo not being mounted perfectly).
         """
 
         self.pca9685pw = pca9685pw
         self.servo_channel = servo_channel
+        self.reverse = reverse
+        self.correction_degrees = correction_degrees
 
 
 class Servo(Component):
@@ -485,14 +462,17 @@ class Servo(Component):
 
         def __init__(
                 self,
+                on: bool,
                 degrees: float
         ):
             """
             Initialize the state.
 
+            :param on: Whether servo is on.
             :param degrees: Degrees of rotation.
             """
 
+            self.on = on
             self.degrees = degrees
 
         def __eq__(
@@ -509,7 +489,7 @@ class Servo(Component):
             if not isinstance(other, Servo.State):
                 raise ValueError(f'Expected a {Servo.State}')
 
-            return self.degrees == other.degrees
+            return self.on == other.on and self.degrees == other.degrees
 
         def __str__(
                 self
@@ -520,7 +500,7 @@ class Servo(Component):
             :return: String.
             """
 
-            return f'Degrees:  {self.degrees}'
+            return f'On:  {self.on}, Degrees:  {self.degrees}'
 
     def set_state(
             self,
@@ -537,23 +517,44 @@ class Servo(Component):
 
         state: Servo.State
 
-        self.driver.set_degrees(180.0 - state.degrees if self.reverse else state.degrees)
+        constrained_degrees = min(self.max_degree, max(state.degrees, self.min_degree))
+        if constrained_degrees != state.degrees:
+            logging.warning(f'Requested servo degrees ({state.degrees}) is out of bounds [{self.min_degree},{self.max_degree}]. Constraining to be in bounds.')
+            state.degrees = constrained_degrees
+
+        self.state: DcMotor.State
+        state: DcMotor.State
+
+        self.driver.change_state(self.state, state)
 
         super().set_state(state)
 
     def set_degrees(
             self,
-            degrees: float
+            degrees: float,
+            interval: Optional[timedelta] = None
     ):
         """
         Set degrees of rotation.
 
         :param degrees: Degrees.
+        :param interval: Interval of time to take when changing degrees from the current to the specified value (None to
+        change as quickly as possible).
         """
 
-        degrees = min(self.max_degree, max(degrees, self.min_degree))
+        self.state: Servo.State
 
-        self.set_state(Servo.State(degrees))
+        if interval is not None:
+            start_degrees = self.get_degrees()
+            num_steps = int(abs(degrees - start_degrees) * 1.0)
+            seconds_per_step = interval.total_seconds() / num_steps
+            degrees_per_step = (degrees - start_degrees) / num_steps
+            for step in range(num_steps):
+                step_degrees = start_degrees + step * degrees_per_step
+                self.set_state(Servo.State(on=self.state.on, degrees=step_degrees))
+                time.sleep(seconds_per_step)
+
+        self.set_state(Servo.State(on=self.state.on, degrees=degrees))
 
     def get_degrees(
             self
@@ -576,7 +577,7 @@ class Servo(Component):
         """
 
         self.state: Servo.State
-        self.driver.start(self.state.degrees)
+        self.set_state(Servo.State(on=True, degrees=self.state.degrees))
 
     def stop(
             self
@@ -585,15 +586,15 @@ class Servo(Component):
         Stop the servo.
         """
 
-        self.driver.stop()
+        self.state: Servo.State
+        self.set_state(Servo.State(on=False, degrees=self.state.degrees))
 
     def __init__(
             self,
             driver: ServoDriver,
             degrees: float,
             min_degree: float = 0.0,
-            max_degree: float = 180.0,
-            reverse: bool = False
+            max_degree: float = 180.0
     ):
         """
         Initialize the servo.
@@ -602,20 +603,16 @@ class Servo(Component):
         :param degrees: Initial degree angle.
         :param min_degree: Minimum allowable degree.
         :param max_degree: Maximum allowable degree.
-        :param reverse: Whether degrees should be reversed when actuated.
         """
 
         if min_degree > max_degree:
             raise ValueError('Minimum degree must not be greater than maximum degree.')
 
+        super().__init__(Servo.State(on=False, degrees=degrees))
+
         self.driver = driver
         self.min_degree = min_degree
         self.max_degree = max_degree
-        self.reverse = reverse
-
-        degrees = min(self.max_degree, max(degrees, self.min_degree))
-
-        super().__init__(Servo.State(degrees))
 
 
 class Stepper(Component):

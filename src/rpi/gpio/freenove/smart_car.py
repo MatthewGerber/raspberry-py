@@ -42,7 +42,7 @@ class Car(Component):
             async_duration: bool = False
     ):
         """
-        Set a temporary wheelspeed change.
+        Set a temporary wheel speed change.
 
         :param wheels: Wheels to change speed for.
         :param speed_fraction: Fraction of speed to retain in the wheels.
@@ -101,11 +101,22 @@ class Car(Component):
             servo.stop()
 
     def __init__(
-            self
+            self,
+            camera_pan_servo_correction_degrees: float = 0.0,
+            camera_tilt_servo_correction_degrees: float = 0.0,
+            reverse_wheels: Optional[List[int]] = None
     ):
         """
-        Initialize the car
+        Initialize the car.
+
+        :param camera_pan_servo_correction_degrees: Pan correction.
+        :param camera_tilt_servo_correction_degrees: Tilt correction.
+        :param reverse_wheels: List of wheel numbers to reverse direction of, or None to reverse no wheels. Wheels are
+        numbered as follows:  (0) front left, (1) rear left, (2) rear right, and (3) front right.
         """
+
+        if reverse_wheels is None:
+            reverse_wheels = []
 
         super().__init__(Car.State())
 
@@ -123,11 +134,12 @@ class Car(Component):
                 driver=DcMotorDriverPCA9685PW(
                     pca9685pw=pca9685pw,
                     motor_channel_1=motor_channel_1,
-                    motor_channel_2=motor_channel_2
+                    motor_channel_2=motor_channel_2,
+                    reverse=i in reverse_wheels
                 ),
                 speed=0
             )
-            for motor_channel_1, motor_channel_2 in [(0, 1), (2, 3), (4, 5), (6, 7)]
+            for i, (motor_channel_1, motor_channel_2) in enumerate([(0, 1), (2, 3), (4, 5), (6, 7)])
         ]
         (
             self.front_left_wheel,
@@ -141,20 +153,31 @@ class Car(Component):
         self.rear_wheels = [self.rear_left_wheel, self.rear_right_wheel]
 
         # 8 servos use PWM channels 8-15 (1 channel per servo)
+        self.camera_pan_servo = Servo(
+            driver=ServoDriverPCA9685PW(
+                pca9685pw=pca9685pw,
+                servo_channel=8,
+                reverse=False,
+                correction_degrees=camera_pan_servo_correction_degrees
+            ),
+            degrees=90,
+            min_degree=0,
+            max_degree=180
+        )
+
+        self.camera_tilt_servo = Servo(
+            driver=ServoDriverPCA9685PW(
+                pca9685pw=pca9685pw,
+                servo_channel=9,
+                reverse=True,  # the tilt servo is mounted in reverse, such that 180 points up.
+                correction_degrees=camera_tilt_servo_correction_degrees
+            ),
+            degrees=90,
+            min_degree=75,  # don't permit tiling too low, as this will hit the servo mounts.
+            max_degree=180
+        )
+
         self.servos = [
-            Servo(
-                driver=ServoDriverPCA9685PW(
-                    pca9685pw=pca9685pw,
-                    servo_channel=servo_channel
-                ),
-                degrees=90,
-                min_degree=80 if servo_channel == 9 else 0,  # don't permit tiling too low
-                max_degree=180,
-                reverse=servo_channel == 9  # the tilt servo is reversed, such that 180 points up
-            )
-            for servo_channel in range(8, 16)
-        ]
-        (
             self.camera_pan_servo,
             self.camera_tilt_servo
-        ) = self.servos[0:2]
+        ]
