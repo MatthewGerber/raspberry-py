@@ -22,13 +22,29 @@ class Wheel(IntEnum):
 
 
 class Car(Component):
+    """
+    The Freenove 4WD Smart Car.
+    """
 
     class State(Component.State):
+        """
+        Car state. Currently not used.
+        """
 
         def __eq__(self, other: object) -> bool:
+            """
+            Check equality with another state.
+            """
+
             return False
 
         def __str__(self) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
             return ''
 
     @staticmethod
@@ -75,16 +91,28 @@ class Car(Component):
 
     def stationary_turn(
             self,
-            speed: int,
-            duration
+            speed: int
     ):
         """
         Conduct a stationary turn by moving left- and right-side wheels in opposite directions.
 
-        :param speed: Wheel speed.
-        :param duration: Duration of time to execute the turn.
+        :param speed: Wheel speed. Positive values turn the car right and negative values turn the car left.
         """
-        pass
+
+        self.set_absolute_wheel_speed(self.left_wheels, speed)
+        self.set_absolute_wheel_speed(self.right_wheels, -speed)
+
+    def set_speed(
+            self,
+            speed: int
+    ):
+        """
+        Set the speed of all wheels.
+
+        :param speed: Speed in [-100,+100].
+        """
+
+        self.set_absolute_wheel_speed(self.wheels, speed)
 
     def start(
             self

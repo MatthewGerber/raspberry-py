@@ -116,9 +116,11 @@ class RpiFlask(Flask):
                 for car_component in component.get_components()
                 for element in RpiFlask.get_ui_elements(car_component, rest_host, rest_port)
             ]
-            elements.append(
-                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop)
-            )
+            elements.extend([
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
+                RpiFlask.get_range(component.id, -100, 100, 1, rest_host, rest_port, component.set_speed),
+                RpiFlask.get_range(component.id, -20, 20, 1, rest_host, rest_port, component.stationary_turn)
+            ])
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
 

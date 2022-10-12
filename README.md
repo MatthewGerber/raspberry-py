@@ -166,7 +166,7 @@ browser as shown below:
 
 ## Flask REST Server
 As with the Apache HTTP server, any modern HTTP server should suffice for serving the REST endpoints that are contacted 
-by the JavaScript described above. For simplicity we use Flask's built-in server, which is started as follows:
+by the JavaScript described above. For simplicity, we use Flask's built-in server, which is started as follows:
 ```
 flask --app rpi.rest.examples.servo.servo run --host 0.0.0.0
 ```
@@ -174,7 +174,7 @@ The arguments are as follows:
 * `--app`:  Where to look for the RpiFlask application. This works similarly to the `--app` argument in the previous 
 command. The sub-command `run` instructs Flask to run the server.
 * `--host`:  Specifies the IP address on which the Flask REST server should listen for incoming client connections. The
-special value of `0.0.0.0` causes Flask to listen on all of the machine's IP addresses. The default port is 5000, which
+special value of `0.0.0.0` causes Flask to listen on all the machine's IP addresses. The default port is 5000, which
 can be modified but must match the `--rest-port` used earlier. See the Flask 
 [site](https://flask.palletsprojects.com/) for more information.
 

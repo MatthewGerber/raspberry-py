@@ -9,3 +9,5 @@ car = Car(
 car.id = 'car-1'
 
 app.add_component(car)
+for car_component in car.get_components():
+    app.add_component(car_component)
