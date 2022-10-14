@@ -502,7 +502,7 @@ class SevenSegmentLedShiftRegister(Component):
 
     def set_state(
             self,
-            state: 'Component.State'
+            state: Component.State
     ):
         """
         Set the state and trigger events.
@@ -668,7 +668,7 @@ class FourDigitSevenSegmentLED(Component):
 
     def set_state(
             self,
-            state: 'Component.State'
+            state: Component.State
     ):
         """
         Set the state and trigger events.
@@ -880,7 +880,7 @@ class LedMatrix(Component):
 
     def set_state(
             self,
-            state: 'Component.State'
+            state: Component.State
     ):
         """
         Set the state and trigger events.

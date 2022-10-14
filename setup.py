@@ -22,7 +22,8 @@ setup(
         'RPi.GPIO==0.7.1',
         'smbus2==0.4.1 ',
         'Flask==2.2.2',
-        'Flask-Cors==3.0.10'
+        'Flask-Cors==3.0.10',
+        'opencv-python==4.6.0.66'
     ],
     tests_require=TEST_REQUIREMENTS,
     extras_require={

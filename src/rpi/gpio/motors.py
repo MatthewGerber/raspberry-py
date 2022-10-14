@@ -135,7 +135,7 @@ class DcMotorDriverPCA9685PW(DcMotorDriver):
             pca9685pw: PulseWaveModulatorPCA9685PW,
             motor_channel_1: int,
             motor_channel_2: int,
-            reverse: bool
+            reverse: bool = False
     ):
         """
         Initialize the driver.
@@ -217,8 +217,10 @@ class DcMotor(Component):
         if not isinstance(state, DcMotor.State):
             raise ValueError(f'Expected a {DcMotor.State}')
 
-        self.state: DcMotor.State
-        state: DcMotor.State
+        constrained_speed = min(self.max_speed, max(state.speed, self.min_speed))
+        if constrained_speed != state.speed:
+            logging.warning(f'Requested motor speed ({state.speed}) is out of bounds [{self.min_speed},{self.max_speed}]. Constraining to be in bounds.')
+            state.speed = constrained_speed
 
         self.driver.change_state(self.state, state)
 
@@ -285,6 +287,9 @@ class DcMotor(Component):
         super().__init__(DcMotor.State(on=False, speed=speed))
 
         self.driver = driver
+
+        self.min_speed = -100
+        self.max_speed = 100
 
 
 class ServoDriver(ABC):
@@ -415,9 +420,9 @@ class ServoDriverPCA9685PW(ServoDriver):
         if new_state.on:
 
             if self.reverse:
-                pulse = 500 + int((new_state.degrees + self.correction_degrees) / 0.09)
+                pulse = 500 + (new_state.degrees + self.correction_degrees) / 0.09
             else:
-                pulse = 2500 - int((new_state.degrees + self.correction_degrees) / 0.09)
+                pulse = 2500 - (new_state.degrees + self.correction_degrees) / 0.09
 
             duty = int(pulse * 4096 / 20000)  # PWM frequency is 50HZ, the period is 20000us
 
@@ -430,8 +435,8 @@ class ServoDriverPCA9685PW(ServoDriver):
             self,
             pca9685pw: PulseWaveModulatorPCA9685PW,
             servo_channel: int,
-            reverse: bool,
-            correction_degrees: float
+            reverse: bool = False,
+            correction_degrees: float = 0.0
     ):
         """
         Initialize the driver.
@@ -503,7 +508,7 @@ class Servo(Component):
 
     def set_state(
             self,
-            state: 'Component.State'
+            state: Component.State
     ):
         """
         Set the state of the servo.
@@ -514,15 +519,10 @@ class Servo(Component):
         if not isinstance(state, Servo.State):
             raise ValueError(f'Expected a {Servo.State}')
 
-        state: Servo.State
-
         constrained_degrees = min(self.max_degree, max(state.degrees, self.min_degree))
         if constrained_degrees != state.degrees:
             logging.warning(f'Requested servo degrees ({state.degrees}) is out of bounds [{self.min_degree},{self.max_degree}]. Constraining to be in bounds.')
             state.degrees = constrained_degrees
-
-        self.state: DcMotor.State
-        state: DcMotor.State
 
         self.driver.change_state(self.state, state)
 
@@ -668,7 +668,7 @@ class Stepper(Component):
 
     def set_state(
             self,
-            state: 'Component.State'
+            state: Component.State
     ):
         """
         Set the state and trigger events.

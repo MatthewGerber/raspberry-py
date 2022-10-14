@@ -1,0 +1,22 @@
+<div>
+  <img id="camera-capture_image" src="" />
+</div>
+<script>
+function capture_camera_capture_image() {
+  $.ajax({
+    url: "http://10.0.0.59:5000/call/camera/capture_image",
+    type: "GET",
+    success: async function (return_value) {
+      document.getElementById("camera-capture_image").src = "data:image/jpg;base64," + return_value;
+      await new Promise(r => setTimeout(r, 66.667));
+      capture_camera_capture_image();
+    },
+    error: async function(xhr, error){
+      console.log(error);
+      await new Promise(r => setTimeout(r, 66.667));
+      capture_camera_capture_image();
+    }
+  });
+}
+capture_camera_capture_image();
+</script>

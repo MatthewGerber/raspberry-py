@@ -204,3 +204,10 @@ sudo dpkg -i raspi-config_20211019_all.deb
 A full listing of the latest `raspi-config` packages can be found 
 [here](http://archive.raspberrypi.org/debian/pool/main/r/raspi-config). The user will also need to be added to the 
 `i2c` group with `sudo usermod -a -G i2c ubuntu` (then restart for the change to take effect).
+
+## Enabling and Testing the RPI Video Camera
+1. Modify boot config:  `sudo emacs /boot/firmware/config.txt` and add `start_x=1` and `gpu_mem=256` at the end.
+2. Enable camera:  `sudo apt install raspi-config`, then `raspi-config`, then enable the camera.
+3. Give permission:  `sudo usermod -a -G video ubuntu`
+4. Restart:  `sudo shutdown -r now`
+5. Test:  `raspistill -o test.jpg`

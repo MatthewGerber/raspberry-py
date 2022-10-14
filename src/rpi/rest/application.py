@@ -15,7 +15,7 @@ from rpi.gpio import Component, setup
 from rpi.gpio.freenove.smart_car import Car
 from rpi.gpio.lights import LED
 from rpi.gpio.motors import DcMotor, Servo, Stepper
-from rpi.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder
+from rpi.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder, Camera
 from rpi.gpio.sounds import ActiveBuzzer
 from flask_cors import CORS
 
@@ -83,12 +83,12 @@ class RpiFlask(Flask):
         elif isinstance(component, DcMotor):
             elements = [
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, -100, 100, 1, rest_host, rest_port, component.set_speed)
+                RpiFlask.get_range(component.id, component.min_speed, component.max_speed, 1, rest_host, rest_port, component.set_speed)
             ]
         elif isinstance(component, Servo):
             elements = [
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, 0, 180, 1, rest_host, rest_port, component.set_degrees)
+                RpiFlask.get_range(component.id, int(component.min_degree), int(component.max_degree), 1, rest_host, rest_port, component.set_degrees)
             ]
         elif isinstance(component, Stepper):
             elements = [
@@ -109,6 +109,10 @@ class RpiFlask(Flask):
         elif isinstance(component, ActiveBuzzer):
             elements = [
                 RpiFlask.get_button(component.id, rest_host, rest_port, component.buzz, 'duration=seconds:0.5')
+            ]
+        elif isinstance(component, Camera):
+            elements = [
+                RpiFlask.get_image(component.id, rest_host, rest_port, component.capture_image, timedelta(seconds=1.0 / component.fps))
             ]
         elif isinstance(component, Car):
             elements = [
@@ -263,6 +267,7 @@ class RpiFlask(Flask):
                 f'      {read_value_function_name}();\n'
                 f'    }},\n'
                 f'    error: async function(xhr, error){{\n'
+                f'      console.log(error);\n'
                 f'      document.getElementById("{element_id}").innerHTML = "{function_name}:  null";\n'
                 f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
                 f'      {read_value_function_name}();\n'
@@ -270,6 +275,57 @@ class RpiFlask(Flask):
                 f'  }});\n'
                 f'}}\n'
                 f'{read_value_function_name}();\n'
+                f'</script>'
+            )
+        )
+
+    @staticmethod
+    def get_image(
+            component_id: str,
+            rest_host: str,
+            rest_port: int,
+            function: Callable[[], Any],
+            refresh_interval: timedelta
+    ) -> Tuple[str, str]:
+        """
+        Get image that refreshes periodically.
+
+        :param component_id: Component id.
+        :param rest_host: Host.
+        :param rest_port: Port.
+        :param function: Function to call to obtain new image.
+        :param refresh_interval: How long to wait between refresh calls.
+        :return: 2-tuple of (1) element id and (2) UI element.
+        """
+
+        function_name = function.__name__
+        element_id = f'{component_id}-{function_name}'
+        capture_function_name = f'capture_{element_id}'.replace('-', '_')
+
+        return (
+            element_id,
+            (
+                f'<div>\n'
+                f'  <img id="{element_id}" src="" />\n'
+                f'</div>\n'
+                f'<script>\n'
+                f'function {capture_function_name}() {{\n'
+                f'  $.ajax({{\n'
+                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{function_name}",\n'
+                f'    type: "GET",\n'
+                f'    success: async function (return_value) {{\n'
+                f'      document.getElementById("{element_id}").src = "data:image/jpg;base64," + return_value;\n'
+                f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
+                f'      {capture_function_name}();\n'
+                f'    }},\n'
+                f'    error: async function(xhr, error){{\n'
+                f'      console.log(error);\n'
+                f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
+                f'      {capture_function_name}();\n'
+                f'    }}\n'
+                f'  }});\n'
+                f'}}\n'
+                f'{capture_function_name}();\n'
                 f'</script>'
             )
         )

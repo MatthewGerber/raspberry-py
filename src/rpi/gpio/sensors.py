@@ -1,10 +1,13 @@
+import base64
 import math
+import tempfile
 import time
 from enum import Enum, auto
 from threading import Thread
 from typing import Optional
 
 import RPi.GPIO as gpio
+import cv2
 
 from rpi.gpio import Component
 from rpi.gpio.adc import AdcDevice
@@ -653,3 +656,80 @@ class UltrasonicRangeFinder(Component):
 
         gpio.setup(trigger_pin, gpio.OUT, initial=gpio.LOW)
         gpio.setup(self.echo_pin, gpio.IN)
+
+
+class Camera(Component):
+    """
+    Camera.
+    """
+
+    class State(Component.State):
+        """
+        Camera state.
+        """
+
+        def __init__(
+                self
+        ):
+            """
+            Not used.
+            """
+
+        def __eq__(self, other: object) -> bool:
+            """
+            Not used.
+            """
+
+            return False
+
+        def __str__(self) -> str:
+            """
+            Not used.
+            """
+
+            return ''
+
+    def capture_image(
+            self
+    ) -> str:
+        """
+        Capture image.
+
+        :return: Base-64 encoded string of the byte content of the image.
+        """
+
+        frame = self.camera.read()[1]
+        image_bytes = cv2.imencode('.jpg', frame)[1]
+
+        # strip leading b' and trailing '
+        base_64_string = str(base64.b64encode(image_bytes))[2:-1]
+
+        return base_64_string
+
+    def __init__(
+            self,
+            device: str,
+            width: int,
+            height: int,
+            fps: int
+    ):
+        """
+        Initialize camera.
+
+        :param device: Device (e.g., '/dev/video0').
+        :param width: Width.
+        :param height: Height.
+        :param fps: Frames per second.
+        """
+
+        super().__init__(Camera.State())
+
+        self.device = device
+        self.width = width
+        self.height = height
+        self.fps = fps
+
+        self.camera = cv2.VideoCapture(self.device, cv2.CAP_V4L)
+        self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+        self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+        self.frame_path = f'{tempfile.NamedTemporaryFile(delete=False).name}.jpeg'

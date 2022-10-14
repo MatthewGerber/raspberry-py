@@ -8,6 +8,7 @@ from smbus2 import SMBus
 from rpi.gpio import Component
 from rpi.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
 from rpi.gpio.motors import DcMotor, DcMotorDriverPCA9685PW, Servo, ServoDriverPCA9685PW
+from rpi.gpio.sensors import Camera
 
 
 class Wheel(IntEnum):
@@ -151,13 +152,17 @@ class Car(Component):
 
         self.wheels: List[Component]
 
-        return self.wheels + self.servos
+        return self.wheels + self.servos + [self.camera]
 
     def __init__(
             self,
             camera_pan_servo_correction_degrees: float = 0.0,
             camera_tilt_servo_correction_degrees: float = 0.0,
-            reverse_wheels: Optional[List[Wheel]] = None
+            reverse_wheels: Optional[List[Wheel]] = None,
+            camera_device: str = '/dev/video0',
+            camera_width: int = 640,
+            camera_height: int = 480,
+            camera_fps: int = 30
     ):
         """
         Initialize the car.
@@ -172,6 +177,10 @@ class Car(Component):
         subtract a few degrees here to get the desired angle.
         :param reverse_wheels: List of wheels to reverse direction of, or None to reverse no wheels. Pass values here
         so that all positive wheel speeds move the car forward and all negative wheel speeds move the car backward.
+        :param camera_device: Camera device.
+        :param camera_width: Camera image width.
+        :param camera_height: Camera image height.
+        :param camera_fps: Camera frames per second.
         """
 
         if reverse_wheels is None:
@@ -243,3 +252,11 @@ class Car(Component):
             self.camera_pan_servo,
             self.camera_tilt_servo
         ]
+
+        self.camera = Camera(
+            device=camera_device,
+            width=camera_width,
+            height=camera_height,
+            fps=camera_fps
+        )
+        self.camera.id = 'camera'

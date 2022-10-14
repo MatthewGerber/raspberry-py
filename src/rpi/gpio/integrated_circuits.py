@@ -65,7 +65,7 @@ class ShiftRegister74HC595(Component):
 
     def set_state(
             self,
-            state: 'Component.State'
+            state: Component.State
     ):
         """
         Set the state and trigger events.
