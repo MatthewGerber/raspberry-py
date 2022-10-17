@@ -115,6 +115,30 @@ class Car(Component):
 
         self.set_absolute_wheel_speed(self.wheels, speed)
 
+    def set_left_speed(
+            self,
+            speed: int
+    ):
+        """
+        Set the speed of the left wheels.
+
+        :param speed: Speed in [-100,+100].
+        """
+
+        self.set_absolute_wheel_speed(self.left_wheels, speed)
+
+    def set_right_speed(
+            self,
+            speed: int
+    ):
+        """
+        Set the speed of the right wheels.
+
+        :param speed: Speed in [-100,+100].
+        """
+
+        self.set_absolute_wheel_speed(self.right_wheels, speed)
+
     def start(
             self
     ):
@@ -208,6 +232,7 @@ class Car(Component):
             )
             for wheel in Wheel
         ]
+        self.min_speed, self.max_speed = self.wheels[0].min_speed, self.wheels[0].max_speed
         for wheel, wheel_id in zip(self.wheels, Wheel):
             wheel.id = f'wheel-{wheel_id.name.lower().replace("_", "-")}'
         (

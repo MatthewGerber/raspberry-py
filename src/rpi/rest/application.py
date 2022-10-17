@@ -37,6 +37,10 @@ class RpiFlask(Flask):
 
         self.components[component.id] = component
 
+        if isinstance(component, Car):
+            for car_component in component.get_components():
+                app.add_component(car_component)
+
     def write_ui_elements(
             self,
             rest_host: str,
@@ -83,12 +87,12 @@ class RpiFlask(Flask):
         elif isinstance(component, DcMotor):
             elements = [
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, component.min_speed, component.max_speed, 1, rest_host, rest_port, component.set_speed)
+                RpiFlask.get_range(component.id, False, component.min_speed, component.max_speed, 1, False, rest_host, rest_port, component.set_speed)
             ]
         elif isinstance(component, Servo):
             elements = [
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, int(component.min_degree), int(component.max_degree), 1, rest_host, rest_port, component.set_degrees)
+                RpiFlask.get_range(component.id, False, int(component.min_degree), int(component.max_degree), 1, False, rest_host, rest_port, component.set_degrees)
             ]
         elif isinstance(component, Stepper):
             elements = [
@@ -122,8 +126,9 @@ class RpiFlask(Flask):
             ]
             elements.extend([
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, -100, 100, 1, rest_host, rest_port, component.set_speed),
-                RpiFlask.get_range(component.id, -20, 20, 1, rest_host, rest_port, component.stationary_turn)
+                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, True, rest_host, rest_port, component.set_left_speed),
+                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, True, rest_host, rest_port, component.set_right_speed),
+                RpiFlask.get_range(component.id, False, component.min_speed, component.max_speed, 1, False, rest_host, rest_port, component.stationary_turn)
             ])
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
@@ -175,9 +180,11 @@ class RpiFlask(Flask):
     @staticmethod
     def get_range(
             component_id: str,
+            blank_label: bool,
             min_value: int,
             max_value: int,
             step: int,
+            vertical: bool,
             rest_host: str,
             rest_port: int,
             on_input_function: Callable[[int], None]
@@ -186,9 +193,11 @@ class RpiFlask(Flask):
         Get range UI element.
 
         :param component_id: Component id.
+        :param blank_label: Whether to use a blank label.
         :param min_value: Minimum value.
         :param max_value: Maximum value.
         :param step: Step.
+        :param vertical: Whether the range should be displayed vertically.
         :param rest_host: Host.
         :param rest_port: Port.
         :param on_input_function: Function to call when range value changes.
@@ -209,12 +218,20 @@ class RpiFlask(Flask):
 
         on_input_param = non_self_params[0]
 
+        label = ''
+        if not blank_label:
+            label = f'{component_id} {on_input_function_name}'
+
+        vertical_style = ""
+        if vertical:
+            vertical_style = ' orient="vertical" style="padding-left: 10px"'
+
         return (
             element_id,
             (
                 f'<div class="range">\n'
-                f'  <label for="{element_id}" class="form-label">{component_id} {on_input_function_name}</label>\n'
-                f'  <input type="range" class="form-range" min="{min_value}" max="{max_value}" step="{step}" id="{element_id}" />\n'
+                f'  <label for="{element_id}" class="form-label">{label}</label>\n'
+                f'  <input type="range"{vertical_style} class="form-range" min="{min_value}" max="{max_value}" step="{step}" id="{element_id}" />\n'
                 f'</div>\n'
                 f'<script>\n'
                 f'$("#{element_id}").on("input", function () {{\n'
