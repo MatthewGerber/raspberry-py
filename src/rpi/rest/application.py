@@ -87,12 +87,12 @@ class RpiFlask(Flask):
         elif isinstance(component, DcMotor):
             elements = [
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, False, component.min_speed, component.max_speed, 1, False, rest_host, rest_port, component.set_speed)
+                RpiFlask.get_range(component.id, False, component.min_speed, component.max_speed, 1, False, False, rest_host, rest_port, component.set_speed)
             ]
         elif isinstance(component, Servo):
             elements = [
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, False, int(component.min_degree), int(component.max_degree), 1, False, rest_host, rest_port, component.set_degrees)
+                RpiFlask.get_range(component.id, False, int(component.min_degree), int(component.max_degree), 1, False, False, rest_host, rest_port, component.set_degrees)
             ]
         elif isinstance(component, Stepper):
             elements = [
@@ -126,9 +126,9 @@ class RpiFlask(Flask):
             ]
             elements.extend([
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, True, rest_host, rest_port, component.set_left_speed),
-                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, True, rest_host, rest_port, component.set_right_speed),
-                RpiFlask.get_range(component.id, False, component.min_speed, component.max_speed, 1, False, rest_host, rest_port, component.stationary_turn)
+                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, True, True, rest_host, rest_port, component.set_left_speed),
+                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, True, True, rest_host, rest_port, component.set_right_speed),
+                RpiFlask.get_range(component.id, False, component.min_speed, component.max_speed, 1, True, False, rest_host, rest_port, component.stationary_turn)
             ])
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
@@ -184,6 +184,7 @@ class RpiFlask(Flask):
             min_value: int,
             max_value: int,
             step: int,
+            reset_to_middle_upon_release: bool,
             vertical: bool,
             rest_host: str,
             rest_port: int,
@@ -197,6 +198,7 @@ class RpiFlask(Flask):
         :param min_value: Minimum value.
         :param max_value: Maximum value.
         :param step: Step.
+        :param reset_to_middle_upon_release: Whether to reset to the middle of the range upon release.
         :param vertical: Whether the range should be displayed vertically.
         :param rest_host: Host.
         :param rest_port: Port.
@@ -224,7 +226,20 @@ class RpiFlask(Flask):
 
         vertical_style = ""
         if vertical:
-            vertical_style = ' orient="vertical" style="padding-left: 10px"'
+            vertical_style = ' orient="vertical"'
+
+        reset_statement = ''
+        if reset_to_middle_upon_release:
+            middle_value = min_value + int((max_value - min_value) / 2.0)
+            reset_statement = (
+                f'$("#{element_id}").on("touchend", function () {{\n'
+                f'  $.ajax({{\n'
+                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{on_input_function_name}?{on_input_param}=int:{middle_value}",\n'
+                f'    type: "GET"\n'
+                f'  }});\n'
+                f'  $("#{element_id}")[0].value = {middle_value};\n'
+                f'}});\n'
+            )
 
         return (
             element_id,
@@ -240,6 +255,7 @@ class RpiFlask(Flask):
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'}});\n'
+                f'{reset_statement}'
                 f'</script>'
             )
         )

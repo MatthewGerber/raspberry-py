@@ -12,4 +12,5 @@ input[type=range][orient=vertical]
     -webkit-appearance: slider-vertical; /* Chromium */
     width: 8px;
     height: 175px;
+    margin: 10px
 }
