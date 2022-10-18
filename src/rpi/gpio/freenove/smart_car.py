@@ -170,16 +170,16 @@ class Car(Component):
             if self.differential_factor > 0:
                 left_speed = self.differential_speed
                 right_speed = left_speed + self.differential_factor
-                if right_speed > 100:
-                    left_speed -= right_speed - 100
-                    right_speed = 100
+                if right_speed > self.max_speed:
+                    left_speed -= right_speed - self.max_speed
+                    right_speed = self.max_speed
 
             elif self.differential_factor < 0:
                 right_speed = self.differential_speed
                 left_speed = right_speed - self.differential_factor
-                if left_speed > 100:
-                    right_speed -= left_speed - 100
-                    left_speed = 100
+                if left_speed > self.max_speed:
+                    right_speed -= left_speed - self.max_speed
+                    left_speed = self.max_speed
 
             else:
                 left_speed = right_speed = self.differential_speed
