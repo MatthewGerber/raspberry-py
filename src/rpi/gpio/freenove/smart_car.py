@@ -114,7 +114,7 @@ class Car(Component):
         """
 
         self.set_absolute_wheel_speed(self.wheels, speed)
-        
+
         self.all_wheel_speed = speed
         if self.all_wheel_speed > 0:
             self.set_speed_differential(self.speed_differential)
@@ -151,16 +151,21 @@ class Car(Component):
         Set the speed differential of the left and right wheels.
         """
 
-        if speed_differential > 0:
+        self.speed_differential = speed_differential
+
+        if self.all_wheel_speed < 0:
+            return
+
+        if self.speed_differential > 0:
             left_speed = self.all_wheel_speed
-            right_speed = left_speed + speed_differential
+            right_speed = left_speed + self.speed_differential
             if right_speed > 100:
                 left_speed -= right_speed - 100
                 right_speed = 100
 
-        elif speed_differential < 0:
+        elif self.speed_differential < 0:
             right_speed = self.all_wheel_speed
-            left_speed = right_speed - speed_differential
+            left_speed = right_speed - self.speed_differential
             if left_speed > 100:
                 right_speed -= left_speed - 100
                 left_speed = 100
@@ -170,7 +175,6 @@ class Car(Component):
 
         self.set_left_speed(left_speed)
         self.set_right_speed(right_speed)
-        self.speed_differential = speed_differential
 
     def start(
             self
