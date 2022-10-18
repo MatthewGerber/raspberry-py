@@ -124,10 +124,11 @@ class RpiFlask(Flask):
                 for car_component in component.get_components()
                 for element in RpiFlask.get_ui_elements(car_component, rest_host, rest_port)
             ]
+            car_speed_half_range = int((component.max_speed - component.min_speed) / 2.0)
             elements.extend([
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
                 RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, True, True, rest_host, rest_port, component.set_speed),
-                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, True, True, rest_host, rest_port, component.set_speed_differential),
+                RpiFlask.get_range(component.id, True, component.min_speed - car_speed_half_range, component.max_speed + car_speed_half_range, 1, True, True, rest_host, rest_port, component.set_speed_differential),
             ])
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')

@@ -1,6 +1,6 @@
 from datetime import timedelta
 from enum import IntEnum
-from threading import Thread
+from threading import Thread, RLock
 from typing import Optional, List
 
 from smbus2 import SMBus
@@ -113,11 +113,16 @@ class Car(Component):
         :param speed: Speed in [-100,+100].
         """
 
-        self.set_absolute_wheel_speed(self.wheels, speed)
+        with self.speed_differential_lock:
+            self.differential_speed = speed
 
-        self.all_wheel_speed = speed
-        if self.all_wheel_speed > 0:
-            self.set_speed_differential(self.speed_differential)
+            # only set differential speed for positive speeds
+            if self.differential_speed > 0 and self.differential_factor != 0:
+                self.set_speed_differential(self.differential_factor)
+
+            # otherwise, set speed of all wheels
+            else:
+                self.set_absolute_wheel_speed(self.wheels, speed)
 
     def set_left_speed(
             self,
@@ -145,36 +150,42 @@ class Car(Component):
 
     def set_speed_differential(
             self,
-            speed_differential: int
+            differential_factor: int
     ):
         """
         Set the speed differential of the left and right wheels.
+
+        :param differential_factor: Differential factor to apply to current speed. Only has effect when current speed is
+        positive. Positive values cause the right wheels to spin faster than the left, and vice versa for negative
+        values.
         """
 
-        self.speed_differential = speed_differential
+        with self.speed_differential_lock:
 
-        if self.all_wheel_speed < 0:
-            return
+            self.differential_factor = differential_factor
 
-        if self.speed_differential > 0:
-            left_speed = self.all_wheel_speed
-            right_speed = left_speed + self.speed_differential
-            if right_speed > 100:
-                left_speed -= right_speed - 100
-                right_speed = 100
+            if self.differential_speed < 0:
+                return
 
-        elif self.speed_differential < 0:
-            right_speed = self.all_wheel_speed
-            left_speed = right_speed - self.speed_differential
-            if left_speed > 100:
-                right_speed -= left_speed - 100
-                left_speed = 100
+            if self.differential_factor > 0:
+                left_speed = self.differential_speed
+                right_speed = left_speed + self.differential_factor
+                if right_speed > 100:
+                    left_speed -= right_speed - 100
+                    right_speed = 100
 
-        else:
-            left_speed = right_speed = self.all_wheel_speed
+            elif self.differential_factor < 0:
+                right_speed = self.differential_speed
+                left_speed = right_speed - self.differential_factor
+                if left_speed > 100:
+                    right_speed -= left_speed - 100
+                    left_speed = 100
 
-        self.set_left_speed(left_speed)
-        self.set_right_speed(right_speed)
+            else:
+                left_speed = right_speed = self.differential_speed
+
+            self.set_left_speed(left_speed)
+            self.set_right_speed(right_speed)
 
     def start(
             self
@@ -329,5 +340,6 @@ class Car(Component):
         )
         self.camera.id = 'camera'
 
-        self.all_wheel_speed = 0
-        self.speed_differential = 0
+        self.speed_differential_lock = RLock()
+        self.differential_speed = 0
+        self.differential_factor = 0
