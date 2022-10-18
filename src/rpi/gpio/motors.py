@@ -275,21 +275,25 @@ class DcMotor(Component):
     def __init__(
             self,
             driver: DcMotorDriver,
-            speed: int
+            speed: int,
+            min_speed: int = -100,
+            max_speed: int = 100
     ):
         """
         Initialize the motor.
 
         :param driver: Driver.
         :param speed: Initial speed in [-100,+100].
+        :param min_speed: Minimum speed in [-100,+100].
+        :param max_speed: Maximum speed in [-100,+100].
         """
 
         super().__init__(DcMotor.State(on=False, speed=speed))
 
         self.driver = driver
 
-        self.min_speed = -100
-        self.max_speed = 100
+        self.min_speed = min_speed
+        self.max_speed = max_speed
 
 
 class ServoDriver(ABC):

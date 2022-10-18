@@ -240,7 +240,9 @@ class Car(Component):
             camera_device: str = '/dev/video0',
             camera_width: int = 640,
             camera_height: int = 480,
-            camera_fps: int = 30
+            camera_fps: int = 30,
+            min_speed=-100,
+            max_speed=100
     ):
         """
         Initialize the car.
@@ -259,12 +261,17 @@ class Car(Component):
         :param camera_width: Camera image width.
         :param camera_height: Camera image height.
         :param camera_fps: Camera frames per second.
+        :param min_speed: Minimum speed in [-100,+100].
+        :param max_speed: Maximum speed in [-100,+100].
         """
 
         if reverse_wheels is None:
             reverse_wheels = []
 
         super().__init__(Car.State())
+
+        self.min_speed = min_speed
+        self.max_speed = max_speed
 
         i2c_bus = SMBus('/dev/i2c-1')
 
@@ -282,11 +289,12 @@ class Car(Component):
                     motor_channel_2=wheel.value * 2 + 1,
                     reverse=wheel in reverse_wheels
                 ),
-                speed=0
+                speed=0,
+                min_speed=self.min_speed,
+                max_speed=self.max_speed
             )
             for wheel in Wheel
         ]
-        self.min_speed, self.max_speed = self.wheels[0].min_speed, self.wheels[0].max_speed
         for wheel, wheel_id in zip(self.wheels, Wheel):
             wheel.id = f'wheel-{wheel_id.name.lower().replace("_", "-")}'
         (
