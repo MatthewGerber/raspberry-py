@@ -114,6 +114,8 @@ class Car(Component):
         """
 
         self.set_absolute_wheel_speed(self.wheels, speed)
+        self.all_wheel_speed = speed
+        self.set_speed_differential(self.speed_differential)
 
     def set_left_speed(
             self,
@@ -139,6 +141,38 @@ class Car(Component):
 
         self.set_absolute_wheel_speed(self.right_wheels, speed)
 
+    def set_speed_differential(
+            self,
+            speed_differential: int
+    ):
+        """
+        Set the speed differential of the left and right wheels.
+        """
+
+        if self.all_wheel_speed < 0:
+            return
+
+        if speed_differential > 0:
+            left_speed = self.all_wheel_speed
+            right_speed = left_speed + speed_differential
+            if right_speed > 100:
+                left_speed -= right_speed - 100
+                right_speed = 100
+
+        elif speed_differential < 0:
+            right_speed = self.all_wheel_speed
+            left_speed = right_speed - speed_differential
+            if left_speed > 100:
+                right_speed -= left_speed - 100
+                left_speed = 100
+
+        else:
+            left_speed = right_speed = self.all_wheel_speed
+
+        self.set_left_speed(left_speed)
+        self.set_right_speed(right_speed)
+        self.speed_differential = speed_differential
+
     def start(
             self
     ):
@@ -151,6 +185,12 @@ class Car(Component):
 
         for servo in self.servos:
             servo.start()
+
+        # signal start
+        self.camera_tilt_servo.set_degrees(90)
+        self.camera_pan_servo.set_degrees(70, timedelta(seconds=1))
+        self.camera_pan_servo.set_degrees(110, timedelta(seconds=1))
+        self.camera_pan_servo.set_degrees(90, timedelta(seconds=0.5))
 
     def stop(
             self
@@ -285,3 +325,6 @@ class Car(Component):
             fps=camera_fps
         )
         self.camera.id = 'camera'
+
+        self.all_wheel_speed = 0
+        self.speed_differential = 0
