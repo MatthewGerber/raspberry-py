@@ -1,6 +1,6 @@
 from datetime import timedelta
 from enum import IntEnum
-from threading import Thread, RLock
+from threading import RLock
 from typing import Optional, List
 
 from smbus2 import SMBus
@@ -63,46 +63,6 @@ class Car(Component):
         for wheel in wheels:
             wheel.set_speed(speed)
 
-    def set_fractional_wheel_speed(
-            self,
-            wheels: List[DcMotor],
-            speed_fraction: float,
-            duration: Optional[timedelta] = None,
-            async_duration: bool = False
-    ):
-        """
-        Set a temporary wheel speed change.
-
-        :param wheels: Wheels to change speed for.
-        :param speed_fraction: Fraction of speed to retain in the wheels.
-        :param duration: Duration of time to retain the speed change before returning to the current speed, or None
-        to retain the speed change indefinitely.
-        :param async_duration: If duration is not None, this is whether the wait should be asynchronous. If it is
-        asynchronous, then the function call will return immediately and wait in a thread.
-        """
-
-        for wheel in wheels:
-            wheel.set_speed(int(wheel.get_speed() * speed_fraction))
-
-        if duration is not None:
-            if async_duration:
-                Thread(target=lambda: self.set_fractional_wheel_speed(wheels, 1.0 + speed_fraction, None, False)).start()
-            else:
-                self.set_fractional_wheel_speed(wheels, 1.0 + speed_fraction, None, False)
-
-    def stationary_turn(
-            self,
-            speed: int
-    ):
-        """
-        Conduct a stationary turn by moving left- and right-side wheels in opposite directions.
-
-        :param speed: Wheel speed. Positive values turn the car right and negative values turn the car left.
-        """
-
-        self.set_absolute_wheel_speed(self.left_wheels, speed)
-        self.set_absolute_wheel_speed(self.right_wheels, -speed)
-
     def set_speed(
             self,
             speed: int
@@ -114,13 +74,14 @@ class Car(Component):
         """
 
         with self.speed_differential_lock:
-            self.differential_speed = speed
+
+            self.current_all_wheel_speed = speed
 
             # only set differential speed for positive speeds
-            if self.differential_speed > 0 and self.differential_factor != 0:
-                self.set_speed_differential(self.differential_factor)
+            if self.current_all_wheel_speed > 0 and self.differential_speed != 0:
+                self.set_speed_differential(self.differential_speed)
 
-            # otherwise, set speed of all wheels
+            # otherwise, set speed of all wheels.
             else:
                 self.set_absolute_wheel_speed(self.wheels, speed)
 
@@ -150,39 +111,27 @@ class Car(Component):
 
     def set_speed_differential(
             self,
-            differential_factor: int
+            differential_speed: int
     ):
         """
         Set the speed differential of the left and right wheels.
 
-        :param differential_factor: Differential factor to apply to current speed. Only has effect when current speed is
-        positive. Positive values cause the right wheels to spin faster than the left, and vice versa for negative
-        values.
+        :param differential_speed: Differential speed to apply to the current speed, in [-200,+200]. Only has an effect
+        when the current speed is positive. Positive values cause the right wheels to spin faster than the left, and
+        vice versa for negative values.
         """
 
         with self.speed_differential_lock:
 
-            self.differential_factor = differential_factor
+            self.differential_speed = differential_speed
 
-            if self.differential_speed < 0:
+            if self.current_all_wheel_speed < 0:
                 return
 
-            if self.differential_factor > 0:
-                left_speed = self.differential_speed
-                right_speed = left_speed + self.differential_factor
-                if right_speed > self.max_speed:
-                    left_speed -= right_speed - self.max_speed
-                    right_speed = self.max_speed
-
-            elif self.differential_factor < 0:
-                right_speed = self.differential_speed
-                left_speed = right_speed - self.differential_factor
-                if left_speed > self.max_speed:
-                    right_speed -= left_speed - self.max_speed
-                    left_speed = self.max_speed
-
-            else:
-                left_speed = right_speed = self.differential_speed
+            left_speed = self.current_all_wheel_speed - self.differential_speed
+            left_speed = max(self.wheel_min_speed, min(self.wheel_max_speed, left_speed))
+            right_speed = self.current_all_wheel_speed + self.differential_speed
+            right_speed = max(self.wheel_min_speed, min(self.wheel_max_speed, right_speed))
 
             self.set_left_speed(left_speed)
             self.set_right_speed(right_speed)
@@ -289,12 +238,11 @@ class Car(Component):
                     motor_channel_2=wheel.value * 2 + 1,
                     reverse=wheel in reverse_wheels
                 ),
-                speed=0,
-                min_speed=self.min_speed,
-                max_speed=self.max_speed
+                speed=0
             )
             for wheel in Wheel
         ]
+        self.wheel_min_speed, self.wheel_max_speed = self.wheels[0].min_speed, self.wheels[0].max_speed
         for wheel, wheel_id in zip(self.wheels, Wheel):
             wheel.id = f'wheel-{wheel_id.name.lower().replace("_", "-")}'
         (
@@ -349,5 +297,5 @@ class Car(Component):
         self.camera.id = 'camera'
 
         self.speed_differential_lock = RLock()
+        self.current_all_wheel_speed = 0
         self.differential_speed = 0
-        self.differential_factor = 0
