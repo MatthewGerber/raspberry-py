@@ -127,7 +127,7 @@ class RpiFlask(Flask):
             elements.extend([
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
                 RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, True, True, rest_host, rest_port, component.set_speed),
-                RpiFlask.get_range(component.id, True, component.wheel_max_speed * 2, component.wheel_min_speed * 2, 1, True, True, rest_host, rest_port, component.set_speed_differential),
+                RpiFlask.get_range(component.id, True, int(component.wheel_min_speed / 4.0), int(component.wheel_max_speed / 4.0), 1, True, True, rest_host, rest_port, component.set_speed_differential),
             ])
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
