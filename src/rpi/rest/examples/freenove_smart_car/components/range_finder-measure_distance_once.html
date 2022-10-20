@@ -1,0 +1,23 @@
+<div>
+  <label id="range_finder-measure_distance_once">measure_distance_once:  null</label>
+</div>
+<script>
+function read_value_range_finder_measure_distance_once() {
+  $.ajax({
+    url: "http://10.0.0.59:5000/call/range_finder/measure_distance_once",
+    type: "GET",
+    success: async function (return_value) {
+      document.getElementById("range_finder-measure_distance_once").innerHTML = "measure_distance_once:  " + return_value;
+      await new Promise(r => setTimeout(r, 1000.0));
+      read_value_range_finder_measure_distance_once();
+    },
+    error: async function(xhr, error){
+      console.log(error);
+      document.getElementById("range_finder-measure_distance_once").innerHTML = "measure_distance_once:  null";
+      await new Promise(r => setTimeout(r, 1000.0));
+      read_value_range_finder_measure_distance_once();
+    }
+  });
+}
+read_value_range_finder_measure_distance_once();
+</script>

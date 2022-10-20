@@ -87,12 +87,12 @@ class RpiFlask(Flask):
         elif isinstance(component, DcMotor):
             elements = [
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, False, component.min_speed, component.max_speed, 1, False, False, rest_host, rest_port, component.set_speed)
+                RpiFlask.get_range(component.id, False, component.min_speed, component.max_speed, 1, component.get_speed(), False, False, rest_host, rest_port, component.set_speed)
             ]
         elif isinstance(component, Servo):
             elements = [
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, False, int(component.min_degree), int(component.max_degree), 1, False, False, rest_host, rest_port, component.set_degrees)
+                RpiFlask.get_range(component.id, False, int(component.min_degree), int(component.max_degree), 1, int(component.get_degrees()), False, False, rest_host, rest_port, component.set_degrees)
             ]
         elif isinstance(component, Stepper):
             elements = [
@@ -126,8 +126,8 @@ class RpiFlask(Flask):
             ]
             elements.extend([
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, True, True, rest_host, rest_port, component.set_speed),
-                RpiFlask.get_range(component.id, True, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, True, True, rest_host, rest_port, component.set_differential_speed),
+                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, 0, True, True, rest_host, rest_port, component.set_speed),
+                RpiFlask.get_range(component.id, True, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, rest_host, rest_port, component.set_differential_speed),
             ])
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
@@ -183,6 +183,7 @@ class RpiFlask(Flask):
             min_value: int,
             max_value: int,
             step: int,
+            value: int,
             reset_to_middle_upon_release: bool,
             vertical: bool,
             rest_host: str,
@@ -197,6 +198,7 @@ class RpiFlask(Flask):
         :param min_value: Minimum value.
         :param max_value: Maximum value.
         :param step: Step.
+        :param value: Selected value.
         :param reset_to_middle_upon_release: Whether to reset to the middle of the range upon release.
         :param vertical: Whether the range should be displayed vertically.
         :param rest_host: Host.
@@ -245,7 +247,7 @@ class RpiFlask(Flask):
             (
                 f'<div class="range">\n'
                 f'  <label for="{element_id}" class="form-label">{label}</label>\n'
-                f'  <input type="range"{vertical_style} class="form-range" min="{min_value}" max="{max_value}" step="{step}" id="{element_id}" />\n'
+                f'  <input type="range"{vertical_style} class="form-range" min="{min_value}" max="{max_value}" step="{step}" value="{value}" id="{element_id}" />\n'
                 f'</div>\n'
                 f'<script>\n'
                 f'$("#{element_id}").on("input", function () {{\n'

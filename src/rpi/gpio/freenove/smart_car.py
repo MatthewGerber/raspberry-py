@@ -276,7 +276,7 @@ class Car(Component):
                 correction_degrees=camera_tilt_servo_correction_degrees
             ),
             degrees=90,
-            min_degree=75,  # don't permit tiling too low, as this will hit the servo mounts.
+            min_degree=80,  # don't permit tiling too low, as this will hit the servo mounts.
             max_degree=180
         )
         self.camera_tilt_servo.id = 'camera-tilt'
@@ -295,11 +295,13 @@ class Car(Component):
         )
         self.camera.id = 'camera'
         self.buzzer = ActiveBuzzer(CkPin.GPIO17)
+        self.buzzer.id = 'buzzer'
         self.range_finder = UltrasonicRangeFinder(
             trigger_pin=CkPin.GPIO27,
             echo_pin=CkPin.GPIO22,
             measurements_per_second=1.0
         )
+        self.range_finder.id = 'range_finder'
 
         self.speed_differential_lock = RLock()
         self.current_all_wheel_speed = 0
