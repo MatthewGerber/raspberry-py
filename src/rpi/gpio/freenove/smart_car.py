@@ -1,3 +1,4 @@
+import time
 from datetime import timedelta
 from enum import IntEnum
 from threading import RLock
@@ -5,10 +6,12 @@ from typing import Optional, List
 
 from smbus2 import SMBus
 
+from rpi.gpio import CkPin
 from rpi.gpio import Component
 from rpi.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
 from rpi.gpio.motors import DcMotor, DcMotorDriverPCA9685PW, Servo, ServoDriverPCA9685PW
-from rpi.gpio.sensors import Camera
+from rpi.gpio.sensors import Camera, UltrasonicRangeFinder
+from rpi.gpio.sounds import ActiveBuzzer
 
 
 class Wheel(IntEnum):
@@ -49,12 +52,12 @@ class Car(Component):
             return ''
 
     @staticmethod
-    def set_absolute_wheel_speed(
+    def set_wheel_speed(
             wheels: List[DcMotor],
             speed: int
     ):
         """
-        Set an absolute wheel speed.
+        Set wheel speed.
 
         :param wheels: Wheels to change speed for.
         :param speed: Speed in [-100, 100].
@@ -74,16 +77,11 @@ class Car(Component):
         """
 
         with self.speed_differential_lock:
-
             self.current_all_wheel_speed = speed
-
-            # only set differential speed for positive speeds
-            if self.current_all_wheel_speed > 0 and self.differential_speed != 0:
-                self.set_speed_differential(self.differential_speed)
-
-            # otherwise, set speed of all wheels.
+            if self.differential_speed != 0:
+                self.set_differential_speed(self.differential_speed)
             else:
-                self.set_absolute_wheel_speed(self.wheels, speed)
+                self.set_wheel_speed(self.wheels, speed)
 
     def set_left_speed(
             self,
@@ -95,7 +93,7 @@ class Car(Component):
         :param speed: Speed in [-100,+100].
         """
 
-        self.set_absolute_wheel_speed(self.left_wheels, speed)
+        self.set_wheel_speed(self.left_wheels, speed)
 
     def set_right_speed(
             self,
@@ -107,32 +105,26 @@ class Car(Component):
         :param speed: Speed in [-100,+100].
         """
 
-        self.set_absolute_wheel_speed(self.right_wheels, speed)
+        self.set_wheel_speed(self.right_wheels, speed)
 
-    def set_speed_differential(
+    def set_differential_speed(
             self,
             differential_speed: int
     ):
         """
-        Set the speed differential of the left and right wheels.
+        Set a differential speed of the left and right wheels.
 
-        :param differential_speed: Differential speed to apply to the current speed, in [-200,+200]. Only has an effect
-        when the current speed is positive. Positive values cause the right wheels to spin faster than the left, and
-        vice versa for negative values.
+        :param differential_speed: Differential speed to apply to the current speed. When the car is moving forward,
+        positive values cause the right wheels to spin faster than the left, and vice versa for negative values. When
+        the car if moving backward, negative values make the right wheels spin faster than the left.
         """
 
         with self.speed_differential_lock:
-
             self.differential_speed = differential_speed
-
-            if self.current_all_wheel_speed < 0:
-                return
-
             left_speed = self.current_all_wheel_speed - self.differential_speed
             left_speed = max(self.wheel_min_speed, min(self.wheel_max_speed, left_speed))
             right_speed = self.current_all_wheel_speed + self.differential_speed
             right_speed = max(self.wheel_min_speed, min(self.wheel_max_speed, right_speed))
-
             self.set_left_speed(left_speed)
             self.set_right_speed(right_speed)
 
@@ -154,6 +146,9 @@ class Car(Component):
         self.camera_pan_servo.set_degrees(70, timedelta(seconds=1))
         self.camera_pan_servo.set_degrees(110, timedelta(seconds=1))
         self.camera_pan_servo.set_degrees(90, timedelta(seconds=0.5))
+        self.buzzer.buzz(timedelta(seconds=0.2))
+        time.sleep(0.1)
+        self.buzzer.buzz(timedelta(seconds=0.2))
 
     def stop(
             self
@@ -168,6 +163,9 @@ class Car(Component):
         for servo in self.servos:
             servo.stop()
 
+        self.camera_tilt_servo.set_degrees(90)
+        self.camera_pan_servo.set_degrees(90)
+
     def get_components(
             self
     ) -> List[Component]:
@@ -179,7 +177,7 @@ class Car(Component):
 
         self.wheels: List[Component]
 
-        return self.wheels + self.servos + [self.camera]
+        return self.wheels + self.servos + [self.buzzer, self.camera, self.range_finder]
 
     def __init__(
             self,
@@ -288,6 +286,7 @@ class Car(Component):
             self.camera_tilt_servo
         ]
 
+        # other components
         self.camera = Camera(
             device=camera_device,
             width=camera_width,
@@ -295,6 +294,12 @@ class Car(Component):
             fps=camera_fps
         )
         self.camera.id = 'camera'
+        self.buzzer = ActiveBuzzer(CkPin.GPIO17)
+        self.range_finder = UltrasonicRangeFinder(
+            trigger_pin=CkPin.GPIO27,
+            echo_pin=CkPin.GPIO22,
+            measurements_per_second=1.0
+        )
 
         self.speed_differential_lock = RLock()
         self.current_all_wheel_speed = 0

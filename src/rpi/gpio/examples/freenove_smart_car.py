@@ -28,11 +28,11 @@ def main():
     for wheel in car.wheels:
         wheel.set_speed(0)
 
-    car.set_absolute_wheel_speed(car.left_wheels, 50)
+    car.set_wheel_speed(car.left_wheels, 50)
     time.sleep(0.5)
-    car.set_absolute_wheel_speed(car.right_wheels, 50)
+    car.set_wheel_speed(car.right_wheels, 50)
     time.sleep(0.5)
-    car.set_absolute_wheel_speed(car.wheels, 0)
+    car.set_wheel_speed(car.wheels, 0)
 
     car.camera_tilt_servo.set_degrees(degrees=180.0, interval=timedelta(seconds=0.5))
     car.camera_tilt_servo.set_degrees(degrees=70.0, interval=timedelta(seconds=0.5))
