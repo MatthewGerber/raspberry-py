@@ -27,19 +27,25 @@ class RpiFlask(Flask):
 
     def add_component(
             self,
-            component: Component
+            component: Component,
+            write_html: bool
     ):
         """
         Add component to the app.
 
         :param component: Component.
+        :param write_html: Whether to write HTML when write_ui_elements is called.
         """
 
-        self.components[component.id] = component
+        self.id_component[component.id] = component
 
+        if write_html:
+            self.components_to_write.append(component)
+
+        # add components recursively, but do not write the html for them.
         if isinstance(component, Car):
             for car_component in component.get_components():
-                app.add_component(car_component)
+                self.add_component(car_component, False)
 
     def write_ui_elements(
             self,
@@ -58,7 +64,7 @@ class RpiFlask(Flask):
         if not os.path.exists(dir_path):
             os.mkdir(dir_path)
 
-        for component in self.components.values():
+        for component in self.components_to_write:
             for element_id, element in self.get_ui_elements(component, rest_host, rest_port):
                 path = join(dir_path, f'{element_id}.html')
                 with open(path, 'w') as component_file:
@@ -112,7 +118,7 @@ class RpiFlask(Flask):
             ]
         elif isinstance(component, ActiveBuzzer):
             elements = [
-                RpiFlask.get_button(component.id, rest_host, rest_port, component.buzz, 'duration=seconds:0.5')
+                RpiFlask.get_button(component.id, rest_host, rest_port, component.buzz, None, component.stop, None)
             ]
         elif isinstance(component, Camera):
             elements = [
@@ -120,15 +126,15 @@ class RpiFlask(Flask):
             ]
         elif isinstance(component, Car):
             elements = [
-                element
-                for car_component in component.get_components()
-                for element in RpiFlask.get_ui_elements(car_component, rest_host, rest_port)
-            ]
-            elements.extend([
-                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
+                RpiFlask.get_image(component.camera.id, rest_host, rest_port, component.camera.capture_image, timedelta(seconds=1.0 / component.camera.fps)),
+                RpiFlask.get_range(component.camera_pan_servo.id, False, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 1, int(component.camera_pan_servo.get_degrees()), True, False, rest_host, rest_port, component.camera_pan_servo.set_degrees),
+                RpiFlask.get_range(component.camera_tilt_servo.id, False, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 1, int(component.camera_tilt_servo.get_degrees()), True, False, rest_host, rest_port, component.camera_tilt_servo.set_degrees),
                 RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, 0, True, True, rest_host, rest_port, component.set_speed),
                 RpiFlask.get_range(component.id, True, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, rest_host, rest_port, component.set_differential_speed),
-            ])
+                RpiFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1)),
+                RpiFlask.get_button(component.buzzer.id, rest_host, rest_port, component.buzzer.buzz, None, component.buzzer.stop, None),
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
+            ]
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
 
@@ -183,8 +189,8 @@ class RpiFlask(Flask):
             min_value: int,
             max_value: int,
             step: int,
-            value: int,
-            reset_to_middle_upon_release: bool,
+            initial_value: int,
+            reset_to_initial_value_upon_release: bool,
             vertical: bool,
             rest_host: str,
             rest_port: int,
@@ -198,8 +204,8 @@ class RpiFlask(Flask):
         :param min_value: Minimum value.
         :param max_value: Maximum value.
         :param step: Step.
-        :param value: Selected value.
-        :param reset_to_middle_upon_release: Whether to reset to the middle of the range upon release.
+        :param initial_value: Initial value.
+        :param reset_to_initial_value_upon_release: Whether to reset to the initial value upon release.
         :param vertical: Whether the range should be displayed vertically.
         :param rest_host: Host.
         :param rest_port: Port.
@@ -211,15 +217,16 @@ class RpiFlask(Flask):
 
         element_id = f'{component_id}-{on_input_function_name}'
 
+        # get the parameter name to set
         non_self_params = [
             param_name
             for param_name, param in inspect.signature(on_input_function).parameters.items()
             if param_name != 'self' and str(param.default) == "<class 'inspect._empty'>"  # only consider params without default values
         ]
-        if len(non_self_params) != 1:
+        if len(non_self_params) == 1:
+            value_param = non_self_params[0]
+        else:
             raise ValueError('Function for range must contain exactly 1 parameter.')
-
-        on_input_param = non_self_params[0]
 
         label = ''
         if not blank_label:
@@ -229,16 +236,15 @@ class RpiFlask(Flask):
         if vertical:
             vertical_style = ' orient="vertical"'
 
-        reset_statement = ''
-        if reset_to_middle_upon_release:
-            middle_value = min_value + int((max_value - min_value) / 2.0)
-            reset_statement = (
+        release_event = ''
+        if reset_to_initial_value_upon_release:
+            release_event = (
                 f'$("#{element_id}").on("touchend", function () {{\n'
                 f'  $.ajax({{\n'
-                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{on_input_function_name}?{on_input_param}=int:{middle_value}",\n'
+                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{on_input_function_name}?{value_param}=int:{initial_value}",\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
-                f'  $("#{element_id}")[0].value = {middle_value};\n'
+                f'  $("#{element_id}")[0].value = {initial_value};\n'
                 f'}});\n'
             )
 
@@ -247,16 +253,16 @@ class RpiFlask(Flask):
             (
                 f'<div class="range">\n'
                 f'  <label for="{element_id}" class="form-label">{label}</label>\n'
-                f'  <input type="range"{vertical_style} class="form-range" min="{min_value}" max="{max_value}" step="{step}" value="{value}" id="{element_id}" />\n'
+                f'  <input type="range"{vertical_style} class="form-range" min="{min_value}" max="{max_value}" step="{step}" value="{initial_value}" id="{element_id}" />\n'
                 f'</div>\n'
                 f'<script>\n'
                 f'$("#{element_id}").on("input", function () {{\n'
                 f'  $.ajax({{\n'
-                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{on_input_function_name}?{on_input_param}=int:" + $("#{element_id}")[0].value,\n'
+                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{on_input_function_name}?{value_param}=int:" + $("#{element_id}")[0].value,\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'}});\n'
-                f'{reset_statement}'
+                f'{release_event}'
                 f'</script>'
             )
         )
@@ -369,8 +375,10 @@ class RpiFlask(Flask):
             component_id: str,
             rest_host: str,
             rest_port: int,
-            function: Callable[[], Any],
-            query: Optional[str]
+            pressed_function: Optional[Callable[[], Any]],
+            pressed_query: Optional[str],
+            released_function: Optional[Callable[[], Any]],
+            released_query: Optional[str]
     ) -> Tuple[str, str]:
         """
         Get button.
@@ -378,30 +386,58 @@ class RpiFlask(Flask):
         :param component_id: Component id.
         :param rest_host: Host.
         :param rest_port: Port.
-        :param function: Function to call.
-        :param query: Query to submit with function call, or None for no query.
+        :param pressed_function: Function to call when the button is pressed.
+        :param pressed_query: Query to submit with pressed_function call, or None for no query.
+        :param released_function: Function to call when the button is released.
+        :param released_query: Query to submit with released_function call, or None for no query.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
-        if query is not None and len(query) > 0:
-            query = f"?{query}"
-        else:
-            query = ""
+        element_id = component_id
 
-        function_name = function.__name__
-        element_id = f'{component_id}-{function_name}'
+        pressed_event = ''
+        if pressed_function is not None:
+
+            pressed_function_name = pressed_function.__name__
+            if pressed_query is not None and len(pressed_query) > 0:
+                pressed_query = f"?{pressed_query}"
+            else:
+                pressed_query = ""
+
+            pressed_event = (
+                f'$("#{element_id}").on("touchstart", function () {{\n'
+                f'  $.ajax({{\n'
+                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{pressed_function_name}{pressed_query}",\n'
+                f'    type: "GET"\n'
+                f'  }});\n'
+                f'}});\n'
+            )
+
+        released_event = ''
+        if released_function is not None:
+
+            released_function_name = released_function.__name__
+            if released_query is not None and len(released_query) > 0:
+                released_query = f"?{released_query}"
+            else:
+                released_query = ""
+
+            released_event = (
+                f'$("#{element_id}").on("touchend", function () {{\n'
+                f'  $.ajax({{\n'
+                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{released_function_name}{released_query}",\n'
+                f'    type: "GET"\n'
+                f'  }});\n'
+                f'}});\n'
+            )
 
         return (
             element_id,
             (
                 f'<button type="button" class="btn btn-primary" id="{element_id}">{component_id}</button>\n'
                 f'<script>\n'
-                f'$("#{element_id}").click(function () {{\n'
-                f'  $.ajax({{\n'
-                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{function_name}{query}",\n'
-                f'    type: "GET"\n'
-                f'  }});\n'
-                f'}});\n'
+                f'{pressed_event}'
+                f'{released_event}'
                 f'</script>'
             )
         )
@@ -418,7 +454,8 @@ class RpiFlask(Flask):
 
         super().__init__(import_name=import_name)
 
-        self.components = {}
+        self.id_component = {}
+        self.components_to_write = []
 
 
 app = RpiFlask(__name__)
@@ -440,7 +477,7 @@ def list_components() -> Response:
 
     response = flask.jsonify({
         component_id: str(component)
-        for component_id, component in app.components.items()
+        for component_id, component in app.id_component.items()
     })
 
     return response
@@ -459,7 +496,7 @@ def call(
     :return: State of component after calling the specified function.
     """
 
-    if component_id not in app.components:
+    if component_id not in app.id_component:
         abort(HTTPStatus.NOT_FOUND, f'No component with id {component_id}.')
 
     arg_types = {
@@ -478,7 +515,7 @@ def call(
         type_str, value_str = type_value_str.split(':', maxsplit=1)
         arg_value[arg_name] = arg_types[type_str](value_str)
 
-    component = app.components[component_id]
+    component = app.id_component[component_id]
     if hasattr(component, function_name):
         f = getattr(component, function_name)
         return flask.jsonify(f(**arg_value))

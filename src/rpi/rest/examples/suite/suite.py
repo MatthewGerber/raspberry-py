@@ -31,11 +31,11 @@ motor = DcMotor(
     speed=0
 )
 motor.id = 'motor-1'
-app.add_component(motor)
+app.add_component(motor, True)
 
 led = LED(output_pin=CkPin.GPIO4)
 led.id = 'led-1'
-app.add_component(led)
+app.add_component(led, True)
 
 servo = Servo(
     driver=ServoDriverSoftwarePWM(
@@ -49,21 +49,21 @@ servo = Servo(
     degrees=0.0
 )
 servo.id = 'servo-1'
-app.add_component(servo)
+app.add_component(servo, True)
 
 photoresistor = Photoresistor(
     adc=adc,
     channel=photoresistor_ad_channel
 )
 photoresistor.id = 'photoresistor-1'
-app.add_component(photoresistor)
+app.add_component(photoresistor, True)
 
 thermistor = Thermistor(
     adc=adc,
     channel=thermistor_ad_channel
 )
 thermistor.id = 'thermistor-1'
-app.add_component(thermistor)
+app.add_component(thermistor, True)
 
 ultrasonic_range_finder = UltrasonicRangeFinder(
     trigger_pin=CkPin.GPIO23,
@@ -71,10 +71,10 @@ ultrasonic_range_finder = UltrasonicRangeFinder(
     measurements_per_second=2
 )
 ultrasonic_range_finder.id = 'ultrasonic_range_finder-1'
-app.add_component(ultrasonic_range_finder)
+app.add_component(ultrasonic_range_finder, True)
 
 active_buzzer = ActiveBuzzer(
     output_pin=CkPin.GPIO5
 )
 active_buzzer.id = 'active_buzzer-1'
-app.add_component(active_buzzer)
+app.add_component(active_buzzer, True)

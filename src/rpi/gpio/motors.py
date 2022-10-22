@@ -614,6 +614,7 @@ class Servo(Component):
         super().__init__(Servo.State(on=False, degrees=degrees))
 
         self.driver = driver
+        self.degrees = degrees
         self.min_degree = min_degree
         self.max_degree = max_degree
 

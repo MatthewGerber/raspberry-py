@@ -1,0 +1,15 @@
+<button type="button" class="btn btn-primary" id="buzzer">buzzer</button>
+<script>
+$("#buzzer").on("touchstart", function () {
+  $.ajax({
+    url: "http://10.0.0.59:5000/call/buzzer/buzz",
+    type: "GET"
+  });
+});
+$("#buzzer").on("touchend", function () {
+  $.ajax({
+    url: "http://10.0.0.59:5000/call/buzzer/stop",
+    type: "GET"
+  });
+});
+</script>

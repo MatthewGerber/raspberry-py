@@ -7,10 +7,10 @@ car = Car(
     reverse_wheels=[Wheel.REAR_LEFT],
     camera_width=320,
     camera_height=240,
-    camera_fps=15,
+    camera_fps=10,
     min_speed=-50,
     max_speed=50
 )
 car.id = 'car-1'
 
-app.add_component(car)
+app.add_component(car, True)

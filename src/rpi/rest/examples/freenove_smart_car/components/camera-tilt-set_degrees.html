@@ -9,4 +9,11 @@ $("#camera-tilt-set_degrees").on("input", function () {
     type: "GET"
   });
 });
+$("#camera-tilt-set_degrees").on("touchend", function () {
+  $.ajax({
+    url: "http://10.0.0.59:5000/call/camera-tilt/set_degrees?degrees=int:90",
+    type: "GET"
+  });
+  $("#camera-tilt-set_degrees")[0].value = 90;
+});
 </script>
