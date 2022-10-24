@@ -10,6 +10,7 @@ from typing import List, Optional, Tuple, Callable, Any
 
 import flask
 from flask import Flask, request, abort, Response
+from flask_cors import CORS
 
 from rpi.gpio import Component, setup
 from rpi.gpio.freenove.smart_car import Car
@@ -17,7 +18,12 @@ from rpi.gpio.lights import LED
 from rpi.gpio.motors import DcMotor, Servo, Stepper
 from rpi.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder, Camera
 from rpi.gpio.sounds import ActiveBuzzer
-from flask_cors import CORS
+
+LEFT_ARROW = ['Left', 'LeftArrow']
+RIGHT_ARROW = ['Right', 'RightArrow']
+UP_ARROW = ['Up', 'UpArrow']
+DOWN_ARROW = ['Down', 'DownArrow']
+SPACE = [' ']
 
 
 class RpiFlask(Flask):
@@ -93,12 +99,12 @@ class RpiFlask(Flask):
         elif isinstance(component, DcMotor):
             elements = [
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, False, component.min_speed, component.max_speed, 1, component.get_speed(), False, False, rest_host, rest_port, component.set_speed)
+                RpiFlask.get_range(component.id, False, component.min_speed, component.max_speed, 1, component.get_speed(), False, [], [], [], False, rest_host, rest_port, component.set_speed)
             ]
         elif isinstance(component, Servo):
             elements = [
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, False, int(component.min_degree), int(component.max_degree), 1, int(component.get_degrees()), False, False, rest_host, rest_port, component.set_degrees)
+                RpiFlask.get_range(component.id, False, int(component.min_degree), int(component.max_degree), 1, int(component.get_degrees()), False, [], [], [], False, rest_host, rest_port, component.set_degrees)
             ]
         elif isinstance(component, Stepper):
             elements = [
@@ -127,10 +133,10 @@ class RpiFlask(Flask):
         elif isinstance(component, Car):
             elements = [
                 RpiFlask.get_image(component.camera.id, rest_host, rest_port, component.camera.capture_image, timedelta(seconds=1.0 / component.camera.fps)),
-                RpiFlask.get_range(component.camera_pan_servo.id, False, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 1, int(component.camera_pan_servo.get_degrees()), True, False, rest_host, rest_port, component.camera_pan_servo.set_degrees),
-                RpiFlask.get_range(component.camera_tilt_servo.id, False, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 1, int(component.camera_tilt_servo.get_degrees()), True, False, rest_host, rest_port, component.camera_tilt_servo.set_degrees),
-                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, 0, True, True, rest_host, rest_port, component.set_speed),
-                RpiFlask.get_range(component.id, True, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, rest_host, rest_port, component.set_differential_speed),
+                RpiFlask.get_range(component.camera_pan_servo.id, False, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 1, int(component.camera_pan_servo.get_degrees()), True, ['s'], ['f'], ['r'], False, rest_host, rest_port, component.camera_pan_servo.set_degrees),
+                RpiFlask.get_range(component.camera_tilt_servo.id, False, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 1, int(component.camera_tilt_servo.get_degrees()), True, ['d'], ['e'], ['r'], False, rest_host, rest_port, component.camera_tilt_servo.set_degrees),
+                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, 0, True, UP_ARROW, DOWN_ARROW, SPACE, True, rest_host, rest_port, component.set_speed),
+                RpiFlask.get_range(component.id, True, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, LEFT_ARROW, RIGHT_ARROW, SPACE, True, rest_host, rest_port, component.set_differential_speed),
                 RpiFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1)),
                 RpiFlask.get_button(component.buzzer.id, rest_host, rest_port, component.buzzer.buzz, None, component.buzzer.stop, None),
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
@@ -191,6 +197,9 @@ class RpiFlask(Flask):
             step: int,
             initial_value: int,
             reset_to_initial_value_upon_release: bool,
+            decrement_keys: List[str],
+            increment_keys: List[str],
+            reset_to_initial_value_keys: List[str],
             vertical: bool,
             rest_host: str,
             rest_port: int,
@@ -205,7 +214,11 @@ class RpiFlask(Flask):
         :param max_value: Maximum value.
         :param step: Step.
         :param initial_value: Initial value.
-        :param reset_to_initial_value_upon_release: Whether to reset to the initial value upon release.
+        :param reset_to_initial_value_upon_release: Whether to reset to the initial value upon release of the mouse
+        button or touch gesture (whichever is being used).
+        :param decrement_keys: Keyboard keys that decrement the range value.
+        :param increment_keys: Keyboard keys that increment the range value.
+        :param reset_to_initial_value_keys: Keyboard keys that reset the range to the initial value.
         :param vertical: Whether the range should be displayed vertically.
         :param rest_host: Host.
         :param rest_port: Port.
@@ -239,13 +252,49 @@ class RpiFlask(Flask):
         release_event = ''
         if reset_to_initial_value_upon_release:
             release_event = (
-                f'$("#{element_id}").on("touchend", function () {{\n'
-                f'  $.ajax({{\n'
-                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{on_input_function_name}?{value_param}=int:{initial_value}",\n'
-                f'    type: "GET"\n'
-                f'  }});\n'
-                f'  $("#{element_id}")[0].value = {initial_value};\n'
+                f'$("#{element_id}").on("mouseup touchend", function () {{\n'
+                f'  set_speed(0, true);\n'
                 f'}});\n'
+            )
+
+        decrement_case = "\n".join([f'    case \"{k}\":' for k in decrement_keys])
+        if decrement_case != '':
+            decrement_case += (
+                f'\n'
+                f'      {on_input_function_name}(parseInt($("#{element_id}")[0].value) - 1, true);\n'
+                f'      break;\n'
+            )
+
+        increment_case = "\n".join([f'    case \"{k}\":' for k in increment_keys])
+        if increment_case != '':
+            increment_case += (
+                f'\n'
+                f'      {on_input_function_name}(parseInt($("#{element_id}")[0].value) + 1, true);\n'
+                f'      break;\n'
+            )
+
+        reset_case = "\n".join([f'    case \"{k}\":' for k in reset_to_initial_value_keys])
+        if reset_case != '':
+            reset_case += (
+                f'\n'
+                f'      {on_input_function_name}(0, true);\n'
+                f'      break;\n'
+            )
+
+        window_event_listener = ''
+        if len(decrement_case) + len(increment_case) + len(reset_case) > 0:
+            window_event_listener = (
+                f'window.addEventListener("keydown", (event) => {{\n'
+                f'  if (event.defaultPrevented) {{\n'
+                f'    return;\n'
+                f'  }}\n'
+                f'  switch (event.key) {{\n'
+                f'{decrement_case}'
+                f'{increment_case}'
+                f'{reset_case}'
+                f'  }}\n'
+                f'  event.preventDefault();\n'
+                f'}}, true);\n'
             )
 
         return (
@@ -256,13 +305,20 @@ class RpiFlask(Flask):
                 f'  <input type="range"{vertical_style} class="form-range" min="{min_value}" max="{max_value}" step="{step}" value="{initial_value}" id="{element_id}" />\n'
                 f'</div>\n'
                 f'<script>\n'
-                f'$("#{element_id}").on("input", function () {{\n'
+                f'function {on_input_function_name} ({value_param}, set_range) {{\n'
                 f'  $.ajax({{\n'
-                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{on_input_function_name}?{value_param}=int:" + $("#{element_id}")[0].value,\n'
+                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{on_input_function_name}?{value_param}=int:" + {value_param},\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
+                f'  if (set_range) {{\n'
+                f'    $("#{element_id}")[0].value = {value_param};\n'
+                f'  }}\n'
+                f'}}\n'
+                f'$("#{element_id}").on("input", function () {{\n'
+                f'  {on_input_function_name}($("#{element_id}")[0].value, false);\n'
                 f'}});\n'
                 f'{release_event}'
+                f'{window_event_listener}'
                 f'</script>'
             )
         )
