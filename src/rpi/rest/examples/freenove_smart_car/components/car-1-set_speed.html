@@ -9,14 +9,14 @@ function set_speed (speed, set_range) {
     type: "GET"
   });
   if (set_range) {
-    $("#car-1-set_speed")[0].value = speed
+    $("#car-1-set_speed")[0].value = speed;
   }
 }
 $("#car-1-set_speed").on("input", function () {
-  set_speed($("#car-1-set_speed")[0].value, false)
+  set_speed($("#car-1-set_speed")[0].value, false);
 });
 $("#car-1-set_speed").on("mouseup touchend", function () {
-  set_speed(0, true)
+  set_speed(0, true);
 });
 window.addEventListener("keydown", (event) => {
   if (event.defaultPrevented) {
@@ -25,14 +25,14 @@ window.addEventListener("keydown", (event) => {
   switch (event.key) {
     case "Down":
     case "ArrowDown":
-      set_speed(parseInt($("#car-1-set_speed")[0].value) - 1, true)
+      set_speed(parseInt($("#car-1-set_speed")[0].value) - 1, true);
       break;
     case "Up":
     case "ArrowUp":
-      set_speed(parseInt($("#car-1-set_speed")[0].value) + 1, true)
+      set_speed(parseInt($("#car-1-set_speed")[0].value) + 1, true);
       break;
     case ' ':
-      set_speed(0, true)
+      set_speed(0, true);
       break;
   }
   event.preventDefault();
