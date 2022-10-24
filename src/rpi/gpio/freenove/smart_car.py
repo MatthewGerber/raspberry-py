@@ -220,14 +220,15 @@ class Car(Component):
         self.min_speed = min_speed
         self.max_speed = max_speed
 
+        # hardware pwm for motors/servos
         i2c_bus = SMBus('/dev/i2c-1')
-
         pca9685pw = PulseWaveModulatorPCA9685PW(
             bus=i2c_bus,
             address=PulseWaveModulatorPCA9685PW.PCA9685PW_ADDRESS
         )
         pca9685pw.set_pwm_frequency(50)
 
+        # wheels
         self.wheels = [
             DcMotor(
                 driver=DcMotorDriverPCA9685PW(
@@ -303,6 +304,7 @@ class Car(Component):
         )
         self.range_finder.id = 'range_finder'
 
+        # attributes for speed-differential turning
         self.speed_differential_lock = RLock()
         self.current_all_wheel_speed = 0
         self.differential_speed = 0
