@@ -19,10 +19,10 @@ from rpi.gpio.motors import DcMotor, Servo, Stepper
 from rpi.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder, Camera
 from rpi.gpio.sounds import ActiveBuzzer
 
-LEFT_ARROW = ['Left', 'LeftArrow']
-RIGHT_ARROW = ['Right', 'RightArrow']
-UP_ARROW = ['Up', 'UpArrow']
-DOWN_ARROW = ['Down', 'DownArrow']
+LEFT_ARROW = ['Left', 'ArrowLeft']
+RIGHT_ARROW = ['Right', 'ArrowRight']
+UP_ARROW = ['Up', 'ArrowUp']
+DOWN_ARROW = ['Down', 'ArrowDown']
 SPACE = [' ']
 
 
@@ -135,7 +135,7 @@ class RpiFlask(Flask):
                 RpiFlask.get_image(component.camera.id, rest_host, rest_port, component.camera.capture_image, timedelta(seconds=1.0 / component.camera.fps)),
                 RpiFlask.get_range(component.camera_pan_servo.id, False, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 1, int(component.camera_pan_servo.get_degrees()), True, ['s'], ['f'], ['r'], False, rest_host, rest_port, component.camera_pan_servo.set_degrees),
                 RpiFlask.get_range(component.camera_tilt_servo.id, False, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 1, int(component.camera_tilt_servo.get_degrees()), True, ['d'], ['e'], ['r'], False, rest_host, rest_port, component.camera_tilt_servo.set_degrees),
-                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, 0, True, UP_ARROW, DOWN_ARROW, SPACE, True, rest_host, rest_port, component.set_speed),
+                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, 0, True, DOWN_ARROW, UP_ARROW, SPACE, True, rest_host, rest_port, component.set_speed),
                 RpiFlask.get_range(component.id, True, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, LEFT_ARROW, RIGHT_ARROW, SPACE, True, rest_host, rest_port, component.set_differential_speed),
                 RpiFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1)),
                 RpiFlask.get_button(component.buzzer.id, rest_host, rest_port, component.buzzer.buzz, None, component.buzzer.stop, None),
@@ -249,11 +249,13 @@ class RpiFlask(Flask):
         if vertical:
             vertical_style = ' orient="vertical"'
 
+        javascript_set_value_function_name = element_id.replace('-', '_')
+
         release_event = ''
         if reset_to_initial_value_upon_release:
             release_event = (
                 f'$("#{element_id}").on("mouseup touchend", function () {{\n'
-                f'  set_speed(0, true);\n'
+                f'  {javascript_set_value_function_name}({initial_value}, true);\n'
                 f'}});\n'
             )
 
@@ -261,7 +263,7 @@ class RpiFlask(Flask):
         if decrement_case != '':
             decrement_case += (
                 f'\n'
-                f'      {on_input_function_name}(parseInt($("#{element_id}")[0].value) - 1, true);\n'
+                f'      {javascript_set_value_function_name}(parseInt($("#{element_id}")[0].value) - 1, true);\n'
                 f'      break;\n'
             )
 
@@ -269,7 +271,7 @@ class RpiFlask(Flask):
         if increment_case != '':
             increment_case += (
                 f'\n'
-                f'      {on_input_function_name}(parseInt($("#{element_id}")[0].value) + 1, true);\n'
+                f'      {javascript_set_value_function_name}(parseInt($("#{element_id}")[0].value) + 1, true);\n'
                 f'      break;\n'
             )
 
@@ -277,7 +279,7 @@ class RpiFlask(Flask):
         if reset_case != '':
             reset_case += (
                 f'\n'
-                f'      {on_input_function_name}(0, true);\n'
+                f'      {javascript_set_value_function_name}({initial_value}, true);\n'
                 f'      break;\n'
             )
 
@@ -285,9 +287,6 @@ class RpiFlask(Flask):
         if len(decrement_case) + len(increment_case) + len(reset_case) > 0:
             window_event_listener = (
                 f'window.addEventListener("keydown", (event) => {{\n'
-                f'  if (event.defaultPrevented) {{\n'
-                f'    return;\n'
-                f'  }}\n'
                 f'  switch (event.key) {{\n'
                 f'{decrement_case}'
                 f'{increment_case}'
@@ -305,7 +304,7 @@ class RpiFlask(Flask):
                 f'  <input type="range"{vertical_style} class="form-range" min="{min_value}" max="{max_value}" step="{step}" value="{initial_value}" id="{element_id}" />\n'
                 f'</div>\n'
                 f'<script>\n'
-                f'function {on_input_function_name} ({value_param}, set_range) {{\n'
+                f'function {javascript_set_value_function_name} ({value_param}, set_range) {{\n'
                 f'  $.ajax({{\n'
                 f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{on_input_function_name}?{value_param}=int:" + {value_param},\n'
                 f'    type: "GET"\n'
@@ -315,7 +314,7 @@ class RpiFlask(Flask):
                 f'  }}\n'
                 f'}}\n'
                 f'$("#{element_id}").on("input", function () {{\n'
-                f'  {on_input_function_name}($("#{element_id}")[0].value, false);\n'
+                f'  {javascript_set_value_function_name}($("#{element_id}")[0].value, false);\n'
                 f'}});\n'
                 f'{release_event}'
                 f'{window_event_listener}'
@@ -461,7 +460,7 @@ class RpiFlask(Flask):
                 pressed_query = ""
 
             pressed_event = (
-                f'$("#{element_id}").on("touchstart", function () {{\n'
+                f'$("#{element_id}").on("mousedown touchstart", function () {{\n'
                 f'  $.ajax({{\n'
                 f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{pressed_function_name}{pressed_query}",\n'
                 f'    type: "GET"\n'
@@ -479,7 +478,7 @@ class RpiFlask(Flask):
                 released_query = ""
 
             released_event = (
-                f'$("#{element_id}").on("touchend", function () {{\n'
+                f'$("#{element_id}").on("mouseup touchend", function () {{\n'
                 f'  $.ajax({{\n'
                 f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{released_function_name}{released_query}",\n'
                 f'    type: "GET"\n'

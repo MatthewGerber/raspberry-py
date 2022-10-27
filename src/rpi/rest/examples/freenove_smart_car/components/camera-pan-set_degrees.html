@@ -3,17 +3,33 @@
   <input type="range" class="form-range" min="0" max="180" step="1" value="90" id="camera-pan-set_degrees" />
 </div>
 <script>
+function camera_pan_set_degrees (degrees, set_range) {
+  $.ajax({
+    url: "http://10.0.0.59:5000/call/camera-pan/set_degrees?degrees=int:" + degrees,
+    type: "GET"
+  });
+  if (set_range) {
+    $("#camera-pan-set_degrees")[0].value = degrees;
+  }
+}
 $("#camera-pan-set_degrees").on("input", function () {
-  $.ajax({
-    url: "http://10.0.0.59:5000/call/camera-pan/set_degrees?degrees=int:" + $("#camera-pan-set_degrees")[0].value,
-    type: "GET"
-  });
+  camera_pan_set_degrees($("#camera-pan-set_degrees")[0].value, false);
 });
-$("#camera-pan-set_degrees").on("touchend", function () {
-  $.ajax({
-    url: "http://10.0.0.59:5000/call/camera-pan/set_degrees?degrees=int:90",
-    type: "GET"
-  });
-  $("#camera-pan-set_degrees")[0].value = 90;
+$("#camera-pan-set_degrees").on("mouseup touchend", function () {
+  camera_pan_set_degrees(90, true);
 });
+window.addEventListener("keydown", (event) => {
+  switch (event.key) {
+    case "s":
+      camera_pan_set_degrees(parseInt($("#camera-pan-set_degrees")[0].value) - 1, true);
+      break;
+    case "f":
+      camera_pan_set_degrees(parseInt($("#camera-pan-set_degrees")[0].value) + 1, true);
+      break;
+    case "r":
+      camera_pan_set_degrees(90, true);
+      break;
+  }
+  event.preventDefault();
+}, true);
 </script>
