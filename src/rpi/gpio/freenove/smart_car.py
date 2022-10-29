@@ -1,4 +1,3 @@
-import time
 from datetime import timedelta
 from enum import IntEnum
 from threading import RLock
@@ -146,9 +145,6 @@ class Car(Component):
         self.camera_pan_servo.set_degrees(70, timedelta(seconds=1))
         self.camera_pan_servo.set_degrees(110, timedelta(seconds=1))
         self.camera_pan_servo.set_degrees(90, timedelta(seconds=0.5))
-        self.buzzer.buzz(timedelta(seconds=0.2))
-        time.sleep(0.1)
-        self.buzzer.buzz(timedelta(seconds=0.2))
 
     def stop(
             self
