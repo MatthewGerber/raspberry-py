@@ -689,6 +689,36 @@ class Camera(Component):
 
             return ''
 
+    def set_frame_width(
+            self,
+            width: int
+    ):
+        """
+        Set camera frame width. Will set the height accordingly, to ensure the current aspect ratio.
+
+        :param width: Width (pixels).
+        """
+
+        self.width = width
+        self.height = self.width * self.height_width_ratio
+        self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+        self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+
+    def set_frame_height(
+            self,
+            height: int
+    ):
+        """
+        Set camera frame height. Will set the width accordingly, to ensure the current aspect ratio.
+
+        :param height: Height (pixels).
+        """
+
+        self.height = height
+        self.width = self.height / self.height_width_ratio
+        self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+        self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+
     def capture_image(
             self
     ) -> str:
@@ -723,6 +753,10 @@ class Camera(Component):
         """
 
         super().__init__(Camera.State())
+
+        self.height_width_ratio = 0.75
+        if height / width != self.height_width_ratio:
+            width = height / self.height_width_ratio
 
         self.device = device
         self.width = width
