@@ -15,9 +15,6 @@ function camera_pan_set_degrees (degrees, set_range) {
 $("#camera-pan-set_degrees").on("input", function () {
   camera_pan_set_degrees($("#camera-pan-set_degrees")[0].value, false);
 });
-$("#camera-pan-set_degrees").on("mouseup touchend", function () {
-  camera_pan_set_degrees(90, true);
-});
 window.addEventListener("keydown", (event) => {
   switch (event.key) {
     case "s":
