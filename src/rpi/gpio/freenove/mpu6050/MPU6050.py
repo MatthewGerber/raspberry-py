@@ -51,9 +51,9 @@ import ctypes
 import time
 import smbus2
 import csv
-from rpi.gpio.freenove.MPUConstants import MPUConstants as C
-from rpi.gpio.freenove.Quaternion import Quaternion as Q
-from rpi.gpio.freenove.Quaternion import XYZVector as V
+from rpi.gpio.freenove.mpu6050.MPUConstants import MPUConstants as C
+from rpi.gpio.freenove.mpu6050.Quaternion import Quaternion as Q
+from rpi.gpio.freenove.mpu6050.Quaternion import XYZVector as V
 
 
 class MPU6050:

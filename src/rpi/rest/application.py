@@ -19,11 +19,11 @@ from rpi.gpio.motors import DcMotor, Servo, Stepper
 from rpi.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder, Camera
 from rpi.gpio.sounds import ActiveBuzzer
 
-LEFT_ARROW = ['Left', 'ArrowLeft']
-RIGHT_ARROW = ['Right', 'ArrowRight']
-UP_ARROW = ['Up', 'ArrowUp']
-DOWN_ARROW = ['Down', 'ArrowDown']
-SPACE = [' ']
+LEFT_ARROW_KEYS = ['Left', 'ArrowLeft']
+RIGHT_ARROW_KEYS = ['Right', 'ArrowRight']
+UP_ARROW_KEYS = ['Up', 'ArrowUp']
+DOWN_ARROW_KEYS = ['Down', 'ArrowDown']
+SPACE_KEY = [' ']
 
 
 class RpiFlask(Flask):
@@ -135,8 +135,8 @@ class RpiFlask(Flask):
                 RpiFlask.get_image(component.camera.id, rest_host, rest_port, component.camera.capture_image, timedelta(seconds=1.0 / component.camera.fps)),
                 RpiFlask.get_range(component.camera_pan_servo.id, False, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 1, int(component.camera_pan_servo.get_degrees()), True, ['s'], ['f'], ['r'], False, rest_host, rest_port, component.camera_pan_servo.set_degrees),
                 RpiFlask.get_range(component.camera_tilt_servo.id, False, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 1, int(component.camera_tilt_servo.get_degrees()), True, ['d'], ['e'], ['r'], False, rest_host, rest_port, component.camera_tilt_servo.set_degrees),
-                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, 0, True, DOWN_ARROW, UP_ARROW, SPACE, True, rest_host, rest_port, component.set_speed),
-                RpiFlask.get_range(component.id, True, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, LEFT_ARROW, RIGHT_ARROW, SPACE, True, rest_host, rest_port, component.set_differential_speed),
+                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, 0, True, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_speed),
+                RpiFlask.get_range(component.id, True, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_differential_speed),
                 RpiFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1)),
                 RpiFlask.get_button(component.buzzer.id, rest_host, rest_port, component.buzzer.buzz, None, component.buzzer.stop, None),
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
@@ -455,9 +455,9 @@ class RpiFlask(Flask):
 
             pressed_function_name = pressed_function.__name__
             if pressed_query is not None and len(pressed_query) > 0:
-                pressed_query = f"?{pressed_query}"
+                pressed_query = f'?{pressed_query}'
             else:
-                pressed_query = ""
+                pressed_query = ''
 
             pressed_event = (
                 f'$("#{element_id}").on("mousedown touchstart", function () {{\n'
@@ -473,9 +473,9 @@ class RpiFlask(Flask):
 
             released_function_name = released_function.__name__
             if released_query is not None and len(released_query) > 0:
-                released_query = f"?{released_query}"
+                released_query = f'?{released_query}'
             else:
-                released_query = ""
+                released_query = ''
 
             released_event = (
                 f'$("#{element_id}").on("mouseup touchend", function () {{\n'

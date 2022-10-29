@@ -6,7 +6,7 @@
 # modification: 2019/12/28
 ########################################################################
 from rpi.gpio import cleanup
-from rpi.gpio.freenove import MPU6050
+from rpi.gpio.freenove.mpu6050 import MPU6050
 import time
 
 
