@@ -689,18 +689,18 @@ class Camera(Component):
 
             return ''
 
-    def set_frame_width(
+    def multiply_frame_width(
             self,
-            width: int
+            factor: int
     ):
         """
-        Set camera frame width. Will set the height accordingly, to ensure the current aspect ratio.
+        Multiply the frame width.
 
-        :param width: Width (pixels).
+        :param factor: Factor by which to multiply the frame width.
         """
 
         with self.camera_lock:
-            width = self.width * width
+            width = self.width * factor
             height = int(width * self.height_width_ratio)
             self.camera.release()
             self.camera = cv2.VideoCapture(self.device, cv2.CAP_V4L)
