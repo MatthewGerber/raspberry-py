@@ -1,0 +1,18 @@
+<div class="range">
+  <label for="camera-set_frame_width" class="form-label">camera set_frame_width</label>
+  <input type="range" class="form-range" min="1" max="5" step="1" value="1" id="camera-set_frame_width" />
+</div>
+<script>
+function camera_set_frame_width (width, set_range) {
+  $.ajax({
+    url: "http://10.0.0.59:5000/call/camera/set_frame_width?width=int:" + width,
+    type: "GET"
+  });
+  if (set_range) {
+    $("#camera-set_frame_width")[0].value = width;
+  }
+}
+$("#camera-set_frame_width").on("input", function () {
+  camera_set_frame_width($("#camera-set_frame_width")[0].value, false);
+});
+</script>
