@@ -700,28 +700,11 @@ class Camera(Component):
         """
 
         with self.camera_lock:
-            self.width = width
-            self.height = int(self.width * self.height_width_ratio)
+            width = self.width * width
+            height = int(width * self.height_width_ratio)
             self.camera = cv2.VideoCapture(self.device, cv2.CAP_V4L)
-            self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-            self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-
-    def set_frame_height(
-            self,
-            height: int
-    ):
-        """
-        Set camera frame height. Will set the width accordingly, to ensure the current aspect ratio.
-
-        :param height: Height (pixels).
-        """
-
-        with self.camera_lock:
-            self.height = height
-            self.width = int(self.height / self.height_width_ratio)
-            self.camera = cv2.VideoCapture(self.device, cv2.CAP_V4L)
-            self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-            self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+            self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+            self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
     def capture_image(
             self
