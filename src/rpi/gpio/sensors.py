@@ -1,6 +1,5 @@
 import base64
 import math
-import tempfile
 import time
 from enum import Enum, auto
 from threading import Thread, Lock

@@ -7,7 +7,7 @@ car = Car(
     reverse_wheels=[Wheel.REAR_LEFT],
     camera_width=160,
     camera_height=120,
-    camera_fps=10,
+    camera_fps=30,
     min_speed=-50,
     max_speed=50
 )

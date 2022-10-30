@@ -132,7 +132,7 @@ class RpiFlask(Flask):
             ]
         elif isinstance(component, Car):
             elements = [
-                RpiFlask.get_image(component.camera.id, rest_host, rest_port, component.camera.capture_image, timedelta(seconds=1.0 / component.camera.fps)),
+                RpiFlask.get_image(component.camera.id, rest_host, rest_port, component.camera.capture_image, None),
                 RpiFlask.get_range(component.camera_pan_servo.id, False, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 1, int(component.camera_pan_servo.get_degrees()), False, ['s'], ['f'], ['r'], False, rest_host, rest_port, component.camera_pan_servo.set_degrees),
                 RpiFlask.get_range(component.camera_tilt_servo.id, False, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 1, int(component.camera_tilt_servo.get_degrees()), False, ['d'], ['e'], ['r'], False, rest_host, rest_port, component.camera_tilt_servo.set_degrees),
                 RpiFlask.get_range(component.camera.id, False, 1, 5, 1, 1, False, [], [], [], False, rest_host, rest_port, component.camera.multiply_frame_width),
@@ -381,7 +381,7 @@ class RpiFlask(Flask):
             rest_host: str,
             rest_port: int,
             function: Callable[[], Any],
-            refresh_interval: timedelta
+            refresh_interval: Optional[timedelta]
     ) -> Tuple[str, str]:
         """
         Get image that refreshes periodically.
@@ -390,13 +390,17 @@ class RpiFlask(Flask):
         :param rest_host: Host.
         :param rest_port: Port.
         :param function: Function to call to obtain new image.
-        :param refresh_interval: How long to wait between refresh calls.
+        :param refresh_interval: How long to wait between refresh calls, or None for no interval.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
         function_name = function.__name__
         element_id = f'{component_id}-{function_name}'
         capture_function_name = f'capture_{element_id}'.replace('-', '_')
+
+        refresh_interval_javascript = ''
+        if refresh_interval is not None:
+            refresh_interval_javascript = f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
 
         return (
             element_id,
@@ -411,12 +415,12 @@ class RpiFlask(Flask):
                 f'    type: "GET",\n'
                 f'    success: async function (return_value) {{\n'
                 f'      document.getElementById("{element_id}").src = "data:image/jpg;base64," + return_value;\n'
-                f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
+                f'{refresh_interval_javascript}'
                 f'      {capture_function_name}();\n'
                 f'    }},\n'
                 f'    error: async function(xhr, error){{\n'
                 f'      console.log(error);\n'
-                f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
+                f'{refresh_interval_javascript}'
                 f'      {capture_function_name}();\n'
                 f'    }}\n'
                 f'  }});\n'
@@ -549,7 +553,7 @@ def call(
 
     :param component_id: Component id.
     :param function_name: Name of function to call.
-    :return: State of component after calling the specified function.
+    :return: Function value.
     """
 
     if component_id not in app.id_component:
