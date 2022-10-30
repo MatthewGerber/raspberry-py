@@ -702,6 +702,7 @@ class Camera(Component):
         with self.camera_lock:
             width = self.width * width
             height = int(width * self.height_width_ratio)
+            self.camera.release()
             self.camera = cv2.VideoCapture(self.device, cv2.CAP_V4L)
             self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, width)
             self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
@@ -755,5 +756,4 @@ class Camera(Component):
         self.camera = cv2.VideoCapture(self.device, cv2.CAP_V4L)
         self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-        self.frame_path = f'{tempfile.NamedTemporaryFile(delete=False).name}.jpeg'
         self.camera_lock = Lock()
