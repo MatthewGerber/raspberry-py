@@ -700,7 +700,7 @@ class Camera(Component):
         """
 
         self.width = width
-        self.height = self.width * self.height_width_ratio
+        self.height = int(self.width * self.height_width_ratio)
         self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
 
@@ -715,7 +715,7 @@ class Camera(Component):
         """
 
         self.height = height
-        self.width = self.height / self.height_width_ratio
+        self.width = int(self.height / self.height_width_ratio)
         self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
 
