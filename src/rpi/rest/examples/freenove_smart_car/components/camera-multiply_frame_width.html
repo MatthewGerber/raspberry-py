@@ -1,0 +1,18 @@
+<div class="range">
+  <label for="camera-multiply_frame_width" class="form-label">camera multiply_frame_width</label>
+  <input type="range" class="form-range" min="1" max="5" step="1" value="1" id="camera-multiply_frame_width" />
+</div>
+<script>
+function camera_multiply_frame_width (factor, set_range) {
+  $.ajax({
+    url: "http://10.0.0.59:5000/call/camera/multiply_frame_width?factor=int:" + factor,
+    type: "GET"
+  });
+  if (set_range) {
+    $("#camera-multiply_frame_width")[0].value = factor;
+  }
+}
+$("#camera-multiply_frame_width").on("input", function () {
+  camera_multiply_frame_width($("#camera-multiply_frame_width")[0].value, false);
+});
+</script>
