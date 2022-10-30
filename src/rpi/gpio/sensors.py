@@ -3,7 +3,7 @@ import math
 import tempfile
 import time
 from enum import Enum, auto
-from threading import Thread
+from threading import Thread, Lock
 from typing import Optional
 
 import RPi.GPIO as gpio
@@ -699,10 +699,12 @@ class Camera(Component):
         :param width: Width (pixels).
         """
 
-        self.width = width
-        self.height = int(self.width * self.height_width_ratio)
-        self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-        self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+        with self.camera_lock:
+            self.width = width
+            self.height = int(self.width * self.height_width_ratio)
+            self.camera = cv2.VideoCapture(self.device, cv2.CAP_V4L)
+            self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+            self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
 
     def set_frame_height(
             self,
@@ -714,10 +716,12 @@ class Camera(Component):
         :param height: Height (pixels).
         """
 
-        self.height = height
-        self.width = int(self.height / self.height_width_ratio)
-        self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-        self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+        with self.camera_lock:
+            self.height = height
+            self.width = int(self.height / self.height_width_ratio)
+            self.camera = cv2.VideoCapture(self.device, cv2.CAP_V4L)
+            self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+            self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
 
     def capture_image(
             self
@@ -728,7 +732,9 @@ class Camera(Component):
         :return: Base-64 encoded string of the byte content of the image.
         """
 
-        frame = self.camera.read()[1]
+        with self.camera_lock:
+            frame = self.camera.read()[1]
+
         image_bytes = cv2.imencode('.jpg', frame)[1]
 
         # strip leading b' and trailing '
@@ -767,3 +773,4 @@ class Camera(Component):
         self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         self.frame_path = f'{tempfile.NamedTemporaryFile(delete=False).name}.jpeg'
+        self.camera_lock = Lock()
