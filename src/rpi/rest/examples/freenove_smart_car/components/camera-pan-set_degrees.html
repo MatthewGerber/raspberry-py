@@ -16,12 +16,13 @@ $("#camera-pan-set_degrees").on("input", function () {
   camera_pan_set_degrees($("#camera-pan-set_degrees")[0].value, false);
 });
 window.addEventListener("keydown", (event) => {
+  current_degrees = parseInt($("#camera-pan-set_degrees")[0].value);
   switch (event.key) {
     case "s":
-      camera_pan_set_degrees(parseInt($("#camera-pan-set_degrees")[0].value) - 1, true);
+      camera_pan_set_degrees(current_degrees - 1, true);
       break;
     case "f":
-      camera_pan_set_degrees(parseInt($("#camera-pan-set_degrees")[0].value) + 1, true);
+      camera_pan_set_degrees(current_degrees + 1, true);
       break;
     case "r":
       camera_pan_set_degrees(90, true);

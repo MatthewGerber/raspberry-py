@@ -99,12 +99,12 @@ class RpiFlask(Flask):
         elif isinstance(component, DcMotor):
             elements = [
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, False, component.min_speed, component.max_speed, 1, component.get_speed(), False, [], [], [], False, rest_host, rest_port, component.set_speed)
+                RpiFlask.get_range(component.id, False, component.min_speed, component.max_speed, 1, component.get_speed(), False, False, [], [], [], False, rest_host, rest_port, component.set_speed)
             ]
         elif isinstance(component, Servo):
             elements = [
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, False, int(component.min_degree), int(component.max_degree), 1, int(component.get_degrees()), False, [], [], [], False, rest_host, rest_port, component.set_degrees)
+                RpiFlask.get_range(component.id, False, int(component.min_degree), int(component.max_degree), 1, int(component.get_degrees()), False, False, [], [], [], False, rest_host, rest_port, component.set_degrees)
             ]
         elif isinstance(component, Stepper):
             elements = [
@@ -133,11 +133,11 @@ class RpiFlask(Flask):
         elif isinstance(component, Car):
             elements = [
                 RpiFlask.get_image(component.camera.id, rest_host, rest_port, component.camera.capture_image, None),
-                RpiFlask.get_range(component.camera_pan_servo.id, False, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 1, int(component.camera_pan_servo.get_degrees()), False, ['s'], ['f'], ['r'], False, rest_host, rest_port, component.camera_pan_servo.set_degrees),
-                RpiFlask.get_range(component.camera_tilt_servo.id, False, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 1, int(component.camera_tilt_servo.get_degrees()), False, ['d'], ['e'], ['r'], False, rest_host, rest_port, component.camera_tilt_servo.set_degrees),
-                RpiFlask.get_range(component.camera.id, False, 1, 5, 1, 1, False, [], [], [], False, rest_host, rest_port, component.camera.multiply_frame_width),
-                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, 0, True, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_speed),
-                RpiFlask.get_range(component.id, True, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_differential_speed),
+                RpiFlask.get_range(component.camera_pan_servo.id, False, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 1, int(component.camera_pan_servo.get_degrees()), False, False, ['s'], ['f'], ['r'], False, rest_host, rest_port, component.camera_pan_servo.set_degrees),
+                RpiFlask.get_range(component.camera_tilt_servo.id, False, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 1, int(component.camera_tilt_servo.get_degrees()), False, False, ['d'], ['e'], ['r'], False, rest_host, rest_port, component.camera_tilt_servo.set_degrees),
+                RpiFlask.get_range(component.camera.id, False, 1, 5, 1, 1, False, False, [], [], [], False, rest_host, rest_port, component.camera.multiply_frame_width),
+                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_speed),
+                RpiFlask.get_range(component.id, True, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_differential_speed),
                 RpiFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1)),
                 RpiFlask.get_button(component.buzzer.id, rest_host, rest_port, component.buzzer.buzz, None, component.buzzer.stop, None),
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
@@ -198,6 +198,7 @@ class RpiFlask(Flask):
             step: int,
             initial_value: int,
             reset_to_initial_value_upon_release: bool,
+            zero_range_upon_direction_change: bool,
             decrement_keys: List[str],
             increment_keys: List[str],
             reset_to_initial_value_keys: List[str],
@@ -217,6 +218,9 @@ class RpiFlask(Flask):
         :param initial_value: Initial value.
         :param reset_to_initial_value_upon_release: Whether to reset to the initial value upon release of the mouse
         button or touch gesture (whichever is being used).
+        :param zero_range_upon_direction_change: Whether to zero the range upon change of direction. For example, if the
+        range has a positive value and the decrement key is pressed, then the range will decrement from zero rather than
+        from its current value.
         :param decrement_keys: Keyboard keys that decrement the range value.
         :param increment_keys: Keyboard keys that increment the range value.
         :param reset_to_initial_value_keys: Keyboard keys that reset the range to the initial value.
@@ -250,29 +254,50 @@ class RpiFlask(Flask):
         if vertical:
             vertical_style = ' orient="vertical"'
 
-        javascript_set_value_function_name = element_id.replace('-', '_')
+        js_set_value_function_name = element_id.replace('-', '_')
+        js_current_value = f'current_{value_param}'
 
         release_event = ''
         if reset_to_initial_value_upon_release:
             release_event = (
                 f'$("#{element_id}").on("mouseup touchend", function () {{\n'
-                f'  {javascript_set_value_function_name}({initial_value}, true);\n'
+                f'  {js_set_value_function_name}({initial_value}, true);\n'
                 f'}});\n'
             )
 
         decrement_case = "\n".join([f'    case \"{k}\":' for k in decrement_keys])
         if decrement_case != '':
+
+            decrement_zero_range = ''
+            if zero_range_upon_direction_change:
+                decrement_zero_range = (
+                    f'      if ({js_current_value} > 0) {{\n'
+                    f'        {js_current_value} = 0;\n'
+                    f'      }}\n'
+                )
+
             decrement_case += (
                 f'\n'
-                f'      {javascript_set_value_function_name}(parseInt($("#{element_id}")[0].value) - 1, true);\n'
+                f'{decrement_zero_range}'
+                f'      {js_set_value_function_name}({js_current_value} - 1, true);\n'
                 f'      break;\n'
             )
 
         increment_case = "\n".join([f'    case \"{k}\":' for k in increment_keys])
         if increment_case != '':
+
+            increment_zero_range = ''
+            if zero_range_upon_direction_change:
+                increment_zero_range = (
+                    f'      if ({js_current_value} < 0) {{\n'
+                    f'        {js_current_value} = 0;\n'
+                    f'      }}\n'
+                )
+
             increment_case += (
                 f'\n'
-                f'      {javascript_set_value_function_name}(parseInt($("#{element_id}")[0].value) + 1, true);\n'
+                f'{increment_zero_range}'
+                f'      {js_set_value_function_name}({js_current_value} + 1, true);\n'
                 f'      break;\n'
             )
 
@@ -280,7 +305,7 @@ class RpiFlask(Flask):
         if reset_case != '':
             reset_case += (
                 f'\n'
-                f'      {javascript_set_value_function_name}({initial_value}, true);\n'
+                f'      {js_set_value_function_name}({initial_value}, true);\n'
                 f'      break;\n'
             )
 
@@ -288,6 +313,7 @@ class RpiFlask(Flask):
         if len(decrement_case) + len(increment_case) + len(reset_case) > 0:
             window_event_listener = (
                 f'window.addEventListener("keydown", (event) => {{\n'
+                f'  {js_current_value} = parseInt($("#{element_id}")[0].value);\n'
                 f'  switch (event.key) {{\n'
                 f'{decrement_case}'
                 f'{increment_case}'
@@ -305,7 +331,7 @@ class RpiFlask(Flask):
                 f'  <input type="range"{vertical_style} class="form-range" min="{min_value}" max="{max_value}" step="{step}" value="{initial_value}" id="{element_id}" />\n'
                 f'</div>\n'
                 f'<script>\n'
-                f'function {javascript_set_value_function_name} ({value_param}, set_range) {{\n'
+                f'function {js_set_value_function_name} ({value_param}, set_range) {{\n'
                 f'  $.ajax({{\n'
                 f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{on_input_function_name}?{value_param}=int:" + {value_param},\n'
                 f'    type: "GET"\n'
@@ -315,7 +341,7 @@ class RpiFlask(Flask):
                 f'  }}\n'
                 f'}}\n'
                 f'$("#{element_id}").on("input", function () {{\n'
-                f'  {javascript_set_value_function_name}($("#{element_id}")[0].value, false);\n'
+                f'  {js_set_value_function_name}($("#{element_id}")[0].value, false);\n'
                 f'}});\n'
                 f'{release_event}'
                 f'{window_event_listener}'
@@ -405,7 +431,7 @@ class RpiFlask(Flask):
         return (
             element_id,
             (
-                f'<div>\n'
+                f'<div style="text-align: center">\n'
                 f'  <img id="{element_id}" src="" />\n'
                 f'</div>\n'
                 f'<script>\n'
