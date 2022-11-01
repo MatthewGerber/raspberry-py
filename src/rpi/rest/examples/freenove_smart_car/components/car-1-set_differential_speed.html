@@ -19,14 +19,21 @@ $("#car-1-set_differential_speed").on("mouseup touchend", function () {
   car_1_set_differential_speed(0, true);
 });
 window.addEventListener("keydown", (event) => {
+  current_speed = parseInt($("#car-1-set_differential_speed")[0].value);
   switch (event.key) {
     case "Right":
     case "ArrowRight":
-      car_1_set_differential_speed(parseInt($("#car-1-set_differential_speed")[0].value) - 1, true);
+      if (current_speed > 0) {
+        current_speed = 0;
+      }
+      car_1_set_differential_speed(current_speed - 1, true);
       break;
     case "Left":
     case "ArrowLeft":
-      car_1_set_differential_speed(parseInt($("#car-1-set_differential_speed")[0].value) + 1, true);
+      if (current_speed < 0) {
+        current_speed = 0;
+      }
+      car_1_set_differential_speed(current_speed + 1, true);
       break;
     case " ":
       car_1_set_differential_speed(0, true);
