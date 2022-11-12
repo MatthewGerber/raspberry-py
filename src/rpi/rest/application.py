@@ -129,13 +129,15 @@ class RpiFlask(Flask):
             ]
         elif isinstance(component, Camera):
             elements = [
-                RpiFlask.get_image(component.id, rest_host, rest_port, component.capture_image, timedelta(seconds=1.0 / component.fps))
+                RpiFlask.get_image(component.id, component.width, rest_host, rest_port, component.capture_image, timedelta(seconds=1.0 / component.fps))
             ]
         elif isinstance(component, Car):
+            camera_id, camera_element = RpiFlask.get_image(component.camera.id, component.camera.width, rest_host, rest_port, component.camera.capture_image, None)
             elements = [
-                RpiFlask.get_image(component.camera.id, rest_host, rest_port, component.camera.capture_image, None),
+                (camera_id, camera_element),
                 RpiFlask.get_range(component.camera_pan_servo.id, False, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 3, int(component.camera_pan_servo.get_degrees()), False, False, ['s'], ['f'], ['r'], False, rest_host, rest_port, component.camera_pan_servo.set_degrees),
                 RpiFlask.get_range(component.camera_tilt_servo.id, False, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 3, int(component.camera_tilt_servo.get_degrees()), False, False, ['d'], ['e'], ['r'], False, rest_host, rest_port, component.camera_tilt_servo.set_degrees),
+                RpiFlask.get_range_html_attribute(camera_id, 'width', 100, 800, 10, component.camera.width),
                 RpiFlask.get_range(component.camera.id, False, 1, 5, 1, 1, False, False, [], [], [], False, rest_host, rest_port, component.camera.multiply_resolution),
                 RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_speed),
                 RpiFlask.get_range(component.id, True, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_differential_speed),
@@ -351,6 +353,44 @@ class RpiFlask(Flask):
         )
 
     @staticmethod
+    def get_range_html_attribute(
+            element_id: str,
+            element_attribute: str,
+            min_value: int,
+            max_value: int,
+            step: int,
+            initial_value: int
+    ) -> Tuple[str, str]:
+        """
+        Get range UI element that sets an attribute on another HTML element.
+
+        :param element_id: ID of element to set attribute for.
+        :param element_attribute: Name of attribute to set.
+        :param min_value: Minimum value.
+        :param max_value: Maximum value.
+        :param step: Step.
+        :param initial_value: Initial value.
+        :return: 2-tuple of (1) element id and (2) UI element.
+        """
+
+        range_element_id = f'{element_id}-{element_attribute}'
+
+        return (
+            range_element_id,
+            (
+                f'<div class="range">\n'
+                f'  <label for="{range_element_id}" class="form-label">{range_element_id}</label>\n'
+                f'  <input type="range" class="form-range" min="{min_value}" max="{max_value}" step="{step}" value="{initial_value}" id="{range_element_id}" />\n'
+                f'</div>\n'
+                f'<script>\n'
+                f'$("#{range_element_id}").on("input", function () {{\n'
+                f'  document.getElementById("{element_id}").{element_attribute} = $("#{range_element_id}")[0].value\n'
+                f'}});\n'
+                f'</script>'
+            )
+        )
+
+    @staticmethod
     def get_label(
             component_id: str,
             rest_host: str,
@@ -405,6 +445,7 @@ class RpiFlask(Flask):
     @staticmethod
     def get_image(
             component_id: str,
+            width: int,
             rest_host: str,
             rest_port: int,
             function: Callable[[], Any],
@@ -414,6 +455,7 @@ class RpiFlask(Flask):
         Get image that refreshes periodically.
 
         :param component_id: Component id.
+        :param width: Initial width of HTML image.
         :param rest_host: Host.
         :param rest_port: Port.
         :param function: Function to call to obtain new image.
@@ -433,7 +475,7 @@ class RpiFlask(Flask):
             element_id,
             (
                 f'<div style="text-align: center">\n'
-                f'  <img id="{element_id}" src="" />\n'
+                f'  <img id="{element_id}" width="{width}" src="" />\n'
                 f'</div>\n'
                 f'<script>\n'
                 f'function {capture_function_name}() {{\n'

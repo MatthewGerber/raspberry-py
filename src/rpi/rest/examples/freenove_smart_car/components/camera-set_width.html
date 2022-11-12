@@ -1,9 +1,0 @@
-<div class="range">
-  <label for="camera-set_width" class="form-label">camera set_width</label>
-  <input type="range" class="form-range" min="100" max="800" step="10" value="300" id="camera-set_width" />
-</div>
-<script>
-$("#camera-set_width").on("input", function () {
-  document.getElementById("camera-capture_image").width = $("#camera-set_width")[0].value
-});
-</script>
