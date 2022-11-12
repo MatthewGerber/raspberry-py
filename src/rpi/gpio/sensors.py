@@ -688,7 +688,7 @@ class Camera(Component):
 
             return ''
 
-    def multiply_frame_width(
+    def multiply_resolution(
             self,
             factor: int
     ):

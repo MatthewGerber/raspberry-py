@@ -34,47 +34,48 @@ class RpiFlask(Flask):
     def add_component(
             self,
             component: Component,
-            write_html: bool
+            write: bool
     ):
         """
-        Add component to the app.
+        Add a component to the app. Any component that needs to be reached via REST API must be added to the app.
 
         :param component: Component.
-        :param write_html: Whether to write HTML when write_ui_elements is called.
+        :param write: Whether to write component files when write_component_files is called from the command line.
         """
 
         self.id_component[component.id] = component
 
-        if write_html:
+        if write:
             self.components_to_write.append(component)
 
-        # add components recursively, but do not write the html for them.
+        # add car components recursively, but do not write the component files for them. the write_component_files
+        # function handles writing car components in a particular way.
         if isinstance(component, Car):
             for car_component in component.get_components():
                 self.add_component(car_component, False)
 
-    def write_ui_elements(
+    def write_component_files(
             self,
             rest_host: str,
             rest_port: int,
             dir_path: str
     ):
         """
-        Write UI elements for RPI components in the current application.
+        Write files for RPI components in the current application.
 
         :param rest_host: Host serving the REST application.
         :param rest_port: Port serving the REST application.
-        :param dir_path: Directory in which to write UI element files (will be created if it does not exist).
+        :param dir_path: Directory in which to write files (will be created if it does not exist).
         """
 
         if not os.path.exists(dir_path):
             os.mkdir(dir_path)
 
         for component in self.components_to_write:
-            for element_id, element in self.get_ui_elements(component, rest_host, rest_port):
+            for element_id, element_content in self.get_ui_elements(component, rest_host, rest_port):
                 path = join(dir_path, f'{element_id}.html')
                 with open(path, 'w') as component_file:
-                    component_file.write(f'{element}\n')
+                    component_file.write(f'{element_content}\n')
                 print(f'Wrote {path}')
 
     @staticmethod
@@ -89,7 +90,7 @@ class RpiFlask(Flask):
         :param component: Component.
         :param rest_host: Host serving the REST application.
         :param rest_port: Port serving the REST application.
-        :return: List of 2-tuples of (1) element keys and (2) UI elements for the component.
+        :return: List of 2-tuples of (1) element keys and (2) element content for the component.
         """
 
         if isinstance(component, LED):
@@ -133,9 +134,9 @@ class RpiFlask(Flask):
         elif isinstance(component, Car):
             elements = [
                 RpiFlask.get_image(component.camera.id, rest_host, rest_port, component.camera.capture_image, None),
-                RpiFlask.get_range(component.camera_pan_servo.id, False, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 1, int(component.camera_pan_servo.get_degrees()), False, False, ['s'], ['f'], ['r'], False, rest_host, rest_port, component.camera_pan_servo.set_degrees),
-                RpiFlask.get_range(component.camera_tilt_servo.id, False, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 1, int(component.camera_tilt_servo.get_degrees()), False, False, ['d'], ['e'], ['r'], False, rest_host, rest_port, component.camera_tilt_servo.set_degrees),
-                RpiFlask.get_range(component.camera.id, False, 1, 5, 1, 1, False, False, [], [], [], False, rest_host, rest_port, component.camera.multiply_frame_width),
+                RpiFlask.get_range(component.camera_pan_servo.id, False, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 3, int(component.camera_pan_servo.get_degrees()), False, False, ['s'], ['f'], ['r'], False, rest_host, rest_port, component.camera_pan_servo.set_degrees),
+                RpiFlask.get_range(component.camera_tilt_servo.id, False, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 3, int(component.camera_tilt_servo.get_degrees()), False, False, ['d'], ['e'], ['r'], False, rest_host, rest_port, component.camera_tilt_servo.set_degrees),
+                RpiFlask.get_range(component.camera.id, False, 1, 5, 1, 1, False, False, [], [], [], False, rest_host, rest_port, component.camera.multiply_resolution),
                 RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_speed),
                 RpiFlask.get_range(component.id, True, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_differential_speed),
                 RpiFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1)),
@@ -279,7 +280,7 @@ class RpiFlask(Flask):
             decrement_case += (
                 f'\n'
                 f'{decrement_zero_range}'
-                f'      {js_set_value_function_name}({js_current_value} - 1, true);\n'
+                f'      {js_set_value_function_name}({js_current_value} - {step}, true);\n'
                 f'      break;\n'
             )
 
@@ -297,7 +298,7 @@ class RpiFlask(Flask):
             increment_case += (
                 f'\n'
                 f'{increment_zero_range}'
-                f'      {js_set_value_function_name}({js_current_value} + 1, true);\n'
+                f'      {js_set_value_function_name}({js_current_value} + {step}, true);\n'
                 f'      break;\n'
             )
 
@@ -661,7 +662,7 @@ def write_component_files_cli(
         raise ValueError(f'Invalid app argument:  {parsed_args.app}')
 
     # load module and app
-    app_to_write = None
+    app_to_write: Optional[RpiFlask] = None
     for prefix in [''] + [f'{s}.' for s in list(reversed(os.getcwd().split(os.sep))) if s != '']:
 
         app_module_name = f'{prefix}{app_module_name}'
@@ -682,7 +683,7 @@ def write_component_files_cli(
     if app_to_write is None:
         print(f'Failed to find {app_name} in {parsed_args.app}. Nothing to write.')
     else:
-        app_to_write.write_ui_elements(
+        app_to_write.write_component_files(
             rest_host=parsed_args.rest_host,
             rest_port=parsed_args.rest_port,
             dir_path=expanduser(parsed_args.dir_path)

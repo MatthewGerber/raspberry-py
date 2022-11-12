@@ -1,6 +1,6 @@
 <div class="range">
   <label for="camera-tilt-set_degrees" class="form-label">camera-tilt set_degrees</label>
-  <input type="range" class="form-range" min="80" max="180" step="1" value="90" id="camera-tilt-set_degrees" />
+  <input type="range" class="form-range" min="80" max="180" step="3" value="90" id="camera-tilt-set_degrees" />
 </div>
 <script>
 function camera_tilt_set_degrees (degrees, set_range) {
@@ -19,10 +19,10 @@ window.addEventListener("keydown", (event) => {
   current_degrees = parseInt($("#camera-tilt-set_degrees")[0].value);
   switch (event.key) {
     case "d":
-      camera_tilt_set_degrees(current_degrees - 1, true);
+      camera_tilt_set_degrees(current_degrees - 3, true);
       break;
     case "e":
-      camera_tilt_set_degrees(current_degrees + 1, true);
+      camera_tilt_set_degrees(current_degrees + 3, true);
       break;
     case "r":
       camera_tilt_set_degrees(90, true);
