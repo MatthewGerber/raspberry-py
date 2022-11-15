@@ -95,37 +95,37 @@ class RpiFlask(Flask):
 
         if isinstance(component, LED):
             elements = [
-                RpiFlask.get_switch(component.id, rest_host, rest_port, component.turn_on, component.turn_off)
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.turn_on, component.turn_off, None)
             ]
         elif isinstance(component, DcMotor):
             elements = [
-                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, False, component.min_speed, component.max_speed, 1, component.get_speed(), False, False, [], [], [], False, rest_host, rest_port, component.set_speed)
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, None),
+                RpiFlask.get_range(component.id, component.min_speed, component.max_speed, 1, component.get_speed(), False, False, [], [], [], False, rest_host, rest_port, component.set_speed, None)
             ]
         elif isinstance(component, Servo):
             elements = [
-                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
-                RpiFlask.get_range(component.id, False, int(component.min_degree), int(component.max_degree), 1, int(component.get_degrees()), False, False, [], [], [], False, rest_host, rest_port, component.set_degrees)
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, None),
+                RpiFlask.get_range(component.id, int(component.min_degree), int(component.max_degree), 1, int(component.get_degrees()), False, False, [], [], [], False, rest_host, rest_port, component.set_degrees, None)
             ]
         elif isinstance(component, Stepper):
             elements = [
-                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop)
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, None)
             ]
         elif isinstance(component, Photoresistor):
             elements = [
-                RpiFlask.get_label(component.id, rest_host, rest_port, component.get_light_level, timedelta(seconds=1))
+                RpiFlask.get_label(component.id, rest_host, rest_port, component.get_light_level, timedelta(seconds=1), None)
             ]
         elif isinstance(component, Thermistor):
             elements = [
-                RpiFlask.get_label(component.id, rest_host, rest_port, component.get_temperature_f, timedelta(seconds=1))
+                RpiFlask.get_label(component.id, rest_host, rest_port, component.get_temperature_f, timedelta(seconds=1), None)
             ]
         elif isinstance(component, UltrasonicRangeFinder):
             elements = [
-                RpiFlask.get_label(component.id, rest_host, rest_port, component.measure_distance_once, timedelta(seconds=1))
+                RpiFlask.get_label(component.id, rest_host, rest_port, component.measure_distance_once, timedelta(seconds=1), None)
             ]
         elif isinstance(component, ActiveBuzzer):
             elements = [
-                RpiFlask.get_button(component.id, rest_host, rest_port, component.buzz, None, component.stop, None)
+                RpiFlask.get_button(component.id, rest_host, rest_port, component.buzz, None, component.stop, None, None)
             ]
         elif isinstance(component, Camera):
             elements = [
@@ -135,15 +135,15 @@ class RpiFlask(Flask):
             camera_id, camera_element = RpiFlask.get_image(component.camera.id, component.camera.width, rest_host, rest_port, component.camera.capture_image, None)
             elements = [
                 (camera_id, camera_element),
-                RpiFlask.get_range(component.camera_pan_servo.id, False, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 3, int(component.camera_pan_servo.get_degrees()), False, False, ['s'], ['f'], ['r'], False, rest_host, rest_port, component.camera_pan_servo.set_degrees),
-                RpiFlask.get_range(component.camera_tilt_servo.id, False, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 3, int(component.camera_tilt_servo.get_degrees()), False, False, ['d'], ['e'], ['r'], False, rest_host, rest_port, component.camera_tilt_servo.set_degrees),
-                RpiFlask.get_range_html_attribute(camera_id, 'width', 100, 800, 10, component.camera.width),
-                RpiFlask.get_range(component.camera.id, False, 1, 5, 1, 1, False, False, [], [], [], False, rest_host, rest_port, component.camera.multiply_resolution),
-                RpiFlask.get_range(component.id, True, component.min_speed, component.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_speed),
-                RpiFlask.get_range(component.id, True, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_differential_speed),
-                RpiFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1)),
-                RpiFlask.get_button(component.buzzer.id, rest_host, rest_port, component.buzzer.buzz, None, component.buzzer.stop, None),
-                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop),
+                RpiFlask.get_range(component.camera_pan_servo.id, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 3, int(component.camera_pan_servo.get_degrees()), False, False, ['s'], ['f'], ['r'], False, rest_host, rest_port, component.camera_pan_servo.set_degrees, 'Pan'),
+                RpiFlask.get_range(component.camera_tilt_servo.id, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 3, int(component.camera_tilt_servo.get_degrees()), False, False, ['d'], ['e'], ['r'], False, rest_host, rest_port, component.camera_tilt_servo.set_degrees, 'Tilt'),
+                RpiFlask.get_range_html_attribute(camera_id, 'width', 100, 800, 10, component.camera.width, 'Display'),
+                RpiFlask.get_range(component.camera.id, 1, 5, 1, 1, False, False, [], [], [], False, rest_host, rest_port, component.camera.multiply_resolution, 'Resolution'),
+                RpiFlask.get_range(component.id, component.min_speed, component.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_speed, ''),
+                RpiFlask.get_range(component.id, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_differential_speed, ''),
+                RpiFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1), 'Range'),
+                RpiFlask.get_button(component.buzzer.id, rest_host, rest_port, component.buzzer.buzz, None, component.buzzer.stop, None, 'Horn'),
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, 'Power'),
             ]
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
@@ -156,7 +156,8 @@ class RpiFlask(Flask):
             rest_host: str,
             rest_port: int,
             on_function: Callable[[], None],
-            off_function: Callable[[], None]
+            off_function: Callable[[], None],
+            text: Optional[str]
     ) -> Tuple[str, str]:
         """
         Get switch UI element.
@@ -166,11 +167,15 @@ class RpiFlask(Flask):
         :param rest_port: Port.
         :param on_function: Function to call when switch is flipped on.
         :param off_function: Function to call when switch is flipped off.
+        :param text: Readable text to display.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
         on_function_name = on_function.__name__
         off_function_name = off_function.__name__
+
+        if text is None:
+            text = f'{component_id} {on_function_name}/{off_function_name}'
 
         element_id = f'{component_id}-{on_function_name}-{off_function_name}'
 
@@ -178,7 +183,7 @@ class RpiFlask(Flask):
             element_id,
             (
                 f'<div class="form-check form-switch">\n'
-                f'  <label class="form-check-label" for="{element_id}">{component_id} {on_function_name}/{off_function_name}</label>\n'
+                f'  <label class="form-check-label" for="{element_id}">{text}</label>\n'
                 f'  <input class="form-check-input" type="checkbox" role="switch" id="{element_id}" />\n'
                 f'</div>\n'
                 f'<script>\n'
@@ -195,7 +200,6 @@ class RpiFlask(Flask):
     @staticmethod
     def get_range(
             component_id: str,
-            blank_label: bool,
             min_value: int,
             max_value: int,
             step: int,
@@ -208,13 +212,13 @@ class RpiFlask(Flask):
             vertical: bool,
             rest_host: str,
             rest_port: int,
-            on_input_function: Callable[[int], None]
+            on_input_function: Callable[[int], None],
+            text: Optional[str]
     ) -> Tuple[str, str]:
         """
         Get range UI element.
 
         :param component_id: Component id.
-        :param blank_label: Whether to use a blank label.
         :param min_value: Minimum value.
         :param max_value: Maximum value.
         :param step: Step.
@@ -231,10 +235,14 @@ class RpiFlask(Flask):
         :param rest_host: Host.
         :param rest_port: Port.
         :param on_input_function: Function to call when range value changes.
+        :param text: Readable text to display.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
         on_input_function_name = on_input_function.__name__
+
+        if text is None:
+            text = f'{component_id} {on_input_function_name}'
 
         element_id = f'{component_id}-{on_input_function_name}'
 
@@ -248,10 +256,6 @@ class RpiFlask(Flask):
             value_param = non_self_params[0]
         else:
             raise ValueError('Function for range must contain exactly 1 parameter.')
-
-        label = ''
-        if not blank_label:
-            label = f'{component_id} {on_input_function_name}'
 
         vertical_style = ""
         if vertical:
@@ -330,7 +334,7 @@ class RpiFlask(Flask):
             element_id,
             (
                 f'<div class="range">\n'
-                f'  <label for="{element_id}" class="form-label">{label}</label>\n'
+                f'  <label for="{element_id}" class="form-label">{text}</label>\n'
                 f'  <input type="range"{vertical_style} class="form-range" min="{min_value}" max="{max_value}" step="{step}" value="{initial_value}" id="{element_id}" />\n'
                 f'</div>\n'
                 f'<script>\n'
@@ -359,7 +363,8 @@ class RpiFlask(Flask):
             min_value: int,
             max_value: int,
             step: int,
-            initial_value: int
+            initial_value: int,
+            text: Optional[str]
     ) -> Tuple[str, str]:
         """
         Get range UI element that sets an attribute on another HTML element.
@@ -370,16 +375,20 @@ class RpiFlask(Flask):
         :param max_value: Maximum value.
         :param step: Step.
         :param initial_value: Initial value.
+        :param text: Readable text to display.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
         range_element_id = f'{element_id}-{element_attribute}'
 
+        if text is None:
+            text = range_element_id
+
         return (
             range_element_id,
             (
                 f'<div class="range">\n'
-                f'  <label for="{range_element_id}" class="form-label">{range_element_id}</label>\n'
+                f'  <label for="{range_element_id}" class="form-label">{text}</label>\n'
                 f'  <input type="range" class="form-range" min="{min_value}" max="{max_value}" step="{step}" value="{initial_value}" id="{range_element_id}" />\n'
                 f'</div>\n'
                 f'<script>\n'
@@ -396,7 +405,8 @@ class RpiFlask(Flask):
             rest_host: str,
             rest_port: int,
             function: Callable[[], Any],
-            refresh_interval: timedelta
+            refresh_interval: timedelta,
+            text: Optional[str]
     ) -> Tuple[str, str]:
         """
         Get label that refreshes periodically.
@@ -406,6 +416,7 @@ class RpiFlask(Flask):
         :param rest_port: Port.
         :param function: Function to call to obtain new value.
         :param refresh_interval: How long to wait between refresh calls.
+        :param text: Readable text to display.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
@@ -413,11 +424,14 @@ class RpiFlask(Flask):
         element_id = f'{component_id}-{function_name}'
         read_value_function_name = f'read_value_{element_id}'.replace('-', '_')
 
+        if text is None:
+            text = function_name
+
         return (
             element_id,
             (
                 f'<div>\n'
-                f'  <label id="{element_id}">{function_name}:  null</label>\n'
+                f'  <label id="{element_id}">{text}:  null</label>\n'
                 f'</div>\n'
                 f'<script>\n'
                 f'function {read_value_function_name}() {{\n'
@@ -425,13 +439,13 @@ class RpiFlask(Flask):
                 f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{function_name}",\n'
                 f'    type: "GET",\n'
                 f'    success: async function (return_value) {{\n'
-                f'      document.getElementById("{element_id}").innerHTML = "{function_name}:  " + return_value;\n'
+                f'      document.getElementById("{element_id}").innerHTML = "{text}:  " + return_value;\n'
                 f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
                 f'      {read_value_function_name}();\n'
                 f'    }},\n'
                 f'    error: async function(xhr, error){{\n'
                 f'      console.log(error);\n'
-                f'      document.getElementById("{element_id}").innerHTML = "{function_name}:  null";\n'
+                f'      document.getElementById("{element_id}").innerHTML = "{text}:  null";\n'
                 f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
                 f'      {read_value_function_name}();\n'
                 f'    }}\n'
@@ -507,7 +521,8 @@ class RpiFlask(Flask):
             pressed_function: Optional[Callable[[], Any]],
             pressed_query: Optional[str],
             released_function: Optional[Callable[[], Any]],
-            released_query: Optional[str]
+            released_query: Optional[str],
+            text: Optional[str]
     ) -> Tuple[str, str]:
         """
         Get button.
@@ -519,8 +534,12 @@ class RpiFlask(Flask):
         :param pressed_query: Query to submit with pressed_function call, or None for no query.
         :param released_function: Function to call when the button is released.
         :param released_query: Query to submit with released_function call, or None for no query.
+        :param text: Readable text to display.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
+
+        if text is None:
+            text = component_id
 
         element_id = component_id
 
@@ -563,7 +582,7 @@ class RpiFlask(Flask):
         return (
             element_id,
             (
-                f'<button type="button" class="btn btn-primary" id="{element_id}">{component_id}</button>\n'
+                f'<button type="button" class="btn btn-primary" id="{element_id}">{text}</button>\n'
                 f'<script>\n'
                 f'{pressed_event}'
                 f'{released_event}'
