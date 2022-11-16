@@ -9,7 +9,8 @@ car = Car(
     camera_height=120,
     camera_fps=30,
     min_speed=-50,
-    max_speed=50
+    max_speed=50,
+    safety_heartbeat_tolerance_seconds=1
 )
 car.id = 'car-1'
 

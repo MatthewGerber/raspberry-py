@@ -1,6 +1,7 @@
+import time
 from datetime import timedelta
 from enum import IntEnum
-from threading import RLock
+from threading import RLock, Thread
 from typing import Optional, List
 
 from smbus2 import SMBus
@@ -146,6 +147,35 @@ class Car(Component):
         self.camera_pan_servo.set_degrees(110, timedelta(seconds=1))
         self.camera_pan_servo.set_degrees(90, timedelta(seconds=0.5))
 
+        # begin monitoring the safety heartbeat if specified
+        with self.safety_heartbeat_lock:
+            if self.safety_heartbeat_tolerance_seconds is not None:
+                self.stop_safety_heartbeat_monitor()
+                self.continue_safety_heartbeat_monitor = True
+                self.previous_heartbeat_time = time.time()
+                self.monitor_safety_heartbeat_thread = Thread(target=self.monitor_safety_heartbeat)
+                self.monitor_safety_heartbeat_thread.start()
+
+    def monitor_safety_heartbeat(
+            self
+    ):
+        """
+        Shut the car down if a safety heartbeat is not received within the tolerated time.
+        """
+
+        while True:
+
+            with self.safety_heartbeat_lock:
+                if self.continue_safety_heartbeat_monitor:
+                    seconds_since_previous_heartbeat = time.time() - self.previous_heartbeat_time
+                    if seconds_since_previous_heartbeat > self.safety_heartbeat_tolerance_seconds:
+                        Thread(target=self.stop).start()
+                        self.continue_safety_heartbeat_monitor = False
+                else:
+                    break
+
+            time.sleep(self.safety_heartbeat_check_interval_seconds)
+
     def stop(
             self
     ):
@@ -161,6 +191,31 @@ class Car(Component):
 
         self.camera_tilt_servo.set_degrees(90)
         self.camera_pan_servo.set_degrees(90)
+
+        self.stop_safety_heartbeat_monitor()
+
+    def stop_safety_heartbeat_monitor(
+            self
+    ):
+        """
+        Stop the safety heartbeat monitor.
+        """
+
+        with self.safety_heartbeat_lock:
+            if self.monitor_safety_heartbeat_thread is not None:
+                self.continue_safety_heartbeat_monitor = False
+                self.monitor_safety_heartbeat_thread.join()
+                self.monitor_safety_heartbeat_thread = None
+
+    def safety_heartbeat(
+            self
+    ):
+        """
+        Invoke the safety heartbeat.
+        """
+
+        with self.safety_heartbeat_lock:
+            self.previous_heartbeat_time = time.time()
 
     def get_components(
             self
@@ -184,8 +239,9 @@ class Car(Component):
             camera_width: int = 640,
             camera_height: int = 480,
             camera_fps: int = 30,
-            min_speed=-100,
-            max_speed=100
+            min_speed: int = -100,
+            max_speed: int = 100,
+            safety_heartbeat_tolerance_seconds: Optional[float] = None
     ):
         """
         Initialize the car.
@@ -206,6 +262,8 @@ class Car(Component):
         :param camera_fps: Camera frames per second.
         :param min_speed: Minimum speed in [-100,+100].
         :param max_speed: Maximum speed in [-100,+100].
+        :param safety_heartbeat_tolerance_seconds: Maximum amount of time (seconds) to tolerate the absence of a safety
+        heartbeat signal, beyond with the car will automatically shut down. Pass None to not use the safety heartbeat.
         """
 
         if reverse_wheels is None:
@@ -215,6 +273,7 @@ class Car(Component):
 
         self.min_speed = min_speed
         self.max_speed = max_speed
+        self.safety_heartbeat_tolerance_seconds = safety_heartbeat_tolerance_seconds
 
         # hardware pwm for motors/servos
         i2c_bus = SMBus('/dev/i2c-1')
@@ -304,3 +363,10 @@ class Car(Component):
         self.speed_differential_lock = RLock()
         self.current_all_wheel_speed = 0
         self.differential_speed = 0
+
+        # safety heartbeat thread
+        self.monitor_safety_heartbeat_thread = None
+        self.continue_safety_heartbeat_monitor = False
+        self.previous_heartbeat_time = None
+        self.safety_heartbeat_lock = RLock()
+        self.safety_heartbeat_check_interval_seconds = 0.1

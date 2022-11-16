@@ -132,7 +132,9 @@ class RpiFlask(Flask):
                 RpiFlask.get_image(component.id, component.width, rest_host, rest_port, component.capture_image, timedelta(seconds=1.0 / component.fps))
             ]
         elif isinstance(component, Car):
+
             camera_id, camera_element = RpiFlask.get_image(component.camera.id, component.camera.width, rest_host, rest_port, component.camera.capture_image, None)
+
             elements = [
                 (camera_id, camera_element),
                 RpiFlask.get_range(component.camera_pan_servo.id, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 3, int(component.camera_pan_servo.get_degrees()), False, False, ['s'], ['f'], ['r'], False, rest_host, rest_port, component.camera_pan_servo.set_degrees, 'Pan'),
@@ -143,8 +145,12 @@ class RpiFlask(Flask):
                 RpiFlask.get_range(component.id, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_differential_speed, ''),
                 RpiFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1), 'Range'),
                 RpiFlask.get_button(component.buzzer.id, rest_host, rest_port, component.buzzer.buzz, None, component.buzzer.stop, None, 'Horn'),
-                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, 'Power'),
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, 'Power')
             ]
+
+            if component.safety_heartbeat_tolerance_seconds is not None:
+                elements.append(RpiFlask.get_repeater(component.id, rest_host, rest_port, component.safety_heartbeat, timedelta(seconds=component.safety_heartbeat_tolerance_seconds / 2)))
+
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
 
@@ -587,6 +593,51 @@ class RpiFlask(Flask):
                 f'{pressed_event}'
                 f'{released_event}'
                 f'</script>'
+            )
+        )
+
+    @staticmethod
+    def get_repeater(
+            component_id: str,
+            rest_host: str,
+            rest_port: int,
+            function: Callable[[], Any],
+            refresh_interval: timedelta
+    ) -> Tuple[str, str]:
+        """
+        Get a script that periodically calls a function.
+
+        :param component_id: Component id.
+        :param rest_host: Host.
+        :param rest_port: Port.
+        :param function: Function to call to obtain new value.
+        :param refresh_interval: How long to wait between refresh calls.
+        :return: 2-tuple of (1) element id and (2) UI element.
+        """
+
+        function_name = function.__name__
+        element_id = f'{component_id}-{function_name}'
+        js_function_name = f'{element_id}'.replace('-', '_')
+
+        return (
+            element_id,
+            (
+                f'function {js_function_name}() {{\n'
+                f'  $.ajax({{\n'
+                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{function_name}",\n'
+                f'    type: "GET",\n'
+                f'    success: async function (return_value) {{\n'
+                f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
+                f'      {js_function_name}();\n'
+                f'    }},\n'
+                f'    error: async function(xhr, error){{\n'
+                f'      console.log(error);\n'
+                f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
+                f'      {js_function_name}();\n'
+                f'    }}\n'
+                f'  }});\n'
+                f'}}\n'
+                f'{js_function_name}();\n'
             )
         )
 
