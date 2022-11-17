@@ -139,8 +139,8 @@ class RpiFlask(Flask):
                 (camera_id, camera_element),
                 RpiFlask.get_range(component.camera_pan_servo.id, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 3, int(component.camera_pan_servo.get_degrees()), False, False, ['s'], ['f'], ['r'], False, rest_host, rest_port, component.camera_pan_servo.set_degrees, 'Pan'),
                 RpiFlask.get_range(component.camera_tilt_servo.id, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 3, int(component.camera_tilt_servo.get_degrees()), False, False, ['d'], ['e'], ['r'], False, rest_host, rest_port, component.camera_tilt_servo.set_degrees, 'Tilt'),
-                RpiFlask.get_range_html_attribute(camera_id, 'width', 100, 800, 10, component.camera.width, 'Display'),
-                RpiFlask.get_range(component.camera.id, 1, 5, 1, 1, False, False, [], [], [], False, rest_host, rest_port, component.camera.multiply_resolution, 'Resolution'),
+                RpiFlask.get_range_html_attribute(camera_id, 'width', 100, 800, 10, component.camera.width, 'Display Size '),
+                RpiFlask.get_range(component.camera.id, 1, 5, 1, 1, False, False, [], [], [], False, rest_host, rest_port, component.camera.multiply_resolution, 'Display Resolution'),
                 RpiFlask.get_range(component.id, component.min_speed, component.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_speed, ''),
                 RpiFlask.get_range(component.id, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_differential_speed, ''),
                 RpiFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1), 'Range'),
@@ -148,8 +148,8 @@ class RpiFlask(Flask):
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, 'Power')
             ]
 
-            if component.safety_heartbeat_tolerance_seconds is not None:
-                elements.append(RpiFlask.get_repeater(component.id, rest_host, rest_port, component.safety_heartbeat, timedelta(seconds=component.safety_heartbeat_tolerance_seconds / 2)))
+            if component.connection_blackout_tolerance_seconds is not None:
+                elements.append(RpiFlask.get_repeater(component.id, rest_host, rest_port, component.connection_heartbeat, timedelta(seconds=component.connection_blackout_tolerance_seconds / 4.0)))
 
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
@@ -637,7 +637,7 @@ class RpiFlask(Flask):
                 f'    }}\n'
                 f'  }});\n'
                 f'}}\n'
-                f'{js_function_name}();\n'
+                f'{js_function_name}();'
             )
         )
 

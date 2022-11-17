@@ -147,34 +147,43 @@ class Car(Component):
         self.camera_pan_servo.set_degrees(110, timedelta(seconds=1))
         self.camera_pan_servo.set_degrees(90, timedelta(seconds=0.5))
 
-        # begin monitoring the safety heartbeat if specified
-        with self.safety_heartbeat_lock:
-            if self.safety_heartbeat_tolerance_seconds is not None:
-                self.stop_safety_heartbeat_monitor()
-                self.continue_safety_heartbeat_monitor = True
-                self.previous_heartbeat_time = time.time()
-                self.monitor_safety_heartbeat_thread = Thread(target=self.monitor_safety_heartbeat)
-                self.monitor_safety_heartbeat_thread.start()
+        # begin monitoring for connection blackout if specified
+        with self.connection_blackout_lock:
+            if self.connection_blackout_tolerance_seconds is not None:
 
-    def monitor_safety_heartbeat(
+                self.stop_connection_blackout_monitor()
+
+                print('Starting connection blackout monitor.')
+                self.continue_monitoring_connection_blackout = True
+                self.previous_connection_heartbeat_time = time.time()
+                self.monitor_connection_blackout_thread = Thread(target=self.monitor_connection_blackout)
+                self.monitor_connection_blackout_thread.start()
+
+    def monitor_connection_blackout(
             self
     ):
         """
-        Shut the car down if a safety heartbeat is not received within the tolerated time.
+        Shut the car down if a connection heartbeat is not received within the tolerated time.
         """
+
+        print('Monitoring connection blackout.')
 
         while True:
 
-            with self.safety_heartbeat_lock:
-                if self.continue_safety_heartbeat_monitor:
-                    seconds_since_previous_heartbeat = time.time() - self.previous_heartbeat_time
-                    if seconds_since_previous_heartbeat > self.safety_heartbeat_tolerance_seconds:
+            with self.connection_blackout_lock:
+                if self.continue_monitoring_connection_blackout:
+                    seconds_since_previous_heartbeat = time.time() - self.previous_connection_heartbeat_time
+                    if seconds_since_previous_heartbeat > self.connection_blackout_tolerance_seconds:
+                        print(f'Connection heartbeat not received for {seconds_since_previous_heartbeat}s, which exceeds tolerance of {self.connection_heartbeat_check_interval_seconds}s. Stopping car.')
                         Thread(target=self.stop).start()
-                        self.continue_safety_heartbeat_monitor = False
+                        self.continue_monitoring_connection_blackout = False
+                        break
                 else:
                     break
 
-            time.sleep(self.safety_heartbeat_check_interval_seconds)
+            time.sleep(self.connection_heartbeat_check_interval_seconds)
+
+        print('Returning from connection blackout monitoring thread.')
 
     def stop(
             self
@@ -184,38 +193,35 @@ class Car(Component):
         """
 
         for wheel in self.wheels:
+            wheel.set_speed(0)
             wheel.stop()
 
         for servo in self.servos:
             servo.stop()
 
-        self.camera_tilt_servo.set_degrees(90)
-        self.camera_pan_servo.set_degrees(90)
+        self.stop_connection_blackout_monitor()
 
-        self.stop_safety_heartbeat_monitor()
-
-    def stop_safety_heartbeat_monitor(
+    def stop_connection_blackout_monitor(
             self
     ):
         """
-        Stop the safety heartbeat monitor.
+        Stop the connection blackout monitor.
         """
 
-        with self.safety_heartbeat_lock:
-            if self.monitor_safety_heartbeat_thread is not None:
-                self.continue_safety_heartbeat_monitor = False
-                self.monitor_safety_heartbeat_thread.join()
-                self.monitor_safety_heartbeat_thread = None
+        with self.connection_blackout_lock:
+            if self.monitor_connection_blackout_thread is not None:
+                self.continue_monitoring_connection_blackout = False
 
-    def safety_heartbeat(
+    def connection_heartbeat(
             self
     ):
         """
-        Invoke the safety heartbeat.
+        Invoke a connection heartbeat.
         """
 
-        with self.safety_heartbeat_lock:
-            self.previous_heartbeat_time = time.time()
+        with self.connection_blackout_lock:
+            print('Received connection heartbeat.')
+            self.previous_connection_heartbeat_time = time.time()
 
     def get_components(
             self
@@ -241,7 +247,7 @@ class Car(Component):
             camera_fps: int = 30,
             min_speed: int = -100,
             max_speed: int = 100,
-            safety_heartbeat_tolerance_seconds: Optional[float] = None
+            connection_blackout_tolerance_seconds: Optional[float] = None
     ):
         """
         Initialize the car.
@@ -262,8 +268,8 @@ class Car(Component):
         :param camera_fps: Camera frames per second.
         :param min_speed: Minimum speed in [-100,+100].
         :param max_speed: Maximum speed in [-100,+100].
-        :param safety_heartbeat_tolerance_seconds: Maximum amount of time (seconds) to tolerate the absence of a safety
-        heartbeat signal, beyond with the car will automatically shut down. Pass None to not use the safety heartbeat.
+        :param connection_blackout_tolerance_seconds: Maximum amount of time (seconds) to tolerate connection blackout,
+        beyond which the car will automatically shut down. Pass None to not use this feature.
         """
 
         if reverse_wheels is None:
@@ -273,7 +279,7 @@ class Car(Component):
 
         self.min_speed = min_speed
         self.max_speed = max_speed
-        self.safety_heartbeat_tolerance_seconds = safety_heartbeat_tolerance_seconds
+        self.connection_blackout_tolerance_seconds = connection_blackout_tolerance_seconds
 
         # hardware pwm for motors/servos
         i2c_bus = SMBus('/dev/i2c-1')
@@ -364,9 +370,9 @@ class Car(Component):
         self.current_all_wheel_speed = 0
         self.differential_speed = 0
 
-        # safety heartbeat thread
-        self.monitor_safety_heartbeat_thread = None
-        self.continue_safety_heartbeat_monitor = False
-        self.previous_heartbeat_time = None
-        self.safety_heartbeat_lock = RLock()
-        self.safety_heartbeat_check_interval_seconds = 0.1
+        # connection blackout
+        self.monitor_connection_blackout_thread = None
+        self.continue_monitoring_connection_blackout = False
+        self.previous_connection_heartbeat_time = None
+        self.connection_blackout_lock = RLock()
+        self.connection_heartbeat_check_interval_seconds = 0.1
