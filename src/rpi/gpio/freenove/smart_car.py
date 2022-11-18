@@ -28,6 +28,12 @@ class Wheel(IntEnum):
 class Car(Component):
     """
     The Freenove 4WD Smart Car.
+
+    TODO:
+      * Image overlay:  Guide lines, face detection
+      * Face tracking
+      * RLAI
+      * LEDs, sensors
     """
 
     class State(Component.State):
@@ -253,13 +259,13 @@ class Car(Component):
         Initialize the car.
 
         :param camera_pan_servo_correction_degrees: Pan correction. This number of degrees is added to any request to
-        position the camera pan servo, in order to correct servo assembly errors. For example, the servo threading
-        might not permit assembly at the desired angle. If the servo is a few degrees one way or the other, add or
-        subtract a few degrees here to get the desired angle.
+        position the camera pan servo, in order to correct servo assembly errors. For example, the servo mount threading
+        might not permit assembly at precisely the desired angle. If the servo is a few degrees one way or the other,
+        add or subtract a few degrees here to get the desired mounting angle.
         :param camera_tilt_servo_correction_degrees: Tilt correction. This number of degrees is added to any request to
-        position the camera tilt servo, in order to correct servo assembly errors. For example, the servo threading
-        might not permit assembly at the desired angle. If the servo is a few degrees one way or the other, add or
-        subtract a few degrees here to get the desired angle.
+        position the camera tilt servo, in order to correct servo assembly errors. For example, the servo mount
+        threading might not permit assembly at precisely the desired angle. If the servo is a few degrees one way or the
+        other, add or subtract a few degrees here to get the desired mounting angle.
         :param reverse_wheels: List of wheels to reverse direction of, or None to reverse no wheels. Pass values here
         so that all positive wheel speeds move the car forward and all negative wheel speeds move the car backward.
         :param camera_device: Camera device.
