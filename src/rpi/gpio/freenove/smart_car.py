@@ -263,18 +263,18 @@ class Car(Component):
 
             pan_delta = 0
             if detected_face.center_x > frame_middle_x + 10:
-                pan_delta = 1
+                pan_delta = 1.5
             elif detected_face.center_x < frame_middle_x - 10:
-                pan_delta = -1
+                pan_delta = -1.5
 
             if pan_delta != 0:
                 self.camera_pan_servo.set_degrees(self.camera_pan_servo.get_degrees() + pan_delta)
 
             tilt_delta = 0
             if detected_face.center_y > frame_middle_y + 10:
-                tilt_delta = -1
+                tilt_delta = -1.5
             elif detected_face.center_y < frame_middle_y - 10:
-                tilt_delta = 1
+                tilt_delta = 1.5
 
             if tilt_delta != 0:
                 self.camera_tilt_servo.set_degrees(self.camera_tilt_servo.get_degrees() + tilt_delta)

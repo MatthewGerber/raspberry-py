@@ -1,0 +1,12 @@
+<div class="form-check form-switch">
+  <label class="form-check-label" for="car-1-enable_face_tracking-disable_face_tracking">Face Tracking</label>
+  <input class="form-check-input" type="checkbox" role="switch" id="car-1-enable_face_tracking-disable_face_tracking" checked />
+</div>
+<script>
+$("#car-1-enable_face_tracking-disable_face_tracking").on("change", function () {
+  $.ajax({
+    url: $("#car-1-enable_face_tracking-disable_face_tracking").is(":checked") ? "http://10.0.0.59:5000/call/car-1/enable_face_tracking" : "http://10.0.0.59:5000/call/car-1/disable_face_tracking",
+    type: "GET"
+  });
+});
+</script>
