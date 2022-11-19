@@ -1,9 +1,11 @@
 import base64
 import math
+import os
+import sys
 import time
 from enum import Enum, auto
 from threading import Thread, Lock
-from typing import Optional
+from typing import Optional, Tuple, List, Any
 
 import RPi.GPIO as gpio
 import cv2
@@ -720,10 +722,50 @@ class Camera(Component):
 
         image_bytes = cv2.imencode('.jpg', frame)[1]
 
+        faces = self.detect_faces(image_bytes)
+        image_bytes = self.circle_faces(image_bytes, faces)
+
         # strip leading b' and trailing '
         base_64_string = str(base64.b64encode(image_bytes))[2:-1]
 
         return base_64_string
+
+    def detect_faces(
+            self,
+            image
+    ) -> List[Tuple[float, float, float, float]]:
+        """
+        Detect faces within an image.
+        
+        :param image: Image within which to detect faces.
+        :return: List of face positions, each being a tuple of the face x/y positions and width/height.
+        """
+
+        img_grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        faces = self.face_model.detectMultiScale(img_grayscale, 1.3, 5)
+
+        return faces
+
+    @staticmethod
+    def circle_faces(
+            image,
+            faces: List[Tuple[float, float, float, float]]
+    ) -> Any:
+        """
+        Circle faces within an image.
+
+        :param image: Image within which to circle faces.        
+        :param faces: List of face positions, each being a tuple of the face x/y positions and width/height.
+        :return: Image with circles overlaid on faces.
+        """
+
+        if len(faces) > 0:
+            for (x, y, w, h) in faces:
+                center_x = float(x + w / 2.0)
+                center_y = float(y + h / 2.0)
+                image = cv2.circle(image, (int(center_x), int(center_y)), int((w + h) / 4), (0, 255, 0), 2)
+
+        return image
 
     def __init__(
             self,
@@ -756,3 +798,5 @@ class Camera(Component):
         self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         self.camera_lock = Lock()
+
+        self.face_model = cv2.CascadeClassifier(f'{os.path.dirname(__file__)}/haarcascade_frontalface_default.xml')
