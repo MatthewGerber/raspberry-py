@@ -30,8 +30,7 @@ class Car(Component):
     The Freenove 4WD Smart Car.
 
     TODO:
-      * Image overlay:  Guide lines, face detection
-      * Face tracking
+      * Image overlay:  Guide lines
       * RLAI
       * LEDs, sensors
     """
@@ -165,6 +164,8 @@ class Car(Component):
                 self.monitor_connection_blackout_thread = Thread(target=self.monitor_connection_blackout)
                 self.monitor_connection_blackout_thread.start()
 
+        self.on = True
+
     def monitor_connection_blackout(
             self
     ):
@@ -204,6 +205,8 @@ class Car(Component):
             servo.stop()
 
         self.stop_connection_blackout_monitor()
+
+        self.on = False
 
     def stop_connection_blackout_monitor(
             self
@@ -250,7 +253,7 @@ class Car(Component):
         :param detected_faces: Detected faces.
         """
 
-        if len(detected_faces) == 1:
+        if self.track_faces and len(detected_faces) == 1:
 
             detected_face = detected_faces[0]
 
@@ -275,6 +278,24 @@ class Car(Component):
 
             if tilt_delta != 0:
                 self.camera_tilt_servo.set_degrees(self.camera_tilt_servo.get_degrees() + tilt_delta)
+
+    def enable_face_tracking(
+            self
+    ):
+        """
+        Enable face tracking.
+        """
+
+        self.track_faces = True
+
+    def disable_face_tracking(
+            self
+    ):
+        """
+        Disable face tracking.
+        """
+
+        self.track_faces = False
 
     def __init__(
             self,
@@ -326,6 +347,8 @@ class Car(Component):
         self.min_speed = min_speed
         self.max_speed = max_speed
         self.connection_blackout_tolerance_seconds = connection_blackout_tolerance_seconds
+        self.track_faces = track_faces
+        self.on = False
 
         # hardware pwm for motors/servos
         i2c_bus = SMBus('/dev/i2c-1')

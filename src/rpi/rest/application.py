@@ -95,21 +95,21 @@ class RpiFlask(Flask):
 
         if isinstance(component, LED):
             elements = [
-                RpiFlask.get_switch(component.id, rest_host, rest_port, component.turn_on, component.turn_off, None)
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.turn_on, component.turn_off, None, component.is_on())
             ]
         elif isinstance(component, DcMotor):
             elements = [
-                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, None),
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, None, component.state.on),
                 RpiFlask.get_range(component.id, component.min_speed, component.max_speed, 1, component.get_speed(), False, False, [], [], [], False, rest_host, rest_port, component.set_speed, None)
             ]
         elif isinstance(component, Servo):
             elements = [
-                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, None),
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, None, component.state.on),
                 RpiFlask.get_range(component.id, int(component.min_degree), int(component.max_degree), 1, int(component.get_degrees()), False, False, [], [], [], False, rest_host, rest_port, component.set_degrees, None)
             ]
         elif isinstance(component, Stepper):
             elements = [
-                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, None)
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, None, False)
             ]
         elif isinstance(component, Photoresistor):
             elements = [
@@ -145,7 +145,10 @@ class RpiFlask(Flask):
                 RpiFlask.get_range(component.id, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_differential_speed, ''),
                 RpiFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1), 'Range'),
                 RpiFlask.get_button(component.buzzer.id, rest_host, rest_port, component.buzzer.buzz, None, component.buzzer.stop, None, 'Horn'),
-                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, 'Power')
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, 'Power', component.on),
+                RpiFlask.get_switch(component.camera.id, rest_host, rest_port, component.camera.enable_face_detection, component.camera.disable_face_detection, 'Face Detection', component.camera.run_face_detection),
+                RpiFlask.get_switch(component.camera.id, rest_host, rest_port, component.camera.enable_face_circles, component.camera.disable_face_circles, 'Face Circles', component.camera.circle_detected_faces),
+                RpiFlask.get_switch(component.id, rest_host, rest_port, component.enable_face_tracking, component.disable_face_tracking, 'Face Tracking', component.camera.track_faces)
             ]
 
             if component.connection_blackout_tolerance_seconds is not None:
@@ -163,7 +166,8 @@ class RpiFlask(Flask):
             rest_port: int,
             on_function: Callable[[], None],
             off_function: Callable[[], None],
-            text: Optional[str]
+            text: Optional[str],
+            initially_on: bool
     ) -> Tuple[str, str]:
         """
         Get switch UI element.
@@ -174,6 +178,7 @@ class RpiFlask(Flask):
         :param on_function: Function to call when switch is flipped on.
         :param off_function: Function to call when switch is flipped off.
         :param text: Readable text to display.
+        :param initially_on: Initially on.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
@@ -185,12 +190,14 @@ class RpiFlask(Flask):
 
         element_id = f'{component_id}-{on_function_name}-{off_function_name}'
 
+        checked = ' checked ' if initially_on else ''
+
         return (
             element_id,
             (
                 f'<div class="form-check form-switch">\n'
                 f'  <label class="form-check-label" for="{element_id}">{text}</label>\n'
-                f'  <input class="form-check-input" type="checkbox" role="switch" id="{element_id}" />\n'
+                f'  <input class="form-check-input" type="checkbox" role="switch" id="{element_id}"{checked}/>\n'
                 f'</div>\n'
                 f'<script>\n'
                 f'$("#{element_id}").on("change", function () {{\n'

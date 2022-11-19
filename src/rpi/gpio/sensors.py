@@ -774,6 +774,42 @@ class Camera(Component):
 
         return base_64_string_jpg
 
+    def enable_face_detection(
+            self
+    ):
+        """
+        Enable face detection.
+        """
+
+        self.run_face_detection = True
+
+    def disable_face_detection(
+            self
+    ):
+        """
+        Disable face detection.
+        """
+
+        self.run_face_detection = False
+
+    def enable_face_circles(
+            self
+    ):
+        """
+        Enable face circles.
+        """
+
+        self.circle_detected_faces = True
+
+    def disable_face_circles(
+            self
+    ):
+        """
+        Disable face circles.
+        """
+
+        self.circle_detected_faces = False
+
     def detect_faces(
             self,
             image_bytes: np.ndarray
