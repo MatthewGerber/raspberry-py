@@ -181,9 +181,7 @@ class Car(Component):
                     seconds_since_previous_heartbeat = time.time() - self.previous_connection_heartbeat_time
                     if seconds_since_previous_heartbeat > self.connection_blackout_tolerance_seconds:
                         print(f'Connection heartbeat not received for {seconds_since_previous_heartbeat}s, which exceeds tolerance of {self.connection_heartbeat_check_interval_seconds}s. Stopping car.')
-                        Thread(target=self.stop).start()
-                        self.continue_monitoring_connection_blackout = False
-                        break
+                        self.stop()
                 else:
                     break
 
@@ -242,6 +240,42 @@ class Car(Component):
 
         return self.wheels + self.servos + [self.buzzer, self.camera, self.range_finder]
 
+    def track_detected_faces(
+            self,
+            detected_faces: List[Camera.DetectedFace]
+    ):
+        """
+        Track detected faces.
+
+        :param detected_faces: Detected faces.
+        """
+
+        if len(detected_faces) == 1:
+
+            detected_face = detected_faces[0]
+
+            frame_width, frame_height = self.camera.get_frame_resolution()
+            frame_middle_x = frame_width / 2.0
+            frame_middle_y = frame_height / 2.0
+
+            pan_delta = 0
+            if detected_face.center_x > frame_middle_x + 10:
+                pan_delta = 1
+            elif detected_face.center_x < frame_middle_x - 10:
+                pan_delta = -1
+
+            if pan_delta != 0:
+                self.camera_pan_servo.set_degrees(self.camera_pan_servo.get_degrees() + pan_delta)
+
+            tilt_delta = 0
+            if detected_face.center_y > frame_middle_y + 10:
+                tilt_delta = -1
+            elif detected_face.center_y < frame_middle_y - 10:
+                tilt_delta = 1
+
+            if tilt_delta != 0:
+                self.camera_tilt_servo.set_degrees(self.camera_tilt_servo.get_degrees() + tilt_delta)
+
     def __init__(
             self,
             camera_pan_servo_correction_degrees: float = 0.0,
@@ -253,7 +287,10 @@ class Car(Component):
             camera_fps: int = 30,
             min_speed: int = -100,
             max_speed: int = 100,
-            connection_blackout_tolerance_seconds: Optional[float] = None
+            connection_blackout_tolerance_seconds: Optional[float] = None,
+            run_face_detection: bool = True,
+            circle_detected_faces: bool = True,
+            track_faces: bool = True
     ):
         """
         Initialize the car.
@@ -276,6 +313,9 @@ class Car(Component):
         :param max_speed: Maximum speed in [-100,+100].
         :param connection_blackout_tolerance_seconds: Maximum amount of time (seconds) to tolerate connection blackout,
         beyond which the car will automatically shut down. Pass None to not use this feature.
+        :param run_face_detection: Whether to run face detection.
+        :param circle_detected_faces: Whether to circle detected faces.
+        :param track_faces: Whether to track detected faces.
         """
 
         if reverse_wheels is None:
@@ -359,7 +399,10 @@ class Car(Component):
             device=camera_device,
             width=camera_width,
             height=camera_height,
-            fps=camera_fps
+            fps=camera_fps,
+            run_face_detection=run_face_detection,
+            circle_detected_faces=circle_detected_faces,
+            face_detection_callback=self.track_detected_faces if track_faces else None
         )
         self.camera.id = 'camera'
         self.buzzer = ActiveBuzzer(CkPin.GPIO17)

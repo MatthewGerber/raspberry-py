@@ -1,14 +1,14 @@
 import base64
 import math
 import os
-import sys
 import time
 from enum import Enum, auto
 from threading import Thread, Lock
-from typing import Optional, Tuple, List, Any
+from typing import Optional, List, Callable, Tuple
 
 import RPi.GPIO as gpio
 import cv2
+import numpy as np
 
 from rpi.gpio import Component
 from rpi.gpio.adc import AdcDevice
@@ -664,6 +664,38 @@ class Camera(Component):
     Camera.
     """
 
+    class DetectedFace:
+        """
+        Detected face.
+        """
+
+        def __init__(
+                self,
+                center_x: float,
+                center_y: float,
+                top_left_corner_x: float,
+                top_left_corner_y: float,
+                width: float,
+                height: float
+        ):
+            """
+            Initialize face.
+
+            :param center_x: Center x.
+            :param center_y: Center y.
+            :param top_left_corner_x: Top-left corner x.
+            :param top_left_corner_y: Top-left corner y.
+            :param width: Width.
+            :param height: Height.
+            """
+
+            self.center_x = center_x
+            self.center_y = center_y
+            self.top_left_corner_x = top_left_corner_x
+            self.top_left_corner_y = top_left_corner_y
+            self.width = width
+            self.height = height
+
     class State(Component.State):
         """
         Camera state.
@@ -708,6 +740,17 @@ class Camera(Component):
             self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, width)
             self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
+    def get_frame_resolution(
+            self
+    ) -> Tuple[int, int]:
+        """
+        Get current frame resolution.
+
+        :return: 2-tuple of width/height.
+        """
+
+        return self.camera.get(cv2.CAP_PROP_FRAME_WIDTH), self.camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
+
     def capture_image(
             self
     ) -> str:
@@ -718,61 +761,83 @@ class Camera(Component):
         """
 
         with self.camera_lock:
-            frame = self.camera.read()[1]
+            image_bytes = self.camera.read()[1]
 
-        image_bytes = cv2.imencode('.jpg', frame)[1]
+        if self.run_face_detection:
+            detected_faces = self.detect_faces(image_bytes)
+            if self.circle_detected_faces:
+                image_bytes = self.circle_faces(image_bytes, detected_faces)
 
-        faces = self.detect_faces(image_bytes)
-        image_bytes = self.circle_faces(image_bytes, faces)
+        # encode as jpg -> base64 string, and strip the leading b' and trailing '
+        image_jpg_bytes = cv2.imencode('.jpg', image_bytes)[1]
+        base_64_string_jpg = str(base64.b64encode(image_jpg_bytes))[2:-1]
 
-        # strip leading b' and trailing '
-        base_64_string = str(base64.b64encode(image_bytes))[2:-1]
-
-        return base_64_string
+        return base_64_string_jpg
 
     def detect_faces(
             self,
-            image
-    ) -> List[Tuple[float, float, float, float]]:
+            image_bytes: np.ndarray
+    ) -> List[DetectedFace]:
         """
         Detect faces within an image.
         
-        :param image: Image within which to detect faces.
-        :return: List of face positions, each being a tuple of the face x/y positions and width/height.
+        :param image_bytes: Image bytes within which to detect faces.
+        :return: List of detected faces.
         """
 
-        img_grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        faces = self.face_model.detectMultiScale(img_grayscale, 1.3, 5)
+        image_bytes_grayscale = cv2.cvtColor(image_bytes, cv2.COLOR_BGR2GRAY)
 
-        return faces
+        detected_faces = [
+            Camera.DetectedFace(
+                center_x=float(x + w / 2.0),
+                center_y=float(y + h / 2.0),
+                top_left_corner_x=x,
+                top_left_corner_y=y,
+                width=w,
+                height=h
+            )
+            for x, y, w, h in self.face_model.detectMultiScale(image_bytes_grayscale, 1.3, 5)
+        ]
+
+        if self.face_detection_callback is not None and len(detected_faces) > 0:
+            self.face_detection_callback(detected_faces)
+
+        return detected_faces
 
     @staticmethod
     def circle_faces(
-            image,
-            faces: List[Tuple[float, float, float, float]]
-    ) -> Any:
+            image_bytes: np.ndarray,
+            detected_faces: List[DetectedFace]
+    ) -> np.ndarray:
         """
-        Circle faces within an image.
+        Circle detected faces within an image.
 
-        :param image: Image within which to circle faces.        
-        :param faces: List of face positions, each being a tuple of the face x/y positions and width/height.
-        :return: Image with circles overlaid on faces.
+        :param image_bytes: Image within which to circle faces.
+        :param detected_faces: List of detected faces.
+        :return: Image bytes with circles overlaid on faces.
         """
 
-        if len(faces) > 0:
-            for (x, y, w, h) in faces:
-                center_x = float(x + w / 2.0)
-                center_y = float(y + h / 2.0)
-                image = cv2.circle(image, (int(center_x), int(center_y)), int((w + h) / 4), (0, 255, 0), 2)
+        if len(detected_faces) > 0:
+            for detected_face in detected_faces:
+                image_bytes = cv2.circle(
+                    image_bytes,
+                    (int(detected_face.center_x), int(detected_face.center_y)),
+                    int((detected_face.width + detected_face.height) / 4),
+                    (0, 255, 0),
+                    2
+                )
 
-        return image
+        return image_bytes
 
     def __init__(
             self,
             device: str,
             width: int,
             height: int,
-            fps: int
+            fps: int,
+            run_face_detection: bool,
+            circle_detected_faces: bool,
+            face_detection_callback: Optional[Callable[[List[DetectedFace]], None]]
     ):
         """
         Initialize camera.
@@ -781,6 +846,9 @@ class Camera(Component):
         :param width: Width.
         :param height: Height.
         :param fps: Frames per second.
+        :param run_face_detection: Whether to detect faces in captured images.
+        :param circle_detected_faces: Whether to circle detected faces in captured images.
+        :param face_detection_callback: Callback for face detections.
         """
 
         super().__init__(Camera.State())
@@ -793,6 +861,9 @@ class Camera(Component):
         self.width = width
         self.height = height
         self.fps = fps
+        self.run_face_detection = run_face_detection
+        self.circle_detected_faces = circle_detected_faces
+        self.face_detection_callback = face_detection_callback
 
         self.camera = cv2.VideoCapture(self.device, cv2.CAP_V4L)
         self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
