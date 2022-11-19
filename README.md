@@ -179,7 +179,8 @@ can be modified but must match the `--rest-port` used earlier. See the Flask
 [site](https://flask.palletsprojects.com/) for more information.
 
 ## Demonstration:  Freenove 4WD Smart Car
-TBD
+
+![smart-car](docs/smart-car.png)
 
 # Ubuntu for RPI with GPIO Configuration
 This package has been developed using the Ubuntu installation described 
