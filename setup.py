@@ -23,7 +23,8 @@ setup(
         'smbus2==0.4.1 ',
         'Flask==2.2.2',
         'Flask-Cors==3.0.10',
-        'opencv-python==4.6.0.66'
+        'opencv-python==4.6.0.66',
+        'rpi-ws281x==4.3.4'
     ],
     tests_require=TEST_REQUIREMENTS,
     extras_require={
