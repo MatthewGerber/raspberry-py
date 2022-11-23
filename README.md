@@ -179,14 +179,14 @@ can be modified but must match the `--rest-port` used earlier. See the Flask
 [site](https://flask.palletsprojects.com/) for more information.
 
 ## Example:  Freenove 4WD Smart Car
-The following is a screenshot of the control screen for the 
-[Freenove 4WD Smart Car](https://www.amazon.com/Freenove-Raspberry-Tracking-Avoidance-Ultrasonic/dp/B07YD2LT9D) based on 
-the above framework:
+The [Freenove 4WD Smart Car](https://www.amazon.com/Freenove-Raspberry-Tracking-Avoidance-Ultrasonic/dp/B07YD2LT9D) 
+comes with Python software, including a remote control interface. I have reimplemented most of the capabilities using 
+the present Python package. The following is a screenshot of the control screen for the car based on the above 
+framework:
 
 ![smart-car](docs/smart-car.png)  
 
-The Freenove car comes with Python software. I have reimplemented most of the capabilities from scratch using the 
-present Python package. Read more [here](docs/smart-car.md).
+Read more [here](docs/smart-car.md).
 
 # Ubuntu for RPI with GPIO Configuration
 This package has been developed using the Ubuntu installation described 
