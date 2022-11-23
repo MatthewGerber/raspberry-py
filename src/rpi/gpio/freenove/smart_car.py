@@ -471,8 +471,12 @@ class Car(Component):
         self.connection_blackout_lock = RLock()
         self.connection_heartbeat_check_interval_seconds = 0.1
 
-        # led strip
-        self.led_strip = LedStrip(led_brightness=3)
+        # led strip -- catch error in case permissions/capabilities are not set up for /dev/mem
+        try:
+            self.led_strip = LedStrip(led_brightness=3)
+        except RuntimeError:
+            pass
+
         self.led_strip_thread = None
         self.led_strip_lock = RLock()
         self.led_strip_continue = False
