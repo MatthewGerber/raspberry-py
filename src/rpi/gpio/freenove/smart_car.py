@@ -1,14 +1,15 @@
 import time
-from datetime import timedelta
 from enum import IntEnum
 from threading import RLock, Thread
 from typing import Optional, List
 
+from rpi_ws281x import Color
 from smbus2 import SMBus
 
 from rpi.gpio import CkPin
 from rpi.gpio import Component
 from rpi.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
+from rpi.gpio.lights import LedStrip
 from rpi.gpio.motors import DcMotor, DcMotorDriverPCA9685PW, Servo, ServoDriverPCA9685PW
 from rpi.gpio.sensors import Camera, UltrasonicRangeFinder
 from rpi.gpio.sounds import ActiveBuzzer
@@ -32,7 +33,7 @@ class Car(Component):
     TODO:
       * Image overlay:  Guide lines
       * RLAI
-      * LEDs, sensors
+      * Sensors
     """
 
     class State(Component.State):
@@ -146,11 +147,8 @@ class Car(Component):
         for servo in self.servos:
             servo.start()
 
-        # signal start
         self.camera_tilt_servo.set_degrees(90)
-        self.camera_pan_servo.set_degrees(70, timedelta(seconds=1))
-        self.camera_pan_servo.set_degrees(110, timedelta(seconds=1))
-        self.camera_pan_servo.set_degrees(90, timedelta(seconds=0.5))
+        self.camera_pan_servo.set_degrees(90)
 
         # begin monitoring for connection blackout if specified
         with self.connection_blackout_lock:
@@ -164,7 +162,28 @@ class Car(Component):
                 self.monitor_connection_blackout_thread = Thread(target=self.monitor_connection_blackout)
                 self.monitor_connection_blackout_thread.start()
 
+        # start led strip
+        with self.led_strip_lock:
+            self.led_strip_continue = True
+            self.led_strip_thread = Thread(target=self.run_led_strip)
+            self.led_strip_thread.start()
+
         self.on = True
+
+    def run_led_strip(
+            self
+    ):
+        """
+        Run the LED strip.
+        """
+
+        while True:
+            with self.led_strip_lock:
+                if self.led_strip_continue:
+                    self.led_strip.theater_chase(Color(0, 255, 0), iterations=1)
+                else:
+                    self.led_strip.color_wipe(0, 0)
+                    break
 
     def monitor_connection_blackout(
             self
@@ -205,6 +224,9 @@ class Car(Component):
             servo.stop()
 
         self.stop_connection_blackout_monitor()
+
+        with self.led_strip_lock:
+            self.led_strip_continue = False
 
         self.on = False
 
@@ -448,3 +470,9 @@ class Car(Component):
         self.previous_connection_heartbeat_time = None
         self.connection_blackout_lock = RLock()
         self.connection_heartbeat_check_interval_seconds = 0.1
+
+        # led strip
+        self.led_strip = LedStrip(led_brightness=3)
+        self.led_strip_thread = None
+        self.led_strip_lock = RLock()
+        self.led_strip_continue = False

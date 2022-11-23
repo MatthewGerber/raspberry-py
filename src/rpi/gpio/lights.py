@@ -3,8 +3,10 @@ from datetime import timedelta
 from enum import Enum, auto
 from threading import Thread
 from typing import List, Optional, Union, Dict, Tuple
-import numpy as np
+
 import RPi.GPIO as gpio
+import numpy as np
+from rpi_ws281x import Adafruit_NeoPixel, Color
 
 from rpi.gpio import Component
 from rpi.gpio.integrated_circuits import ShiftRegister74HC595
@@ -984,3 +986,218 @@ class LedMatrix(Component):
 
         self.display_thread = None
         self.run_display_thread = False
+
+
+class LedStrip:
+    """
+    LED strip, controlled by a WS281 driver and single-GPIO pin PWM.
+    """
+
+    def __init__(
+            self,
+            led_count: int = 8,
+            led_pin: int = 18,
+            led_freq_hz: int = 800000,
+            led_dma: int = 10,
+            led_brightness: int = 255,
+            led_invert: int = False,
+            led_channel: int = 0
+    ):
+        """
+        Initialize the strip.
+
+        :param led_count: Number of LED pixels.
+        :param led_pin: GPIO pin connected to the pixels (18 uses PWM).
+        :param led_freq_hz: LED signal frequency in hertz (usually 800khz).
+        :param led_dma: DMA channel to use for generating signal (try 10).
+        :param led_brightness: Set to 0 for darkest and 255 for brightest.
+        :param led_invert: True to invert the signal (when using NPN transistor level shift).
+        :param led_channel: Set to '1' for GPIOs 13, 19, 41, 45 or 53
+        """
+
+        self.order = 'RGB'
+
+        self.strip = Adafruit_NeoPixel(
+            led_count,
+            led_pin,
+            led_freq_hz,
+            led_dma,
+            led_invert,
+            led_brightness,
+            led_channel
+        )
+
+        self.strip.begin()
+
+    def get_color(
+            self,
+            rgb: int
+    ) -> Color:
+        """
+        Get color.
+
+        :param rgb: Color integer.
+        :return: Color.
+        """
+
+        b = rgb & 255
+        g = rgb >> 8 & 255
+        r = rgb >> 16 & 255
+        led_type = ['GRB', 'GBR', 'RGB', 'RBG', 'BRG', 'BGR']
+        color = [Color(g, r, b), Color(g, b, r), Color(r, g, b), Color(r, b, g), Color(b, r, g), Color(b, g, r)]
+
+        return color[led_type.index(self.order)]
+
+    def color_wipe(
+            self,
+            rgb: int,
+            wait_ms: int = 50
+    ):
+        """
+        Wipe color across display a pixel at a time.
+
+        :param rgb: Color.
+        :param wait_ms: Delay.
+        """
+
+        color = self.get_color(rgb)
+        for i in range(self.strip.numPixels()):
+            self.strip.setPixelColor(i, color)
+            self.strip.show()
+            time.sleep(wait_ms / 1000.0)
+
+    def theater_chase(
+            self,
+            color: Color,
+            wait_ms: int = 50,
+            iterations: int = 10
+    ):
+        """
+        Movie theater light style chaser animation.
+
+        :param color: Color.
+        :param wait_ms: Delay.
+        :param iterations: Iterations.
+        """
+
+        for j in range(iterations):
+            for q in range(3):
+                for i in range(0, self.strip.numPixels(), 3):
+                    self.strip.setPixelColor(i + q, color)
+                self.strip.show()
+                time.sleep(wait_ms / 1000.0)
+                for i in range(0, self.strip.numPixels(), 3):
+                    self.strip.setPixelColor(i + q, 0)
+
+    @staticmethod
+    def wheel(
+            pos: int
+    ) -> Color:
+        """
+        Generate rainbow colors.
+
+        :param pos: Position in [0,255].
+        :return: Color.
+        """
+
+        if pos < 0 or pos > 255:
+            r = g = b = 0
+        elif pos < 85:
+            r = pos * 3
+            g = 255 - pos * 3
+            b = 0
+        elif pos < 170:
+            pos -= 85
+            r = 255 - pos * 3
+            g = 0
+            b = pos * 3
+        else:
+            pos -= 170
+            r = 0
+            g = pos * 3
+            b = 255 - pos * 3
+
+        return Color(r, g, b)
+
+    def rainbow(
+            self,
+            wait_ms: int = 20,
+            iterations: int = 1
+    ):
+        """
+        Draw rainbow that fades across all pixels at once.
+
+        :param wait_ms: Delay.
+        :param iterations: Iterations.
+        """
+
+        for j in range(256 * iterations):
+            for i in range(self.strip.numPixels()):
+                self.strip.setPixelColor(i, self.wheel((i + j) & 255))
+
+            self.strip.show()
+            time.sleep(wait_ms / 1000.0)
+
+    def rainbow_cycle(
+            self,
+            wait_ms: int = 20,
+            iterations: int = 5
+    ):
+        """
+        Draw rainbow that uniformly distributes itself across all pixels.
+
+        :param wait_ms: Delay.
+        :param iterations: Iterations.
+        """
+
+        for j in range(256 * iterations):
+            for i in range(self.strip.numPixels()):
+                self.strip.setPixelColor(i, self.wheel((int(i * 256 / self.strip.numPixels()) + j) & 255))
+
+            self.strip.show()
+            time.sleep(wait_ms / 1000.0)
+
+    def theater_chase_rainbow(
+            self,
+            wait_ms: int = 50
+    ):
+        """
+        Rainbow movie theater light style chaser animation.
+
+        :param wait_ms: Delay.
+        """
+
+        for j in range(256):
+            for q in range(3):
+
+                for i in range(0, self.strip.numPixels(), 3):
+                    self.strip.setPixelColor(i + q, self.wheel((i + j) % 255))
+
+                self.strip.show()
+                time.sleep(wait_ms / 1000.0)
+                for i in range(0, self.strip.numPixels(), 3):
+                    self.strip.setPixelColor(i + q, 0)
+
+    def set_led(
+            self,
+            index: int,
+            r: int,
+            g: int,
+            b: int
+    ):
+        """
+        Set LED.
+
+        :param index: LED index.
+        :param r: Red.
+        :param g: Green.
+        :param b: Blue.
+        """
+
+        color = Color(r, g, b)
+        for i in range(8):
+            if index & 0x01 == 1:
+                self.strip.setPixelColor(i, color)
+                self.strip.show()
+
+            index = index >> 1
