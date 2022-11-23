@@ -990,7 +990,7 @@ class LedMatrix(Component):
 
 class LedStrip:
     """
-    LED strip, controlled by a WS281 driver and single-GPIO pin PWM.
+    LED strip, controlled by a WS281x driver and single-GPIO pin PWM.
     """
 
     def __init__(
