@@ -180,7 +180,7 @@ class Car(Component):
         while True:
             with self.led_strip_lock:
                 if self.led_strip_continue:
-                    self.led_strip.theater_chase(Color(0, 255, 0), iterations=1)
+                    self.led_strip.theater_chase(Color(0, 255, 0), iterations=1, wait_ms=250)
                 else:
                     self.led_strip.color_wipe(0, 0)
                     break
