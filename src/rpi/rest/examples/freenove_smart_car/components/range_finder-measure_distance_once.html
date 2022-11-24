@@ -2,7 +2,10 @@
   <label id="range_finder-measure_distance_once">Range:  null</label>
 </div>
 <script>
-function read_value_range_finder_measure_distance_once() {
+async function read_value_range_finder_measure_distance_once() {
+  while (!$("#car-1-start-stop").is(":checked")) {
+    await new Promise(r => setTimeout(r, 1000));
+  }
   $.ajax({
     url: "http://10.0.0.59:5000/call/range_finder/measure_distance_once",
     type: "GET",

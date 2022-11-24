@@ -162,6 +162,8 @@ class Car(Component):
                 self.monitor_connection_blackout_thread = Thread(target=self.monitor_connection_blackout)
                 self.monitor_connection_blackout_thread.start()
 
+        self.camera.turn_on()
+
         # start led strip
         with self.led_strip_lock:
 
@@ -233,6 +235,8 @@ class Car(Component):
             servo.stop()
 
         self.stop_connection_blackout_monitor()
+
+        self.camera.turn_off()
 
         with self.led_strip_lock:
             self.led_strip_continue = False

@@ -8,9 +8,9 @@ car = Car(
     camera_width=160,
     camera_height=120,
     camera_fps=30,
-    min_speed=-50,
-    max_speed=50,
-    connection_blackout_tolerance_seconds=1
+    min_speed=-100,
+    max_speed=100,
+    connection_blackout_tolerance_seconds=2
 )
 car.id = 'car-1'
 

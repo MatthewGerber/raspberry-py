@@ -751,6 +751,26 @@ class Camera(Component):
 
         return self.camera.get(cv2.CAP_PROP_FRAME_WIDTH), self.camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
+    def turn_on(
+            self
+    ):
+        """
+        Turn the camera on.
+        """
+
+        with self.camera_lock:
+            self.on = True
+
+    def turn_off(
+            self
+    ):
+        """
+        Turn the camera off.
+        """
+
+        with self.camera_lock:
+            self.on = False
+
     def capture_image(
             self
     ) -> str:
@@ -761,7 +781,10 @@ class Camera(Component):
         """
 
         with self.camera_lock:
-            image_bytes = self.camera.read()[1]
+            if self.on:
+                image_bytes = self.camera.read()[1]
+            else:
+                return ''
 
         if self.run_face_detection:
             detected_faces = self.detect_faces(image_bytes)
@@ -907,3 +930,5 @@ class Camera(Component):
         self.camera_lock = Lock()
 
         self.face_model = cv2.CascadeClassifier(f'{os.path.dirname(__file__)}/haarcascade_frontalface_default.xml')
+
+        self.on = False

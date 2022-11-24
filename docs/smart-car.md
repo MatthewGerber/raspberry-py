@@ -1,8 +1,14 @@
 # [Freenove 4WD Smart Car](https://www.amazon.com/Freenove-Raspberry-Tracking-Avoidance-Ultrasonic/dp/B07YD2LT9D)
 
-UNDER CONSTRUCTION
-
 ![smart-car](smart-car.png)
+
+# Overview
+
+# RpiFlash Application
+
+# Web Components
+
+# Flask REST Server
 
 # Enabling the WS281x LED Strip
 The WS281x series of LED strips is a popular solution for controllable LEDs, with the benefit that only a single 
@@ -18,9 +24,9 @@ locked down by default.
 WARNING:  This is a security risk. Do not use this approach unless you understand the security implications. Even if you 
 do understand and accept the security implications, this isn't a great idea.
 
-Having issued the above warning, I'll say that this was the easiest approach to implement. It unlocks `/dev/mem` on boot
-for user-space programs like the RPI/REST server for the smart car. I wanted this so that I could simply hit the power
-button on the car and be driving immediately using the web interface.
+Having issued the above warning, I'll say that this approach checks several boxes. It unlocks `/dev/mem` on boot for 
+user-space programs like the RPI/REST server for the smart car. I wanted this so that I could simply hit the power 
+button on the car and be driving immediately using the remote web interface.
 
 Begin by adding the `ubuntu` user to the `kmem` group, which is the default group owner of `/dev/mem`:
 ```
@@ -47,15 +53,31 @@ Finally, restart to get the group and read/write access to take:
 ```
 sudo shutdown -r now
 ```
-
 At this point, any user-space program running the Python 3.9 binary will have read/write access to the system's main 
-memory. This should make you at least a little uncomfortable, but the LED strip on the car should be working.
+memory. This should make you at least a little uncomfortable, but the LED strip on the car should be working. Start the
+flask server and the remote web-control interface should be available:
+```
+~/Repos/rpi/src/rpi/rest/examples/
+flask --app freenove_smart_car.freenove_smart_car run --host 0.0.0.0
+```
 
-## A Safer Alternative:  sudo
+## A Safer (and Simpler) Alternative:  sudo
+I went down the rabbit hole described above without giving much thought to the obviously better alternative:  `sudo`. 
+The `sudo` approach avoids the security nastiness of adding a standard user to the system-level `kmem` group, opening up 
+`/dev/mem` for writing by `kmem`, and endowing all `python3.9` commands with elevated binary capabilities. [This
+script](https://github.com/MatthewGerber/rpi/blob/main/src/rpi/rest/examples/freenove_smart_car/startup.sh) is 
+sufficient to get this working via `sudo ./startup.sh`. As noted in the script, the same can be done on boot with
+`sudo crontab -e` (edit the root user's crontab) and adding the following line:
+```
+@reboot /home/ubuntu/Repos/rpi/src/rpi/rest/examples/freenove_smart_car/startup.sh
+```
+This is much safer, as only a single process has elevated permissions for reading/writing `/dev/mem`. It is also much
+simpler than the previous approach.
 
-# Resources
+## Resources
 * [rpi-ws281x Python package for LED strip control](https://pypi.org/project/rpi-ws281x)
 * [Why rpi-ws281x requires sudo](https://github.com/jgarff/rpi_ws281x/issues/396)
 * [Add CAP_SYS_RAWIO capability](https://unix.stackexchange.com/questions/475800/non-root-read-access-to-dev-mem-by-kmem-group-members-fails)
 * [Remove CAP_SYS_RAWIO capability](https://unix.stackexchange.com/questions/303423/unset-setcap-additional-capabilities-on-excutable)
 * [Set /dev/mem permissions on boot](https://forums.developer.nvidia.com/t/dev-mem-changes-permissions-back-to-defaults-on-system-restart/65355/3)
+

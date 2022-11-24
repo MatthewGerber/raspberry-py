@@ -2,7 +2,10 @@
   <img id="camera-capture_image" width="160" src="" />
 </div>
 <script>
-function capture_camera_capture_image() {
+async function capture_camera_capture_image() {
+  while (!$("#car-1-start-stop").is(":checked")) {
+    await new Promise(r => setTimeout(r, 1000));
+  }
   $.ajax({
     url: "http://10.0.0.59:5000/call/camera/capture_image",
     type: "GET",
