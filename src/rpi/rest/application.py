@@ -493,6 +493,7 @@ class RpiFlask(Flask):
         function_name = function.__name__
         element_id = f'{component_id}-{function_name}'
         capture_function_name = f'capture_{element_id}'.replace('-', '_')
+        img_alt = element_id.replace('_', '-')
 
         refresh_interval_javascript = ''
         if refresh_interval is not None:
@@ -502,7 +503,7 @@ class RpiFlask(Flask):
             element_id,
             (
                 f'<div style="text-align: center">\n'
-                f'  <img id="{element_id}" width="{width}" src="" />\n'
+                f'  <img alt={img_alt} id="{element_id}" width="{width}" src="" />\n'
                 f'</div>\n'
                 f'<script>\n'
                 f'function {capture_function_name}() {{\n'
@@ -566,7 +567,7 @@ class RpiFlask(Flask):
                 pressed_query = ''
 
             pressed_event = (
-                f'$("#{element_id}").on("mousedown touchstart", function () {{\n'
+                f'{element_id}.on("mousedown touchstart", function () {{\n'
                 f'  $.ajax({{\n'
                 f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{pressed_function_name}{pressed_query}",\n'
                 f'    type: "GET"\n'
@@ -584,7 +585,7 @@ class RpiFlask(Flask):
                 released_query = ''
 
             released_event = (
-                f'$("#{element_id}").on("mouseup touchend", function () {{\n'
+                f'{element_id}.on("mouseup touchend", function () {{\n'
                 f'  $.ajax({{\n'
                 f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{released_function_name}{released_query}",\n'
                 f'    type: "GET"\n'
@@ -597,6 +598,7 @@ class RpiFlask(Flask):
             (
                 f'<button type="button" class="btn btn-primary" id="{element_id}">{text}</button>\n'
                 f'<script>\n'
+                f'{element_id} = $("#{element_id}");\n'
                 f'{pressed_event}'
                 f'{released_event}'
                 f'</script>'

@@ -1,16 +1,18 @@
 <div style="text-align: center">
-  <img alt="camera-capture_image" id="camera-capture_image" width="160" src="" />
+  <img alt="camera-capture-image" id="camera-capture_image" width="160" src="" />
 </div>
 <script>
+camera_capture_image = $("#camera-capture_image");
+car_1_start_stop = $("#car-1-start-stop");
 async function capture_camera_capture_image() {
-  while (!$("#car-1-start-stop").is(":checked")) {
+  while (!car_1_start_stop.is(":checked")) {
     await new Promise(r => setTimeout(r, 1000));
   }
   $.ajax({
     url: "http://10.0.0.59:5000/call/camera/capture_image",
     type: "GET",
     success: async function (return_value) {
-      document.getElementById("camera-capture_image").src = "data:image/jpg;base64," + return_value;
+      camera_capture_image.src = "data:image/jpg;base64," + return_value;
       await capture_camera_capture_image();
     },
     error: async function(xhr, error){
@@ -19,5 +21,5 @@ async function capture_camera_capture_image() {
     }
   });
 }
-capture_camera_capture_image();
+await capture_camera_capture_image();
 </script>
