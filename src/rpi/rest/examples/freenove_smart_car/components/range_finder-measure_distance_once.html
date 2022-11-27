@@ -12,13 +12,13 @@ async function read_value_range_finder_measure_distance_once() {
     success: async function (return_value) {
       document.getElementById("range_finder-measure_distance_once").innerHTML = "Range:  " + return_value;
       await new Promise(r => setTimeout(r, 1000.0));
-      read_value_range_finder_measure_distance_once();
+      await read_value_range_finder_measure_distance_once();
     },
     error: async function(xhr, error){
       console.log(error);
       document.getElementById("range_finder-measure_distance_once").innerHTML = "Range:  null";
       await new Promise(r => setTimeout(r, 1000.0));
-      read_value_range_finder_measure_distance_once();
+      await read_value_range_finder_measure_distance_once();
     }
   });
 }

@@ -19,7 +19,7 @@ $("#car-1-set_speed").on("mouseup touchend", function () {
   car_1_set_speed(0, true);
 });
 window.addEventListener("keydown", (event) => {
-  current_speed = parseInt($("#car-1-set_speed")[0].value);
+  const current_speed = parseInt($("#car-1-set_speed")[0].value);
   switch (event.key) {
     case "Down":
     case "ArrowDown":

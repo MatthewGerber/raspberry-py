@@ -1,5 +1,5 @@
 <div style="text-align: center">
-  <img id="camera-capture_image" width="160" src="" />
+  <img alt="camera-capture_image" id="camera-capture_image" width="160" src="" />
 </div>
 <script>
 async function capture_camera_capture_image() {
@@ -11,11 +11,11 @@ async function capture_camera_capture_image() {
     type: "GET",
     success: async function (return_value) {
       document.getElementById("camera-capture_image").src = "data:image/jpg;base64," + return_value;
-      capture_camera_capture_image();
+      await capture_camera_capture_image();
     },
     error: async function(xhr, error){
       console.log(error);
-      capture_camera_capture_image();
+      await capture_camera_capture_image();
     }
   });
 }

@@ -1,9 +1,10 @@
 <div class="range">
-  <label for="camera-capture_image-width" class="form-label">Display Size </label>
+  <label for="camera-capture_image-width" class="form-label">Display Size</label>
   <input type="range" class="form-range" min="100" max="800" step="10" value="160" id="camera-capture_image-width" />
 </div>
 <script>
-$("#camera-capture_image-width").on("input", function () {
-  document.getElementById("camera-capture_image").width = $("#camera-capture_image-width")[0].value
+camera_capture_image_width = $("#camera-capture_image-width");
+camera_capture_image_width.on("input", function () {
+  document.getElementById("camera-capture_image").width = camera_capture_image_width[0].value
 });
 </script>

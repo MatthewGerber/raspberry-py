@@ -3,20 +3,21 @@
   <input type="range" class="form-range" min="0" max="180" step="3" value="90" id="camera-pan-set_degrees" />
 </div>
 <script>
+camera_pan_set_degrees_range = $("#camera-pan-set_degrees");
 function camera_pan_set_degrees (degrees, set_range) {
   $.ajax({
     url: "http://10.0.0.59:5000/call/camera-pan/set_degrees?degrees=int:" + degrees,
     type: "GET"
   });
   if (set_range) {
-    $("#camera-pan-set_degrees")[0].value = degrees;
+    camera_pan_set_degrees_range[0].value = degrees;
   }
 }
-$("#camera-pan-set_degrees").on("input", function () {
-  camera_pan_set_degrees($("#camera-pan-set_degrees")[0].value, false);
+camera_pan_set_degrees_range.on("input", function () {
+  camera_pan_set_degrees(camera_pan_set_degrees_range[0].value, false);
 });
 window.addEventListener("keydown", (event) => {
-  current_degrees = parseInt($("#camera-pan-set_degrees")[0].value);
+  const current_degrees = parseInt(camera_pan_set_degrees_range[0].value);
   switch (event.key) {
     case "s":
       camera_pan_set_degrees(current_degrees - 3, true);

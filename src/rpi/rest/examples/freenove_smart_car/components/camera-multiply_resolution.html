@@ -3,16 +3,17 @@
   <input type="range" class="form-range" min="1" max="5" step="1" value="1" id="camera-multiply_resolution" />
 </div>
 <script>
+camera_multiply_resolution_range = $("#camera-multiply_resolution");
 function camera_multiply_resolution (factor, set_range) {
   $.ajax({
     url: "http://10.0.0.59:5000/call/camera/multiply_resolution?factor=int:" + factor,
     type: "GET"
   });
   if (set_range) {
-    $("#camera-multiply_resolution")[0].value = factor;
+    camera_multiply_resolution_range[0].value = factor;
   }
 }
-$("#camera-multiply_resolution").on("input", function () {
-  camera_multiply_resolution($("#camera-multiply_resolution")[0].value, false);
+camera_multiply_resolution_range.on("input", function () {
+  camera_multiply_resolution(camera_multiply_resolution_range[0].value, false);
 });
 </script>
