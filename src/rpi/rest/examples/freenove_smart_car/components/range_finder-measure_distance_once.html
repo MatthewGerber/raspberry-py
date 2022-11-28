@@ -2,7 +2,7 @@
   <label id="range_finder-measure_distance_once">Range:  null</label>
 </div>
 <script>
-range_finder_measure_distance_once = $("#range_finder-measure_distance_once");
+range_finder_measure_distance_once = $("#range_finder-measure_distance_once")[0];
 car_1_start_stop = $("#car-1-start-stop");
 async function read_value_range_finder_measure_distance_once() {
   while (!car_1_start_stop.is(":checked")) {

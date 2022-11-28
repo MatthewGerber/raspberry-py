@@ -30,14 +30,14 @@ window.addEventListener("keydown", (event) => {
     case "Right":
     case "ArrowRight":
       if (current_differential_speed > 0) {
-        new_differential_speed = 1;
+        current_differential_speed = 1;
       }
       new_differential_speed = current_differential_speed - 1;
       break;
     case "Left":
     case "ArrowLeft":
       if (current_differential_speed < 0) {
-        new_differential_speed = -1;
+        current_differential_speed = -1;
       }
       new_differential_speed = current_differential_speed + 1;
       break;

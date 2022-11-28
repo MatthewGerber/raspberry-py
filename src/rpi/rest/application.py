@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 from datetime import timedelta
 from http import HTTPStatus
 from os.path import join, expanduser
-from typing import List, Optional, Tuple, Callable, Any
+from typing import List, Optional, Tuple, Callable, Any, Union
 
 import flask
 from flask import Flask, request, abort, Response
@@ -73,7 +73,16 @@ class RpiFlask(Flask):
 
         for component in self.components_to_write:
             for element_id, element_content in self.get_ui_elements(component, rest_host, rest_port):
-                path = join(dir_path, f'{element_id}.html')
+
+                # element id can be either a string (which is assumed to be html) or a 2-tuple of the id and extension.
+                if isinstance(element_id, str):
+                    file_name = f'{element_id}.html'
+                elif isinstance(element_id, tuple) and len(element_id) == 2:
+                    file_name = '.'.join(element_id)
+                else:
+                    raise ValueError(f'Invalid element id:  {element_id}')
+
+                path = join(dir_path, file_name)
                 with open(path, 'w') as component_file:
                     component_file.write(f'{element_content}\n')
                 print(f'Wrote {path}')
@@ -83,7 +92,7 @@ class RpiFlask(Flask):
             component: Component,
             rest_host: str,
             rest_port: int,
-    ) -> List[Tuple[str, str]]:
+    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
         """
         Get UI elements for a component.
 
@@ -113,15 +122,15 @@ class RpiFlask(Flask):
             ]
         elif isinstance(component, Photoresistor):
             elements = [
-                RpiFlask.get_label(component.id, rest_host, rest_port, component.get_light_level, timedelta(seconds=1), None)
+                RpiFlask.get_label(component.id, rest_host, rest_port, component.get_light_level, timedelta(seconds=1), None, None)
             ]
         elif isinstance(component, Thermistor):
             elements = [
-                RpiFlask.get_label(component.id, rest_host, rest_port, component.get_temperature_f, timedelta(seconds=1), None)
+                RpiFlask.get_label(component.id, rest_host, rest_port, component.get_temperature_f, timedelta(seconds=1), None, None)
             ]
         elif isinstance(component, UltrasonicRangeFinder):
             elements = [
-                RpiFlask.get_label(component.id, rest_host, rest_port, component.measure_distance_once, timedelta(seconds=1), None)
+                RpiFlask.get_label(component.id, rest_host, rest_port, component.measure_distance_once, timedelta(seconds=1), None, None)
             ]
         elif isinstance(component, ActiveBuzzer):
             elements = [
@@ -129,11 +138,12 @@ class RpiFlask(Flask):
             ]
         elif isinstance(component, Camera):
             elements = [
-                RpiFlask.get_image(component.id, component.width, rest_host, rest_port, component.capture_image, timedelta(seconds=1.0 / component.fps))
+                RpiFlask.get_image(component.id, component.width, rest_host, rest_port, component.capture_image, timedelta(seconds=1.0 / component.fps), None)
             ]
         elif isinstance(component, Car):
 
-            camera_id, camera_element = RpiFlask.get_image(component.camera.id, component.camera.width, rest_host, rest_port, component.camera.capture_image, None)
+            power_id, power_element = RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, 'Power', component.on)
+            camera_id, camera_element = RpiFlask.get_image(component.camera.id, component.camera.width, rest_host, rest_port, component.camera.capture_image, None, power_id)
 
             elements = [
                 (camera_id, camera_element),
@@ -143,16 +153,17 @@ class RpiFlask(Flask):
                 RpiFlask.get_range(component.camera.id, 1, 5, 1, 1, False, False, [], [], [], False, rest_host, rest_port, component.camera.multiply_resolution, 'Display Resolution'),
                 RpiFlask.get_range(component.id, component.min_speed, component.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_speed, ''),
                 RpiFlask.get_range(component.id, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_differential_speed, ''),
-                RpiFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1), 'Range'),
+                RpiFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1), 'Range', power_id),
                 RpiFlask.get_button(component.buzzer.id, rest_host, rest_port, component.buzzer.buzz, None, component.buzzer.stop, None, 'Horn'),
-                RpiFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, 'Power', component.on),
+                (power_id, power_element),
                 RpiFlask.get_switch(component.camera.id, rest_host, rest_port, component.camera.enable_face_detection, component.camera.disable_face_detection, 'Face Detection', component.camera.run_face_detection),
                 RpiFlask.get_switch(component.camera.id, rest_host, rest_port, component.camera.enable_face_circles, component.camera.disable_face_circles, 'Face Circles', component.camera.circle_detected_faces),
                 RpiFlask.get_switch(component.id, rest_host, rest_port, component.enable_face_tracking, component.disable_face_tracking, 'Face Tracking', component.track_faces)
             ]
 
             if component.connection_blackout_tolerance_seconds is not None:
-                elements.append(RpiFlask.get_repeater(component.id, rest_host, rest_port, component.connection_heartbeat, timedelta(seconds=component.connection_blackout_tolerance_seconds / 4.0)))
+                blackout_id, blackout_element = RpiFlask.get_repeater(component.id, rest_host, rest_port, component.connection_heartbeat, timedelta(seconds=component.connection_blackout_tolerance_seconds / 4.0))
+                elements.append(((blackout_id, 'js'), blackout_element))
 
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
@@ -189,7 +200,7 @@ class RpiFlask(Flask):
             text = f'{component_id} {on_function_name}/{off_function_name}'
 
         element_id = f'{component_id}-{on_function_name}-{off_function_name}'
-
+        element_var = element_id.replace('-', '_')
         checked = ' checked ' if initially_on else ''
 
         return (
@@ -200,9 +211,10 @@ class RpiFlask(Flask):
                 f'  <input class="form-check-input" type="checkbox" role="switch" id="{element_id}"{checked}/>\n'
                 f'</div>\n'
                 f'<script>\n'
-                f'$("#{element_id}").on("change", function () {{\n'
+                f'{element_var} = $("#{element_id}");\n'
+                f'{element_var}.on("change", function () {{\n'
                 f'  $.ajax({{\n'
-                f'    url: $("#{element_id}").is(":checked") ? "http://{rest_host}:{rest_port}/call/{component_id}/{on_function_name}" : "http://{rest_host}:{rest_port}/call/{component_id}/{off_function_name}",\n'
+                f'    url: {element_var}.is(":checked") ? "http://{rest_host}:{rest_port}/call/{component_id}/{on_function_name}" : "http://{rest_host}:{rest_port}/call/{component_id}/{off_function_name}",\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'}});\n'
@@ -258,6 +270,8 @@ class RpiFlask(Flask):
             text = f'{component_id} {on_input_function_name}'
 
         element_id = f'{component_id}-{on_input_function_name}'
+        element_var = f'{element_id.replace("-", "_")}_element'
+        range_var = f'{element_id.replace("-", "_")}_range'
 
         # get the parameter name to set
         non_self_params = [
@@ -276,11 +290,12 @@ class RpiFlask(Flask):
 
         js_set_value_function_name = element_id.replace('-', '_')
         js_current_value = f'current_{value_param}'
+        js_new_value = f'new_{value_param}'
 
         release_event = ''
         if reset_to_initial_value_upon_release:
             release_event = (
-                f'$("#{element_id}").on("mouseup touchend", function () {{\n'
+                f'{element_var}.on("mouseup touchend", function () {{\n'
                 f'  {js_set_value_function_name}({initial_value}, true);\n'
                 f'}});\n'
             )
@@ -292,14 +307,14 @@ class RpiFlask(Flask):
             if zero_range_upon_direction_change:
                 decrement_zero_range = (
                     f'      if ({js_current_value} > 0) {{\n'
-                    f'        {js_current_value} = 0;\n'
+                    f'        {js_current_value} = 1;\n'
                     f'      }}\n'
                 )
 
             decrement_case += (
                 f'\n'
                 f'{decrement_zero_range}'
-                f'      {js_set_value_function_name}({js_current_value} - {step}, true);\n'
+                f'      {js_new_value} = {js_current_value} - {step};\n'
                 f'      break;\n'
             )
 
@@ -310,14 +325,14 @@ class RpiFlask(Flask):
             if zero_range_upon_direction_change:
                 increment_zero_range = (
                     f'      if ({js_current_value} < 0) {{\n'
-                    f'        {js_current_value} = 0;\n'
+                    f'        {js_current_value} = -1;\n'
                     f'      }}\n'
                 )
 
             increment_case += (
                 f'\n'
                 f'{increment_zero_range}'
-                f'      {js_set_value_function_name}({js_current_value} + {step}, true);\n'
+                f'      {js_new_value} = {js_current_value} + {step};\n'
                 f'      break;\n'
             )
 
@@ -325,7 +340,7 @@ class RpiFlask(Flask):
         if reset_case != '':
             reset_case += (
                 f'\n'
-                f'      {js_set_value_function_name}({initial_value}, true);\n'
+                f'      {js_new_value} = {initial_value};\n'
                 f'      break;\n'
             )
 
@@ -333,11 +348,15 @@ class RpiFlask(Flask):
         if len(decrement_case) + len(increment_case) + len(reset_case) > 0:
             window_event_listener = (
                 f'window.addEventListener("keydown", (event) => {{\n'
-                f'  {js_current_value} = parseInt($("#{element_id}")[0].value);\n'
+                f'  let {js_current_value} = parseInt({range_var}.value);\n'
+                f'  let {js_new_value} = {js_current_value};\n'
                 f'  switch (event.key) {{\n'
                 f'{decrement_case}'
                 f'{increment_case}'
                 f'{reset_case}'
+                f'  }}\n'
+                f'  if ({js_new_value} != {js_current_value}) {{\n'
+                f'    {js_set_value_function_name}({js_new_value}, true);\n'
                 f'  }}\n'
                 f'  event.preventDefault();\n'
                 f'}}, true);\n'
@@ -351,17 +370,22 @@ class RpiFlask(Flask):
                 f'  <input type="range"{vertical_style} class="form-range" min="{min_value}" max="{max_value}" step="{step}" value="{initial_value}" id="{element_id}" />\n'
                 f'</div>\n'
                 f'<script>\n'
+                f'{element_var} = $("#{element_id}");\n'
+                f'{range_var} = {element_var}[0];\n'
                 f'function {js_set_value_function_name} ({value_param}, set_range) {{\n'
+                f'  if ({value_param} < {min_value} || {value_param} > {max_value}) {{\n'
+                f'    return;\n'
+                f'  }}\n'
                 f'  $.ajax({{\n'
                 f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{on_input_function_name}?{value_param}=int:" + {value_param},\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'  if (set_range) {{\n'
-                f'    $("#{element_id}")[0].value = {value_param};\n'
+                f'    {range_var}.value = {value_param};\n'
                 f'  }}\n'
                 f'}}\n'
-                f'$("#{element_id}").on("input", function () {{\n'
-                f'  {js_set_value_function_name}($("#{element_id}")[0].value, false);\n'
+                f'{element_var}.on("input", function () {{\n'
+                f'  {js_set_value_function_name}({range_var}.value, false);\n'
                 f'}});\n'
                 f'{release_event}'
                 f'{window_event_listener}'
@@ -419,7 +443,8 @@ class RpiFlask(Flask):
             rest_port: int,
             function: Callable[[], Any],
             refresh_interval: timedelta,
-            text: Optional[str]
+            text: Optional[str],
+            pause_for_checkbox_id: Optional[str]
     ) -> Tuple[str, str]:
         """
         Get label that refreshes periodically.
@@ -430,15 +455,28 @@ class RpiFlask(Flask):
         :param function: Function to call to obtain new value.
         :param refresh_interval: How long to wait between refresh calls.
         :param text: Readable text to display.
+        :param pause_for_checkbox_id: HTML identifier of checkbox to pause for before getting label.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
         function_name = function.__name__
         element_id = f'{component_id}-{function_name}'
+        label_element = element_id.replace('-', '_')
         read_value_function_name = f'read_value_{element_id}'.replace('-', '_')
 
         if text is None:
             text = function_name
+
+        pause_element_javascript = ''
+        pause_while_javascript = ''
+        if pause_for_checkbox_id is not None:
+            pause_var_javascript = pause_for_checkbox_id.replace('-', '_')
+            pause_element_javascript = f'{pause_var_javascript} = $("#{pause_for_checkbox_id}");'
+            pause_while_javascript = (
+                f'  while (!{pause_var_javascript}.is(":checked")) {{\n'
+                f'    await new Promise(r => setTimeout(r, 1000));\n'
+                f'  }}\n'
+            )
 
         return (
             element_id,
@@ -447,20 +485,23 @@ class RpiFlask(Flask):
                 f'  <label id="{element_id}">{text}:  null</label>\n'
                 f'</div>\n'
                 f'<script>\n'
-                f'function {read_value_function_name}() {{\n'
+                f'{label_element} = document.getElementById("{element_id}");\n'
+                f'{pause_element_javascript}\n'
+                f'async function {read_value_function_name}() {{\n'
+                f'{pause_while_javascript}'
                 f'  $.ajax({{\n'
                 f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{function_name}",\n'
                 f'    type: "GET",\n'
                 f'    success: async function (return_value) {{\n'
-                f'      document.getElementById("{element_id}").innerHTML = "{text}:  " + return_value;\n'
+                f'      {label_element}.innerHTML = "{text}:  " + return_value;\n'
                 f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
-                f'      {read_value_function_name}();\n'
+                f'      await {read_value_function_name}();\n'
                 f'    }},\n'
                 f'    error: async function(xhr, error){{\n'
                 f'      console.log(error);\n'
-                f'      document.getElementById("{element_id}").innerHTML = "{text}:  null";\n'
+                f'      {label_element}.innerHTML = "{text}:  null";\n'
                 f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
-                f'      {read_value_function_name}();\n'
+                f'      await {read_value_function_name}();\n'
                 f'    }}\n'
                 f'  }});\n'
                 f'}}\n'
@@ -476,7 +517,8 @@ class RpiFlask(Flask):
             rest_host: str,
             rest_port: int,
             function: Callable[[], Any],
-            refresh_interval: Optional[timedelta]
+            refresh_interval: Optional[timedelta],
+            pause_for_checkbox_id: Optional[str]
     ) -> Tuple[str, str]:
         """
         Get image that refreshes periodically.
@@ -487,6 +529,7 @@ class RpiFlask(Flask):
         :param rest_port: Port.
         :param function: Function to call to obtain new image.
         :param refresh_interval: How long to wait between refresh calls, or None for no interval.
+        :param pause_for_checkbox_id: HTML identifier of checkbox to pause for before capturing image.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
@@ -494,31 +537,46 @@ class RpiFlask(Flask):
         element_id = f'{component_id}-{function_name}'
         capture_function_name = f'capture_{element_id}'.replace('-', '_')
         img_alt = element_id.replace('_', '-')
+        image_element = element_id.replace('-', '_')
 
         refresh_interval_javascript = ''
         if refresh_interval is not None:
             refresh_interval_javascript = f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
 
+        pause_element_javascript = ''
+        pause_while_javascript = ''
+        if pause_for_checkbox_id is not None:
+            pause_var_javascript = pause_for_checkbox_id.replace('-', '_')
+            pause_element_javascript = f'{pause_var_javascript} = $("#{pause_for_checkbox_id}");'
+            pause_while_javascript = (
+                f'  while (!{pause_var_javascript}.is(":checked")) {{\n'
+                f'    await new Promise(r => setTimeout(r, 1000));\n'
+                f'  }}\n'
+            )
+
         return (
             element_id,
             (
                 f'<div style="text-align: center">\n'
-                f'  <img alt={img_alt} id="{element_id}" width="{width}" src="" />\n'
+                f'  <img alt="{img_alt}" id="{element_id}" width="{width}" src="" />\n'
                 f'</div>\n'
                 f'<script>\n'
-                f'function {capture_function_name}() {{\n'
+                f'{image_element} = document.getElementById("{element_id}");\n'
+                f'{pause_element_javascript}\n'
+                f'async function {capture_function_name}() {{\n'
+                f'{pause_while_javascript}'
                 f'  $.ajax({{\n'
                 f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{function_name}",\n'
                 f'    type: "GET",\n'
                 f'    success: async function (return_value) {{\n'
-                f'      document.getElementById("{element_id}").src = "data:image/jpg;base64," + return_value;\n'
+                f'      {image_element}.src = "data:image/jpg;base64," + return_value;\n'
                 f'{refresh_interval_javascript}'
-                f'      {capture_function_name}();\n'
+                f'      await {capture_function_name}();\n'
                 f'    }},\n'
                 f'    error: async function(xhr, error){{\n'
                 f'      console.log(error);\n'
                 f'{refresh_interval_javascript}'
-                f'      {capture_function_name}();\n'
+                f'      await {capture_function_name}();\n'
                 f'    }}\n'
                 f'  }});\n'
                 f'}}\n'
@@ -631,18 +689,18 @@ class RpiFlask(Flask):
         return (
             element_id,
             (
-                f'function {js_function_name}() {{\n'
+                f'async function {js_function_name}() {{\n'
                 f'  $.ajax({{\n'
                 f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{function_name}",\n'
                 f'    type: "GET",\n'
-                f'    success: async function (return_value) {{\n'
+                f'    success: async function (_) {{\n'
                 f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
-                f'      {js_function_name}();\n'
+                f'      await {js_function_name}();\n'
                 f'    }},\n'
                 f'    error: async function(xhr, error){{\n'
                 f'      console.log(error);\n'
                 f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
-                f'      {js_function_name}();\n'
+                f'      await {js_function_name}();\n'
                 f'    }}\n'
                 f'  }});\n'
                 f'}}\n'

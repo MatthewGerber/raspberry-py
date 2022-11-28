@@ -1,0 +1,47 @@
+<div class="range">
+  <label for="car-1-set_speed" class="form-label"></label>
+  <input type="range" orient="vertical" class="form-range" min="-100" max="100" step="1" value="0" id="car-1-set_speed" />
+</div>
+<script>
+car_1_set_speed_element = $("#car-1-set_speed");
+car_1_set_speed_range = car_1_set_speed_element[0];
+function car_1_set_speed (speed, set_range) {
+  if (speed < -100 || speed > 100) {
+    return;
+  }
+  $.ajax({
+    url: "http://10.0.0.59:5000/call/car-1/set_speed?speed=int:" + speed,
+    type: "GET"
+  });
+  if (set_range) {
+    car_1_set_speed_range.value = speed;
+  }
+}
+car_1_set_speed_element.on("input", function () {
+  car_1_set_speed(car_1_set_speed_range.value, false);
+});
+car_1_set_speed_element.on("mouseup touchend", function () {
+  car_1_set_speed(0, true);
+});
+window.addEventListener("keydown", (event) => {
+  let current_speed = parseInt(car_1_set_speed_range.value);
+  let new_speed = current_speed;
+  switch (event.key) {
+    case "Down":
+    case "ArrowDown":
+      new_speed = current_speed - 1;
+      break;
+    case "Up":
+    case "ArrowUp":
+      new_speed = current_speed + 1;
+      break;
+    case " ":
+      new_speed = 0;
+      break;
+  }
+  if (new_speed != current_speed) {
+    car_1_set_speed(new_speed, true);
+  }
+  event.preventDefault();
+}, true);
+</script>

@@ -2,7 +2,7 @@
   <img alt="camera-capture-image" id="camera-capture_image" width="160" src="" />
 </div>
 <script>
-camera_capture_image = $("#camera-capture_image");
+camera_capture_image = $("#camera-capture_image")[0];
 car_1_start_stop = $("#car-1-start-stop");
 async function capture_camera_capture_image() {
   while (!car_1_start_stop.is(":checked")) {
