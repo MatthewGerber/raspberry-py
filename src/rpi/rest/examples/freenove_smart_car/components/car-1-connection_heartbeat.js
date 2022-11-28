@@ -13,4 +13,4 @@ async function car_1_connection_heartbeat() {
     }
   });
 }
-await car_1_connection_heartbeat();
+car_1_connection_heartbeat();
