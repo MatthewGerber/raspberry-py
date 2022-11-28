@@ -3,7 +3,10 @@
   <input type="range" class="form-range" min="100" max="800" step="10" value="160" id="camera-capture_image-width" />
 </div>
 <script>
-$("#camera-capture_image-width").on("input", function () {
-  document.getElementById("camera-capture_image").width = $("#camera-capture_image-width")[0].value
+camera_capture_image = $("#camera-capture_image")[0];
+camera_capture_image_width_element = $("#camera-capture_image-width");
+camera_capture_image_width_range = camera_capture_image_width_element[0];
+camera_capture_image_width_element.on("input", function () {
+  camera_capture_image.width = camera_capture_image_width_range.value
 });
 </script>

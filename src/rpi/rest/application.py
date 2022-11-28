@@ -416,7 +416,10 @@ class RpiFlask(Flask):
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
+        element_var = element_id.replace('-', '_')
         range_element_id = f'{element_id}-{element_attribute}'
+        range_element_var = f'{range_element_id.replace("-", "_")}_element'
+        range_var = f'{range_element_id.replace("-", "_")}_range'
 
         if text is None:
             text = range_element_id
@@ -429,8 +432,11 @@ class RpiFlask(Flask):
                 f'  <input type="range" class="form-range" min="{min_value}" max="{max_value}" step="{step}" value="{initial_value}" id="{range_element_id}" />\n'
                 f'</div>\n'
                 f'<script>\n'
-                f'$("#{range_element_id}").on("input", function () {{\n'
-                f'  document.getElementById("{element_id}").{element_attribute} = $("#{range_element_id}")[0].value\n'
+                f'{element_var} = $("#{element_id}")[0];\n'
+                f'{range_element_var} = $("#{range_element_id}");\n'
+                f'{range_var} = {range_element_var}[0];\n'
+                f'{range_element_var}.on("input", function () {{\n'
+                f'  {element_var}.{element_attribute} = {range_var}.value\n'
                 f'}});\n'
                 f'</script>'
             )
@@ -485,7 +491,7 @@ class RpiFlask(Flask):
                 f'  <label id="{element_id}">{text}:  null</label>\n'
                 f'</div>\n'
                 f'<script>\n'
-                f'{label_element} = document.getElementById("{element_id}");\n'
+                f'{label_element} = $("#{element_id}")[0];\n'
                 f'{pause_element_javascript}\n'
                 f'async function {read_value_function_name}() {{\n'
                 f'{pause_while_javascript}'
@@ -561,7 +567,7 @@ class RpiFlask(Flask):
                 f'  <img alt="{img_alt}" id="{element_id}" width="{width}" src="" />\n'
                 f'</div>\n'
                 f'<script>\n'
-                f'{image_element} = document.getElementById("{element_id}");\n'
+                f'{image_element} = $("#{element_id}")[0];\n'
                 f'{pause_element_javascript}\n'
                 f'async function {capture_function_name}() {{\n'
                 f'{pause_while_javascript}'
