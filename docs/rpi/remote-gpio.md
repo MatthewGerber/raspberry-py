@@ -1,3 +1,5 @@
+[Home](../index.md) > Remote GPIO
+
 # Remote Control of GPIO Circuits via REST/HTML/JavaScript
 Remote control of GPIO circuits is achieved by integrating three components:
 * RpiFlask application:  Instantiates the GPIO circuit components using the Python types described above.
