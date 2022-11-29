@@ -1,192 +1,20 @@
 # RPI
-
-# Overview
-This package provides two related capabilities. First, it provides a high-level, event-driven Python interface for GPIO 
+This package provides two related capabilities. [First](docs/rpi/python-gpio.md), it provides a high-level, event-driven Python interface for GPIO 
 circuits running on the Raspberry Pi. Sensors, motors, LEDs, switches, and many other components are covered. 
-Second, this package enables remote control of GPIO circuits via REST APIs invoked from HTML/JavaScript front-ends. Want 
+[Second](docs/rpi/remote-gpio.md), this package enables remote control of GPIO circuits via REST APIs invoked from HTML/JavaScript front-ends. Want 
 to control your servo motor remotely from your phone? Look no further. This package auto-generates HTML/JavaScript for
 GPIO circuits based on [Material Design for Bootstrap](https://mdbootstrap.com). These HTML/JavaScript elements can be 
 embedded in full web pages for remote control of the ciruit.
 
-# Python Interface for GPIO Circuits
-Whereas the lower-level [RPi.GPIO](https://pypi.org/project/RPi.GPIO/) package deals with GPIO input/output pins and 
-high/low values, the RPI package deals with LEDs that are on or off, button switches that are pressed or not, and so on. 
-These abstractions, in combination with an event-driven framework, allow the developer to express the intended circuit 
-behavior more naturally compared with lower-level interfaces. For example, a blinking LED program is written as follows:
-```python
-import time
-from rpi.gpio import setup, cleanup
-from rpi.gpio.lights import LED
-
-setup()
-
-# create an led on output pin 11
-led = LED(output_pin=11)
-
-# set on for 1 second then off
-led.turn_on()
-time.sleep(1)
-led.turn_off()
-
-cleanup()
+# Installation
+Create a new Python virtual environment and install `rpi`:
 ```
-A button-switched LED is shown below:
-
-```python
-import time
-
-from rpi.gpio import setup, cleanup
-from rpi.gpio.lights import LED
-from rpi.gpio.controls import TwoPoleButton
-
-setup()
-
-# create an led on output pin 11
-led = LED(output_pin=11)
-
-# create a button on input pin 12
-button = TwoPoleButton(input_pin=12, bounce_time_ms=300)
-
-# turn the led on when the button is pressed
-button.event(lambda s: led.turn_on() if s.pressed else led.turn_off())
-
-print('You have 20 seconds to press the button...')
-time.sleep(20)
-
-cleanup()
+cd /path/to/rpi/repo
+virtualenv -p python3.9 venv
+. venv/bin/activate
+pip install -U pip
+pip install -e .
 ```
-
-Still more examples:
-
-Buzzing LED bar with push button (click to watch; Python code [here](https://github.com/MatthewGerber/rpi/blob/main/src/rpi/gpio/examples/buzzing_led_bar_with_button.py)):
-[![Buzzing LED bar with push button](https://img.youtube.com/vi/e6PrM2QVSA4/0.jpg)](https://www.youtube.com/watch?v=e6PrM2QVSA4)
-
-Python code for these and other examples can be found [here](src/rpi/gpio/examples).
-
-# Remote Control of GPIO Circuits via REST/HTML/JavaScript
-Remote control of GPIO circuits is achieved by integrating three components:
-* RpiFlask application:  Instantiates the GPIO circuit components using the Python types described above.
-* Apache HTTP server:  Serves web pages for the RpiFlask application, to be accessed from remote devices like a phone.
-* Flask REST server:  Serves REST endpoints that web page elements (e.g., toggles and sliders) can invoke to control
-the GPIO circuit (e.g., turning a servo motor on/off and setting its angular position).
-
-These components are depicted graphically below and described in more detail in the following sections.
-
-![gpio-rest-html](docs/rpi-flask.png)
-
-A key feature of the present package is that, once the GPIO circuit is built (bottom left of the figure) and the 
-RpiFlask application is written (top left of the figure), generating the HTML/JavaScript elements and the REST endpoints
-is almost fully automated.
-
-## RpiFlask Application
-The RpiFlask application is a central element of the architecture presented above. Internally, the RpiFlask application
-has the following responsibilities:
-* Keep track of circuit components like the servo.
-* Specify how circuit components are rendered into HTML controls.
-* Handle calls to the REST endpoints. 
-* Specify how the HTML controls connect to the circuit components via the REST endpoints. 
-
-These are general responsibilities that apply to all GPIO circuits. As such, they are almost completely hidden from the 
-developer, who only writes the code in the top left of the figure above. This code is reproduced below and found 
-[here](https://github.com/MatthewGerber/rpi/blob/main/src/rpi/rest/examples/servo/servo.py):
-```
-from rpi.gpio import CkPin
-from rpi.gpio.motors import Servo
-from rpi.rest.application import app
-
-
-servo = Servo(
-    signal_pin=CkPin.GPIO18,
-    min_pwm_high_ms=0.5,
-    max_pwm_high_ms=2.5,
-    pwm_high_offset_ms=0.0,
-    min_degree=0.0,
-    max_degree=180.0,
-    degrees=0.0
-)
-servo.id = 'servo-1'
-
-app.add_component(servo)
-```
-This code specifies an RpiFlask application containing a servo. It is the basis for HTML/JavaScript and REST API 
-generation, which are explained below.
-
-## Apache HTTP Server
-This example uses Apache, which is simple to configure on Ubuntu for RPI (see farther down this page for Ubuntu 
-installation on RPI). Any modern HTTP server should suffice.
-[Install and configure](https://ubuntu.com/tutorials/install-and-configure-apache#1-overview) an Apache HTTP server. 
-An example site configuration file can be found 
-[here](https://github.com/MatthewGerber/rpi/blob/main/docs/rpi-rest.conf), though beware of security vulerabilities like 
-lack of HTTPS and potential exposure of files.
-
-Once the Apache HTTP server is configured, it's time to generate HTML/JavaScript controls for the RpiFlask application 
-shown above. Consider the following command, which is listed in the top black arrow in the above figure:
-```shell
-write_component_files --app rpi.rest.examples.servo.servo --rest-host 10.0.0.59 --rest-port 5000 --dir-path servo/components
-```
-The arguments are as follows:
-* `--app`:  Where to look for the RpiFlask application. The command scans `rpi.rest.examples.servo.servo` for an `app`
-variable, which is the RpiFlask application described above. This may be the fully-qualified module name as here, or it
-may be relative to the package in the current working directory. For example, it could be shortened to `servo.servo` if
-the current working directory were `~/rpi/src/rpi/rest/examples`.
-* `--rest-host` and `--rest-port`:  The location of the REST server to contact when the user interacts with the 
-HTML/JavaScript controls. 
-* `--dir-path`:  Directory in which to write the resulting HTML/JavaScript files. This will be created if it does not 
-already exist.
-
-The command generates HTML/JavaScript controls for each of the circuit components in the RpiFlask application. A single 
-circuit component may produce multiple such files, and in the case of our servo example there are
-[two](https://github.com/MatthewGerber/rpi/tree/main/src/rpi/rest/examples/servo/components):
-* `servo-1-start-stop.html`:  An on/off toggle for starting and stopping the servo.
-* `servo-1-set_degrees.html`:  A slider for setting the servo's angle.
-
-Consider the first of these in detail:
-```html
-<div class="form-check form-switch">
-  <label class="form-check-label" for="servo-1-start-stop">servo-1 start/stop</label>
-  <input class="form-check-input" type="checkbox" role="switch" id="servo-1-start-stop" />
-</div>
-<script>
-$("#servo-1-start-stop").on("change", function () {
-  $.ajax({
-    url: $("#servo-1-start-stop").is(":checked") ? "http://10.0.0.59:5000/call/servo-1/start" : "http://10.0.0.59:5000/call/servo-1/stop",
-    type: "GET"
-  });
-});
-</script>
-```
-The general pattern for the HTML/JavaScript files is to specify an HTML control followed by JavaScript that connects the 
-control with the circuit component running in the RpiFlask application. Here we have a labeled toggle switch, and the
-JavaScript calls either the `servo-1/start` or `servo-1/stop` REST endpoints depending on the status of the switch. The 
-HTML/JavaScript files can then be embedded within a full HTML page such as 
-[this](https://github.com/MatthewGerber/rpi/blob/main/src/rpi/rest/examples/servo/servo.html), which is rendered in a 
-browser as shown below:
-
-![rpi-flask-page](docs/rpi-flask-page.png)
-
-## Flask REST Server
-As with the Apache HTTP server, any modern HTTP server should suffice for serving the REST endpoints that are contacted 
-by the JavaScript described above. For simplicity, we use Flask's built-in server, which is started as follows:
-```
-flask --app rpi.rest.examples.servo.servo run --host 0.0.0.0
-```
-The arguments are as follows:
-* `--app`:  Where to look for the RpiFlask application. This works similarly to the `--app` argument in the previous 
-command. The sub-command `run` instructs Flask to run the server.
-* `--host`:  Specifies the IP address on which the Flask REST server should listen for incoming client connections. The
-special value of `0.0.0.0` causes Flask to listen on all the machine's IP addresses. The default port is 5000, which
-can be modified but must match the `--rest-port` used earlier. See the Flask 
-[site](https://flask.palletsprojects.com/) for more information.
-
-## Example:  Freenove 4WD Smart Car
-The [Freenove 4WD Smart Car](https://www.amazon.com/Freenove-Raspberry-Tracking-Avoidance-Ultrasonic/dp/B07YD2LT9D) 
-comes with Python software, including a remote control interface. I have reimplemented most of the capabilities using 
-the present Python package. The following is a screenshot of the control screen for the car based on the above 
-framework:
-
-![smart-car](docs/smart-car.png)  
-
-Read more [here](docs/smart-car.md).
 
 # Ubuntu for RPI with GPIO Configuration
 This package has been developed using the Ubuntu installation described 
@@ -200,9 +28,9 @@ KERNEL=="gpio*", OWNER="root", GROUP="dialout"
 ```
 2. Reboot for the new permissions to take effect.
 
-Use of I2C with the Raspberry Pi (e.g., page 111 of the tutorial) requires configuration with the `raspi-config` 
-utility, which is installed by default in the Raspberry Pi OS but not in Ubuntu. Install `raspi-config` for Ubuntu with 
-the following commands:
+Use of I2C with the Raspberry Pi (e.g., page 111 of [the tutorial](docs/freenove-tutorial.pdf)) requires configuration 
+with the `raspi-config` utility, which is installed by default in the Raspberry Pi OS but not in Ubuntu. 
+Install `raspi-config` for Ubuntu with the following commands:
 ```
 sudo apt install lua5.1
 wget http://archive.raspberrypi.org/debian/pool/main/r/raspi-config/raspi-config_20211019_all.deb
@@ -212,7 +40,7 @@ A full listing of the latest `raspi-config` packages can be found
 [here](http://archive.raspberrypi.org/debian/pool/main/r/raspi-config). The user will also need to be added to the 
 `i2c` group with `sudo usermod -a -G i2c ubuntu` (then restart for the change to take effect).
 
-## Enabling and Testing the RPI Video Camera
+Enabling and testing the RPI video camera:
 1. Modify boot config:  `sudo emacs /boot/firmware/config.txt` and add `start_x=1` and `gpu_mem=256` at the end.
 2. Enable camera:  `sudo apt install raspi-config`, then `raspi-config`, then enable the camera.
 3. Give permission:  `sudo usermod -a -G video ubuntu`

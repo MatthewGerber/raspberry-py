@@ -355,7 +355,7 @@ class RpiFlask(Flask):
                 f'{increment_case}'
                 f'{reset_case}'
                 f'  }}\n'
-                f'  if ({js_new_value} != {js_current_value}) {{\n'
+                f'  if ({js_new_value} !== {js_current_value}) {{\n'
                 f'    {js_set_value_function_name}({js_new_value}, true);\n'
                 f'  }}\n'
                 f'  event.preventDefault();\n'
