@@ -1,0 +1,8 @@
+theme: jekyll-theme-cayman
+
+include:
+ - "**/*.md"
+
+url: "https://matthewgerber.github.io/rpi"
+plugins:
+  - jekyll-sitemap
