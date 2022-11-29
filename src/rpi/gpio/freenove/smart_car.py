@@ -442,7 +442,7 @@ class Car(Component):
                 correction_degrees=camera_tilt_servo_correction_degrees
             ),
             degrees=90,
-            min_degree=80,  # don't permit tiling too low, as this will hit the servo mounts.
+            min_degree=85,  # don't permit tiling too low, as this will hit the servo mounts.
             max_degree=180
         )
         self.camera_tilt_servo.id = 'camera-tilt'

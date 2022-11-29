@@ -1,12 +1,12 @@
 <div class="range">
   <label for="camera-tilt-set_degrees" class="form-label">Tilt</label>
-  <input type="range" class="form-range" min="80" max="180" step="3" value="90" id="camera-tilt-set_degrees" />
+  <input type="range" class="form-range" min="85" max="180" step="3" value="90" id="camera-tilt-set_degrees" />
 </div>
 <script>
 camera_tilt_set_degrees_element = $("#camera-tilt-set_degrees");
 camera_tilt_set_degrees_range = camera_tilt_set_degrees_element[0];
 function camera_tilt_set_degrees (degrees, set_range) {
-  if (degrees < 80 || degrees > 180) {
+  if (degrees < 85 || degrees > 180) {
     return;
   }
   $.ajax({
@@ -34,7 +34,7 @@ window.addEventListener("keydown", (event) => {
       new_degrees = 90;
       break;
   }
-  if (new_degrees != current_degrees) {
+  if (new_degrees !== current_degrees) {
     camera_tilt_set_degrees(new_degrees, true);
   }
   event.preventDefault();

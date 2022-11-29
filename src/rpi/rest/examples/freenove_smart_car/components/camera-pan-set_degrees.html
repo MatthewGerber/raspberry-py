@@ -34,7 +34,7 @@ window.addEventListener("keydown", (event) => {
       new_degrees = 90;
       break;
   }
-  if (new_degrees != current_degrees) {
+  if (new_degrees !== current_degrees) {
     camera_pan_set_degrees(new_degrees, true);
   }
   event.preventDefault();

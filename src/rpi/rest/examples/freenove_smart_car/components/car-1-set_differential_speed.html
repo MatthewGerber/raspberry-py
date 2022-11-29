@@ -45,7 +45,7 @@ window.addEventListener("keydown", (event) => {
       new_differential_speed = 0;
       break;
   }
-  if (new_differential_speed != current_differential_speed) {
+  if (new_differential_speed !== current_differential_speed) {
     car_1_set_differential_speed(new_differential_speed, true);
   }
   event.preventDefault();
