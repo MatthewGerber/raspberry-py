@@ -51,6 +51,7 @@ cleanup()
 Still more examples:
 
 Buzzing LED bar with push button (click to watch; Python code [here](https://github.com/MatthewGerber/rpi/blob/main/src/rpi/gpio/examples/buzzing_led_bar_with_button.py)):
-[![Buzzing LED bar with push button](https://img.youtube.com/vi/e6PrM2QVSA4/0.jpg)](https://www.youtube.com/watch?v=e6PrM2QVSA4)
 
-Python code for these and other examples can be found [here](../../src/rpi/gpio/examples).
+{% include youtubePlayer.html id="e6PrM2QVSA4" %}
+
+Python code for these and other examples can be found [here](https://github.com/MatthewGerber/rpi/tree/main/src/rpi/gpio/examples).
