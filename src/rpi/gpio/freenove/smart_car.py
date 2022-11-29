@@ -211,7 +211,7 @@ class Car(Component):
                 if self.continue_monitoring_connection_blackout:
                     seconds_since_previous_heartbeat = time.time() - self.previous_connection_heartbeat_time
                     if seconds_since_previous_heartbeat > self.connection_blackout_tolerance_seconds:
-                        print(f'Connection heartbeat not received for {seconds_since_previous_heartbeat}s, which exceeds tolerance of {self.connection_heartbeat_check_interval_seconds}s. Stopping car.')
+                        print(f'Connection heartbeat not received for {seconds_since_previous_heartbeat}s, which exceeds tolerance of {self.connection_blackout_tolerance_seconds}s. Stopping car.')
                         self.stop()
                 else:
                     break
