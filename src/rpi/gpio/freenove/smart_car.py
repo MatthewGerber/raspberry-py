@@ -170,9 +170,9 @@ class Car(Component):
             # led strip -- catch error in case permissions/capabilities are not set up for /dev/mem
             try:
                 self.led_strip = LedStrip(led_brightness=3)
-                self.led_strip_continue = True
-                self.led_strip_thread = Thread(target=self.run_led_strip)
-                self.led_strip_thread.start()
+                self.continue_running_led_strip = True
+                self.run_led_strip_thread = Thread(target=self.run_led_strip)
+                self.run_led_strip_thread.start()
             except RuntimeError as e:
                 if str(e) == 'ws2811_init failed with code -5 (mmap() failed)':
                     print('Failed to access /dev/mem for LED strip. Check README for solutions.')
@@ -190,7 +190,7 @@ class Car(Component):
 
         while True:
             with self.led_strip_lock:
-                if self.led_strip_continue:
+                if self.continue_running_led_strip:
                     self.led_strip.theater_chase(Color(0, 255, 0), iterations=1, wait_ms=250)
                 else:
                     self.led_strip.color_wipe(0, 0)
@@ -239,7 +239,7 @@ class Car(Component):
         self.camera.turn_off()
 
         with self.led_strip_lock:
-            self.led_strip_continue = False
+            self.continue_running_led_strip = False
 
         self.on = False
 
@@ -478,14 +478,14 @@ class Car(Component):
         self.differential_speed = 0
 
         # connection blackout
+        self.connection_blackout_lock = RLock()
         self.monitor_connection_blackout_thread = None
         self.continue_monitoring_connection_blackout = False
         self.previous_connection_heartbeat_time = None
-        self.connection_blackout_lock = RLock()
-        self.connection_heartbeat_check_interval_seconds = 0.1
+        self.connection_heartbeat_check_interval_seconds = self.connection_blackout_tolerance_seconds / 4.0
 
         # led strip
-        self.led_strip = None
-        self.led_strip_thread = None
         self.led_strip_lock = RLock()
-        self.led_strip_continue = False
+        self.led_strip = None
+        self.run_led_strip_thread = None
+        self.continue_running_led_strip = False
