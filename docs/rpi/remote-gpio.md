@@ -72,7 +72,7 @@ already exist.
 
 The command generates HTML/JavaScript controls for each of the circuit components in the RpiFlask application. A single 
 circuit component may produce multiple such files, and in the case of our servo example there are
-[two](../../src/rpi/rest/examples/servo/components):
+[two](https://github.com/MatthewGerber/rpi/tree/main/src/rpi/rest/examples/servo/components):
 * `servo-1-start-stop.html`:  An on/off toggle for starting and stopping the servo.
 * `servo-1-set_degrees.html`:  A slider for setting the servo's angle.
 
@@ -95,7 +95,7 @@ The general pattern for the HTML/JavaScript files is to specify an HTML control 
 control with the circuit component running in the RpiFlask application. Here we have a labeled toggle switch, and the
 JavaScript calls either the `servo-1/start` or `servo-1/stop` REST endpoints depending on the status of the switch. The 
 HTML/JavaScript files can then be embedded within a full HTML page such as 
-[this](../../src/rpi/rest/examples/servo/servo.html), which is rendered in a 
+[this](https://github.com/MatthewGerber/rpi/blob/main/src/rpi/rest/examples/servo/servo.html), which is rendered in a 
 browser as shown below:
 
 ![rpi-flask-page](rpi-flask-page.png)

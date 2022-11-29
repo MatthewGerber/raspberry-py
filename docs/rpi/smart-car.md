@@ -67,9 +67,9 @@ flask --app freenove_smart_car.freenove_smart_car run --host 0.0.0.0
 I went down the rabbit hole described above without giving much thought to the obviously better alternative:  `sudo`. 
 The `sudo` approach avoids the security nastiness of adding a standard user to the system-level `kmem` group, opening up 
 `/dev/mem` for writing by `kmem`, and endowing all `python3.9` commands with elevated binary capabilities. [This
-script](../../src/rpi/rest/examples/freenove_smart_car/startup.sh) is sufficient to get this working via 
-`sudo ./startup.sh`. As noted in the script, the same can be done on boot with `sudo crontab -e` (edit the root user's 
-crontab) and adding the following line:
+script](https://github.com/MatthewGerber/rpi/blob/main/src/rpi/rest/examples/freenove_smart_car/startup.sh) is 
+sufficient to get this working via `sudo ./startup.sh`. As noted in the script, the same can be done on boot with 
+`sudo crontab -e` (edit the root user's crontab) and adding the following line:
 ```
 @reboot /home/ubuntu/Repos/rpi/src/rpi/rest/examples/freenove_smart_car/startup.sh
 ```
