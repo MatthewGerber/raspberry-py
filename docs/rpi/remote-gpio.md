@@ -2,7 +2,8 @@
 
 # Remote Control of GPIO Circuits via REST/HTML/JavaScript
 Remote control of GPIO circuits is achieved by integrating three components:
-* RpiFlask application:  Instantiates the GPIO circuit components using the Python types described above.
+* RpiFlask application:  Instantiates the GPIO circuit components using the Python types described 
+  [here](python-gpio.md).
 * Apache HTTP server:  Serves web pages for the RpiFlask application, to be accessed from remote devices like a phone.
 * Flask REST server:  Serves REST endpoints that web page elements (e.g., toggles and sliders) can invoke to control
 the GPIO circuit (e.g., turning a servo motor on/off and setting its angular position).
@@ -49,7 +50,7 @@ This code specifies an RpiFlask application containing a servo. It is the basis 
 generation, which are explained below.
 
 ## Apache HTTP Server
-This example uses Apache, which is simple to configure on Ubuntu for RPI (see farther down this page for Ubuntu 
+This example uses Apache, which is simple to configure on Ubuntu for RPI (see [here](../index.md) for Ubuntu 
 installation on RPI). Any modern HTTP server should suffice.
 [Install and configure](https://ubuntu.com/tutorials/install-and-configure-apache#1-overview) an Apache HTTP server. 
 An example site configuration file can be found [here](rpi-rest.conf), though beware of security vulerabilities like 

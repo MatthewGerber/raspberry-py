@@ -48,8 +48,6 @@ time.sleep(20)
 cleanup()
 ```
 
-Still more examples:
-
 Buzzing LED bar with push button (click to watch; Python code [here](https://github.com/MatthewGerber/rpi/blob/main/src/rpi/gpio/examples/buzzing_led_bar_with_button.py)):
 
 {% include youtubePlayer.html id="e6PrM2QVSA4" %}
