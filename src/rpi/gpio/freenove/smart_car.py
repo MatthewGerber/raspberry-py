@@ -1,6 +1,6 @@
 import time
 from enum import IntEnum
-from threading import RLock, Thread
+from threading import RLock, Thread, Lock
 from typing import Optional, List
 
 from rpi_ws281x import Color
@@ -141,60 +141,44 @@ class Car(Component):
         Start the car.
         """
 
-        for wheel in self.wheels:
-            wheel.start()
+        with self.on_off_lock:
 
-        for servo in self.servos:
-            servo.start()
+            if self.on:
+                return
+            else:
+                self.on = True
 
-        self.camera_tilt_servo.set_degrees(90)
-        self.camera_pan_servo.set_degrees(90)
+            for wheel in self.wheels:
+                wheel.start()
 
-        # begin monitoring for connection blackout if specified
-        with self.connection_blackout_lock:
+            for servo in self.servos:
+                servo.start()
+
+            self.camera_tilt_servo.set_degrees(90)
+            self.camera_pan_servo.set_degrees(90)
+            self.camera.turn_on()
+
+            # begin monitoring for connection blackout if specified
             if self.connection_blackout_tolerance_seconds is not None:
-
-                self.stop_connection_blackout_monitor()
-
-                print('Starting connection blackout monitor.')
-                self.continue_monitoring_connection_blackout = True
                 self.previous_connection_heartbeat_time = time.time()
                 self.monitor_connection_blackout_thread = Thread(target=self.monitor_connection_blackout)
                 self.monitor_connection_blackout_thread.start()
 
-        self.camera.turn_on()
-
-        # start led strip
-        with self.led_strip_lock:
-
-            # led strip -- catch error in case permissions/capabilities are not set up for /dev/mem
+            # create led strip. catch error in case permissions/capabilities are not set up for /dev/mem. do this here
+            # instead of in constructor, so we can try again if permissions change.
             try:
-                self.led_strip = LedStrip(led_brightness=3)
-                self.continue_running_led_strip = True
+
+                if self.led_strip is None:
+                    self.led_strip = LedStrip(led_brightness=3)
+
                 self.run_led_strip_thread = Thread(target=self.run_led_strip)
                 self.run_led_strip_thread.start()
+
             except RuntimeError as e:
                 if str(e) == 'ws2811_init failed with code -5 (mmap() failed)':
                     print('Failed to access /dev/mem for LED strip. Check README for solutions.')
                 else:
                     raise e
-
-        self.on = True
-
-    def run_led_strip(
-            self
-    ):
-        """
-        Run the LED strip.
-        """
-
-        while True:
-            with self.led_strip_lock:
-                if self.continue_running_led_strip:
-                    self.led_strip.theater_chase(Color(0, 255, 0), iterations=1, wait_ms=250)
-                else:
-                    self.led_strip.color_wipe(0, 0)
-                    break
 
     def monitor_connection_blackout(
             self
@@ -203,56 +187,14 @@ class Car(Component):
         Shut the car down if a connection heartbeat is not received within the tolerated time.
         """
 
-        print('Monitoring connection blackout.')
-
-        while True:
-
-            with self.connection_blackout_lock:
-                if self.continue_monitoring_connection_blackout:
-                    seconds_since_previous_heartbeat = time.time() - self.previous_connection_heartbeat_time
-                    if seconds_since_previous_heartbeat > self.connection_blackout_tolerance_seconds:
-                        print(f'Connection heartbeat not received for {seconds_since_previous_heartbeat}s, which exceeds tolerance of {self.connection_blackout_tolerance_seconds}s. Stopping car.')
-                        self.stop()
-                else:
+        while self.on:
+            with self.monitor_connection_blackout_lock:
+                seconds_since_previous_heartbeat = time.time() - self.previous_connection_heartbeat_time
+                if seconds_since_previous_heartbeat > self.connection_blackout_tolerance_seconds:
+                    Thread(target=self.stop).start()
                     break
-
-            time.sleep(self.connection_heartbeat_check_interval_seconds)
-
-        print('Returning from connection blackout monitoring thread.')
-
-    def stop(
-            self
-    ):
-        """
-        Stop the car.
-        """
-
-        for wheel in self.wheels:
-            wheel.set_speed(0)
-            wheel.stop()
-
-        for servo in self.servos:
-            servo.stop()
-
-        self.stop_connection_blackout_monitor()
-
-        self.camera.turn_off()
-
-        with self.led_strip_lock:
-            self.continue_running_led_strip = False
-
-        self.on = False
-
-    def stop_connection_blackout_monitor(
-            self
-    ):
-        """
-        Stop the connection blackout monitor.
-        """
-
-        with self.connection_blackout_lock:
-            if self.monitor_connection_blackout_thread is not None:
-                self.continue_monitoring_connection_blackout = False
+                else:
+                    time.sleep(self.connection_heartbeat_check_interval_seconds)
 
     def connection_heartbeat(
             self
@@ -261,9 +203,51 @@ class Car(Component):
         Invoke a connection heartbeat.
         """
 
-        with self.connection_blackout_lock:
-            print('Received connection heartbeat.')
+        with self.monitor_connection_blackout_lock:
             self.previous_connection_heartbeat_time = time.time()
+
+    def run_led_strip(
+            self
+    ):
+        """
+        Run the LED strip.
+        """
+
+        while self.on:
+            self.led_strip.theater_chase(Color(0, 255, 0), iterations=1, wait_ms=250)
+
+        self.led_strip.color_wipe(0, 0)
+
+    def stop(
+            self
+    ):
+        """
+        Stop the car.
+        """
+
+        with self.on_off_lock:
+
+            if self.on:
+                self.on = False
+            else:
+                return
+
+            for wheel in self.wheels:
+                wheel.set_speed(0)
+                wheel.stop()
+
+            for servo in self.servos:
+                servo.stop()
+
+            self.camera.turn_off()
+
+            if self.monitor_connection_blackout_thread is not None:
+                self.monitor_connection_blackout_thread.join()
+                self.monitor_connection_blackout_thread = None
+
+            if self.run_led_strip_thread is not None:
+                self.run_led_strip_thread.join()
+                self.run_led_strip_thread = None
 
     def get_components(
             self
@@ -384,6 +368,7 @@ class Car(Component):
         self.connection_blackout_tolerance_seconds = connection_blackout_tolerance_seconds
         self.track_faces = track_faces
         self.on = False
+        self.on_off_lock = Lock()
 
         # hardware pwm for motors/servos
         i2c_bus = SMBus('/dev/i2c-1')
@@ -478,14 +463,11 @@ class Car(Component):
         self.differential_speed = 0
 
         # connection blackout
-        self.connection_blackout_lock = RLock()
+        self.monitor_connection_blackout_lock = Lock()
         self.monitor_connection_blackout_thread = None
-        self.continue_monitoring_connection_blackout = False
         self.previous_connection_heartbeat_time = None
         self.connection_heartbeat_check_interval_seconds = self.connection_blackout_tolerance_seconds / 4.0
 
         # led strip
-        self.led_strip_lock = RLock()
         self.led_strip = None
         self.run_led_strip_thread = None
-        self.continue_running_led_strip = False
