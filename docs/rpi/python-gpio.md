@@ -1,4 +1,6 @@
 [Home](../index.md) > Python GPIO
+* Content
+{:toc}
 
 # Python Interface for GPIO Circuits
 Whereas the lower-level [RPi.GPIO](https://pypi.org/project/RPi.GPIO/) package deals with GPIO input/output pins and 

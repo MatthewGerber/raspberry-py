@@ -1,4 +1,6 @@
 [Home](../index.md) > Remote GPIO
+* Content
+{:toc}
 
 # Remote Control of GPIO Circuits via REST/HTML/JavaScript
 Remote control of GPIO circuits is achieved by integrating three components:

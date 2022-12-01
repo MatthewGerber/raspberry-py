@@ -1,5 +1,7 @@
 # RPI
 
+Please see the [project website](https://matthewgerber.github.io/rpi/) for more information.
+
 ## Python Interface for GPIO Circuits
 This package provides two related capabilities. [First](https://matthewgerber.github.io/rpi/rpi/python-gpio.html), it 
 provides a high-level, event-driven Python interface for GPIO circuits running on the Raspberry Pi. Sensors, motors, 

@@ -7,6 +7,10 @@ package auto-generates HTML/JavaScript for GPIO circuits based on
 [Material Design for Bootstrap](https://mdbootstrap.com). These HTML/JavaScript elements can be embedded in full web 
 pages for remote control of the ciruit.
 
+Follow the links above (or below) for details:
+1. [Python interface for GPIO circuits](rpi/python-gpio.md)
+2. [Remote control of GPIO circuits via REST/HTML/JavaScript](rpi/remote-gpio.md)
+
 # Installation
 Create a new Python virtual environment and install `rpi`:
 ```
