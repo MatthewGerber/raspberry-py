@@ -1,12 +1,15 @@
-[Home](../index.md) > Python GPIO
+[Home](../index.md) > Python Interface for GPIO Circuits
 * Content
 {:toc}
 
-# Python Interface for GPIO Circuits
+# Introduction
 Whereas the lower-level [RPi.GPIO](https://pypi.org/project/RPi.GPIO/) package deals with GPIO input/output pins and 
 high/low values, the RPI package deals with LEDs that are on or off, button switches that are pressed or not, and so on. 
 These abstractions, in combination with an event-driven framework, allow the developer to express the intended circuit 
-behavior more naturally compared with lower-level interfaces. For example, a blinking LED program is written as follows:
+behavior more naturally compared with lower-level interfaces. 
+
+# Examples
+For example, a blinking LED program is written as follows:
 ```
 import time
 from rpi.gpio import setup, cleanup

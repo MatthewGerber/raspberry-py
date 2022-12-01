@@ -1,8 +1,8 @@
-[Home](../index.md) > Remote GPIO
+[Home](../index.md) > Remote Control of GPIO Circuits via REST/HTML/JavaScript
 * Content
 {:toc}
 
-# Remote Control of GPIO Circuits via REST/HTML/JavaScript
+# Introduction
 Remote control of GPIO circuits is achieved by integrating three components:
 * RpiFlask application:  Instantiates the GPIO circuit components using the Python types described 
   [here](python-gpio.md).
@@ -18,7 +18,7 @@ A key feature of the present package is that, once the GPIO circuit is built (bo
 RpiFlask application is written (top left of the figure), generating the HTML/JavaScript elements and the REST endpoints
 is almost fully automated.
 
-## RpiFlask Application
+# RpiFlask Application
 The RpiFlask application is a central element of the architecture presented above. Internally, the RpiFlask application
 has the following responsibilities:
 * Keep track of circuit components like the servo.
@@ -51,7 +51,7 @@ app.add_component(servo)
 This code specifies an RpiFlask application containing a servo. It is the basis for HTML/JavaScript and REST API 
 generation, which are explained below.
 
-## Apache HTTP Server
+# Apache HTTP Server
 This example uses Apache, which is simple to configure on Ubuntu for RPI (see [here](../index.md) for Ubuntu 
 installation on RPI). Any modern HTTP server should suffice.
 [Install and configure](https://ubuntu.com/tutorials/install-and-configure-apache#1-overview) an Apache HTTP server. 
@@ -103,7 +103,7 @@ browser as shown below:
 
 ![rpi-flask-page](rpi-flask-page.png)
 
-## Flask REST Server
+# Flask REST Server
 As with the Apache HTTP server, any modern HTTP server should suffice for serving the REST endpoints that are contacted 
 by the JavaScript described above. For simplicity, we use Flask's built-in server, which is started as follows:
 ```
@@ -117,7 +117,7 @@ special value of `0.0.0.0` causes Flask to listen on all the machine's IP addres
 can be modified but must match the `--rest-port` used earlier. See the Flask 
 [site](https://flask.palletsprojects.com/) for more information.
 
-## Example:  Freenove 4WD Smart Car
+# Example:  Freenove 4WD Smart Car
 The [Freenove 4WD Smart Car](https://www.amazon.com/Freenove-Raspberry-Tracking-Avoidance-Ultrasonic/dp/B07YD2LT9D) 
 comes with Python software, including a remote control interface. I have reimplemented most of the capabilities using 
 the present Python package. The following is a screenshot of the control screen for the car based on the above 
