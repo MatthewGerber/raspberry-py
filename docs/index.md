@@ -1,4 +1,4 @@
-# Overview
+# rpi
 This package provides two related capabilities. [First](rpi/python-gpio.md), it provides a high-level, event-driven 
 Python interface for GPIO circuits running on the Raspberry Pi. Sensors, motors, LEDs, switches, and many other 
 components are covered.

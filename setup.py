@@ -11,7 +11,7 @@ DEV_REQUIREMENTS = [
 setup(
     name='rpi',
     version='0.1.0.dev0',
-    description='Raspberry Pi',
+    description='A Python/REST interface for GPIO circuits running on the Raspberry Pi',
     author='Matthew Gerber',
     author_email='gerber.matthew@gmail.com',
     packages=find_packages('src'),
