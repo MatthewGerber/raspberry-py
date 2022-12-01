@@ -184,17 +184,19 @@ class Car(Component):
             self
     ):
         """
-        Shut the car down if a connection heartbeat is not received within the tolerated time.
+        Shut the car down if a connection heartbeat is not received within the blackout tolerance.
         """
 
         while self.on:
+
             with self.monitor_connection_blackout_lock:
                 seconds_since_previous_heartbeat = time.time() - self.previous_connection_heartbeat_time
                 if seconds_since_previous_heartbeat > self.connection_blackout_tolerance_seconds:
                     Thread(target=self.stop).start()
                     break
-                else:
-                    time.sleep(self.connection_heartbeat_check_interval_seconds)
+
+            # do not hold lock while sleeping
+            time.sleep(self.connection_heartbeat_check_interval_seconds)
 
     def connection_heartbeat(
             self
