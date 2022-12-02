@@ -5,7 +5,7 @@ TEST_REQUIREMENTS = [
 ]
 
 DEV_REQUIREMENTS = [
-
+    'bump2version==1.0.1'
 ]
 
 setup(
