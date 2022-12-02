@@ -13,7 +13,7 @@
 # Enabling the WS281x LED Strip
 The WS281x series of LED strips is a popular solution for controllable LEDs, with the benefit that only a single 
 pulse-wave modulation (PWM) input signal is needed for control. The Python class for this component is 
-[here](https://github.com/MatthewGerber/raspberry-py/blob/5677be3d66cb072b535bed9bf364b0dbd6aa2fc2/src/raspberry_py/gpio/lights.py#L991).
+[here](https://github.com/MatthewGerber/raspberry-py/blob/00e9ca6079ef3ed7f7dcbc18f4389c7f663682f9/src/raspberry_py/gpio/lights.py#L991).
 The class itself is straightforward. The difficulty lies in the need to give the Python-side PWM control software
 ([rpi-ws281x](https://pypi.org/project/rpi-ws281x)) write access to `/dev/mem`. The package writes `/dev/mem` directly
 as a means of controlling the PWM signal generated on GPIO-18, which controls the car's LED strip. All of this is fine,
