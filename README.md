@@ -1,7 +1,7 @@
 Please see the [project website](https://matthewgerber.github.io/raspberry-py/) for more information.
 
 Status:
-* PyPI distribution:  [![Upload Python Package](https://github.com/MatthewGerber/raspberry-py/actions/workflows/python-publish.yml/badge.svg)](https://github.com/MatthewGerber/raspberry-py/actions/workflows/python-publish.yml)
+* PyPI distribution:  [![PyPI version](https://badge.fury.io/py/raspberry-py.svg)](https://badge.fury.io/py/raspberry-py)
 
 # Python Interface for GPIO Circuits
 This package provides two related capabilities. 
