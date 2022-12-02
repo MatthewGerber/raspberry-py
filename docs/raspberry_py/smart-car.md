@@ -13,7 +13,7 @@
 # Enabling the WS281x LED Strip
 The WS281x series of LED strips is a popular solution for controllable LEDs, with the benefit that only a single 
 pulse-wave modulation (PWM) input signal is needed for control. The Python class for this component is 
-[here](https://github.com/MatthewGerber/raspberry_py/blob/5677be3d66cb072b535bed9bf364b0dbd6aa2fc2/src/raspberry_py/gpio/lights.py#L991).
+[here](https://github.com/MatthewGerber/raspberry-py/blob/5677be3d66cb072b535bed9bf364b0dbd6aa2fc2/src/raspberry_py/gpio/lights.py#L991).
 The class itself is straightforward. The difficulty lies in the need to give the Python-side PWM control software
 ([rpi-ws281x](https://pypi.org/project/rpi-ws281x)) write access to `/dev/mem`. The package writes `/dev/mem` directly
 as a means of controlling the PWM signal generated on GPIO-18, which controls the car's LED strip. All of this is fine,
@@ -65,7 +65,7 @@ flask --app freenove_smart_car.freenove_smart_car run --host 0.0.0.0
 I went down the rabbit hole described above without giving much thought to the obviously better alternative:  `sudo`. 
 The `sudo` approach avoids the security nastiness of adding a standard user to the system-level `kmem` group, opening up 
 `/dev/mem` for writing by `kmem`, and endowing all `python3.9` commands with elevated binary capabilities. [This
-script](https://github.com/MatthewGerber/raspberry_py/blob/main/src/raspberry_py/rest/examples/freenove_smart_car/startup.sh) is 
+script](https://github.com/MatthewGerber/raspberry-py/blob/main/src/raspberry_py/rest/examples/freenove_smart_car/startup.sh) is 
 sufficient to get this working via `sudo ./startup.sh`. As noted in the script, the same can be done on boot with 
 `sudo crontab -e` (edit the root user's crontab) and adding the following line:
 ```

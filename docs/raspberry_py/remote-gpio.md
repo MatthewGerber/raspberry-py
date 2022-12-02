@@ -28,7 +28,7 @@ has the following responsibilities:
 
 These are general responsibilities that apply to all GPIO circuits. As such, they are almost completely hidden from the 
 developer, who only writes the code in the top left of the figure above. This code is reproduced below and found 
-[here](https://github.com/MatthewGerber/raspberry_py/blob/main/src/raspberry_py/rest/examples/servo/servo.py):
+[here](https://github.com/MatthewGerber/raspberry-py/blob/main/src/raspberry_py/rest/examples/servo/servo.py):
 ```
 from raspberry_py.gpio import CkPin
 from raspberry_py.gpio.motors import Servo, ServoDriverSoftwarePWM
@@ -75,7 +75,7 @@ already exist.
 
 The command generates HTML/JavaScript controls for each of the circuit components in the RpyFlask application. A single 
 circuit component may produce multiple such files, and in the case of our servo example there are
-[two](https://github.com/MatthewGerber/raspberry_py/tree/main/src/raspberry_py/rest/examples/servo/components):
+[two](https://github.com/MatthewGerber/raspberry-py/tree/main/src/raspberry_py/rest/examples/servo/components):
 * `servo-1-start-stop.html`:  An on/off toggle for starting and stopping the servo.
 * `servo-1-set_degrees.html`:  A slider for setting the servo's angle.
 
@@ -98,7 +98,7 @@ The general pattern for the HTML/JavaScript files is to specify an HTML control 
 control with the circuit component running in the RpyFlask application. Here we have a labeled toggle switch, and the
 JavaScript calls either the `servo-1/start` or `servo-1/stop` REST endpoints depending on the status of the switch. The 
 HTML/JavaScript files can then be embedded within a full HTML page such as 
-[this](https://github.com/MatthewGerber/raspberry_py/blob/main/src/raspberry_py/rest/examples/servo/servo.html), which is rendered in a 
+[this](https://github.com/MatthewGerber/raspberry-py/blob/main/src/raspberry_py/rest/examples/servo/servo.html), which is rendered in a 
 browser as shown below:
 
 ![rpy-flask-page](rpy-flask-page.png)

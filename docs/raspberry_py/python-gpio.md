@@ -53,8 +53,8 @@ time.sleep(20)
 cleanup()
 ```
 
-Buzzing LED bar with push button (click to watch; Python code [here](https://github.com/MatthewGerber/raspberry_py/blob/main/src/raspberry_py/gpio/examples/buzzing_led_bar_with_button.py)):
+Buzzing LED bar with push button (click to watch; Python code [here](https://github.com/MatthewGerber/raspberry-py/blob/main/src/raspberry_py/gpio/examples/buzzing_led_bar_with_button.py)):
 
 {% include youtubePlayer.html id="e6PrM2QVSA4" %}
 
-Python code for these and other examples can be found [here](https://github.com/MatthewGerber/raspberry_py/tree/main/src/raspberry_py/gpio/examples).
+Python code for these and other examples can be found [here](https://github.com/MatthewGerber/raspberry-py/tree/main/src/raspberry_py/gpio/examples).
