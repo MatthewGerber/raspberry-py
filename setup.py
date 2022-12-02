@@ -9,7 +9,7 @@ DEV_REQUIREMENTS = [
 ]
 
 setup(
-    name='rpi',
+    name='raspberry-py',
     version='0.1.0.dev0',
     description='A Python/REST interface for GPIO circuits running on the Raspberry Pi',
     author='Matthew Gerber',
@@ -33,7 +33,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'write_component_files=rpi.rest.application:write_component_files_cli'
+            'write_component_files=raspberry_py.rest.application:write_component_files_cli'
         ]
     }
 )

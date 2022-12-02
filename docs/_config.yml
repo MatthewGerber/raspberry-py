@@ -3,6 +3,6 @@ theme: jekyll-theme-cayman
 include:
  - "**/*.md"
 
-url: "https://matthewgerber.github.io/rpi"
+url: "https://matthewgerber.github.io/raspberry_py"
 plugins:
   - jekyll-sitemap

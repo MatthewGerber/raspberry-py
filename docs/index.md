@@ -1,34 +1,34 @@
-# rpi
-This package provides two related capabilities. [First](rpi/python-gpio.md), it provides a high-level, event-driven 
+# raspberry_py
+This package provides two related capabilities. [First](raspberry_py/python-gpio.md), it provides a high-level, event-driven 
 Python interface for GPIO circuits running on the Raspberry Pi. Sensors, motors, LEDs, switches, and many other 
 components are covered.
 
 {% include youtubePlayer.html id="e6PrM2QVSA4" %}
 
-[Second](rpi/remote-gpio.md), this package enables remote control of GPIO circuits via REST APIs 
+[Second](raspberry_py/remote-gpio.md), this package enables remote control of GPIO circuits via REST APIs 
 invoked from HTML/JavaScript front-ends. Want to control your circuit remotely from your phone? Look no further. This 
 package auto-generates HTML/JavaScript for GPIO circuits based on 
 [Material Design for Bootstrap](https://mdbootstrap.com). These HTML/JavaScript elements can be embedded in full web 
 pages for remote control of the ciruit. The remote control screen for the 
-[Freenove Smart Car](https://matthewgerber.github.io/rpi/rpi/smart-car.html) is shown below:
+[Freenove Smart Car](https://matthewgerber.github.io/raspberry_py/raspberry_py/smart-car.html) is shown below:
 
-![freenove-smart-car](rpi/smart-car.png)
+![freenove-smart-car](raspberry_py/smart-car.png)
 
 Follow the links above (or below) for details:
-1. [Python interface for GPIO circuits](rpi/python-gpio.md)
-2. [Remote control of GPIO circuits via REST/HTML/JavaScript](rpi/remote-gpio.md)
+1. [Python interface for GPIO circuits](raspberry_py/python-gpio.md)
+2. [Remote control of GPIO circuits via REST/HTML/JavaScript](raspberry_py/remote-gpio.md)
 
 # Installation
-Create a new Python virtual environment and install `rpi`:
+Create a new Python virtual environment and install `raspberry_py`:
 ```
-cd /path/to/rpi/repo
+cd /path/to/raspberry_py/repo
 virtualenv -p python3.9 venv
 . venv/bin/activate
 pip install -U pip
 pip install -e .
 ```
 
-# Ubuntu for RPI with GPIO Configuration
+# Ubuntu for Raspberry Pi with GPIO Configuration
 This package has been developed using the Ubuntu installation described 
 [here](https://matthewgerber.github.io/rlai/raspberry_pi.html#operating-system) (ignore the "Install RLAI" section). By 
 default, Ubuntu does not give the user permission to interact with the GPIO pins of the Raspberry Pi. To grant GPIO 
@@ -52,7 +52,7 @@ A full listing of the latest `raspi-config` packages can be found
 [here](http://archive.raspberrypi.org/debian/pool/main/r/raspi-config). The user will also need to be added to the 
 `i2c` group with `sudo usermod -a -G i2c ubuntu` (then restart for the change to take effect).
 
-Enabling and testing the RPI video camera:
+Enabling and testing the Raspberry Pi video camera:
 1. Modify boot config:  `sudo emacs /boot/firmware/config.txt` and add `start_x=1` and `gpu_mem=256` at the end.
 2. Enable camera:  `sudo apt install raspi-config`, then `raspi-config`, then enable the camera.
 3. Give permission:  `sudo usermod -a -G video ubuntu`
