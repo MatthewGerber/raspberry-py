@@ -10,7 +10,7 @@ DEV_REQUIREMENTS = [
 
 setup(
     name='raspberry-py',
-    version='0.2.0',
+    version='0.3.0.dev0',
     description='A Python/REST interface for GPIO circuits running on the Raspberry Pi',
     author='Matthew Gerber',
     author_email='gerber.matthew@gmail.com',
