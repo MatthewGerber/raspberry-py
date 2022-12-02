@@ -1,7 +1,6 @@
-Please see the [project website](https://matthewgerber.github.io/raspberry-py/) for more information.
+[![PyPI version](https://badge.fury.io/py/raspberry-py.svg)](https://badge.fury.io/py/raspberry-py)
 
-Status:
-* [![PyPI version](https://badge.fury.io/py/raspberry-py.svg)](https://badge.fury.io/py/raspberry-py)
+Please see the [project website](https://matthewgerber.github.io/raspberry-py/) for more information.
 
 # Python Interface for GPIO Circuits
 This package provides two related capabilities. 
