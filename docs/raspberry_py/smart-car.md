@@ -42,8 +42,8 @@ The REST server for the car runs on the [flask](https://palletsprojects.com/p/fl
 access to `/dev/mem` requires both read/write file permissions (set above) and binary capability, we need to add a
 binary capability to the Python binary. First, figure out where the binary is:
 ```
-which python  # /home/ubuntu/Repos/raspberry_py/venv/bin/python
-ls -l  # /home/ubuntu/Repos/raspberry_py/venv/bin/python  # /home/ubuntu/Repos/raspberry_py/venv/bin/python -> /usr/bin/python3.9
+which python  # /home/ubuntu/Repos/raspberry-py/venv/bin/python
+ls -l  # /home/ubuntu/Repos/raspberry-py/venv/bin/python  # /home/ubuntu/Repos/raspberry-py/venv/bin/python -> /usr/bin/python3.9
 ```
 Then add the `CAP_SYS_RAWIO` capability to the Python binary:
 ```
@@ -57,7 +57,7 @@ At this point, any user-space program running the Python 3.9 binary will have re
 memory. This should make you at least a little uncomfortable, but the LED strip on the car should be working. Start the
 flask server and the remote web-control interface should be available:
 ```
-~/Repos/raspberry_py/src/raspberry_py/rest/examples/
+~/Repos/raspberry-py/src/raspberry_py/rest/examples/
 flask --app freenove_smart_car.freenove_smart_car run --host 0.0.0.0
 ```
 
@@ -69,7 +69,7 @@ script](https://github.com/MatthewGerber/raspberry-py/blob/main/src/raspberry_py
 sufficient to get this working via `sudo ./startup.sh`. As noted in the script, the same can be done on boot with 
 `sudo crontab -e` (edit the root user's crontab) and adding the following line:
 ```
-@reboot /home/ubuntu/Repos/raspberry_py/src/raspberry_py/rest/examples/freenove_smart_car/startup.sh
+@reboot /home/ubuntu/Repos/raspberry-py/src/raspberry_py/rest/examples/freenove_smart_car/startup.sh
 ```
 This is much safer, as only a single process has elevated permissions for reading/writing `/dev/mem`. It is also much
 simpler than the previous approach.

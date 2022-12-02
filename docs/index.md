@@ -10,7 +10,7 @@ invoked from HTML/JavaScript front-ends. Want to control your circuit remotely f
 package auto-generates HTML/JavaScript for GPIO circuits based on 
 [Material Design for Bootstrap](https://mdbootstrap.com). These HTML/JavaScript elements can be embedded in full web 
 pages for remote control of the ciruit. The remote control screen for the 
-[Freenove Smart Car](https://matthewgerber.github.io/raspberry_py/raspberry_py/smart-car.html) is shown below:
+[Freenove Smart Car](https://matthewgerber.github.io/raspberry-py/raspberry_py/smart-car.html) is shown below:
 
 ![freenove-smart-car](raspberry_py/smart-car.png)
 
@@ -21,7 +21,7 @@ Follow the links above (or below) for details:
 # Installation
 Create a new Python virtual environment and install `raspberry_py`:
 ```
-cd /path/to/raspberry_py/repo
+cd /path/to/raspberry-py/repo
 virtualenv -p python3.9 venv
 . venv/bin/activate
 pip install -U pip
