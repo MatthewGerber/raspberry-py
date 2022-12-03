@@ -2,19 +2,22 @@
   <label id="photoresistor-1-get_light_level">get_light_level:  null</label>
 </div>
 <script>
-function read_value_photoresistor_1_get_light_level() {
+photoresistor_1_get_light_level = $("#photoresistor-1-get_light_level")[0];
+
+async function read_value_photoresistor_1_get_light_level() {
   $.ajax({
     url: "http://10.0.0.59:5000/call/photoresistor-1/get_light_level",
     type: "GET",
     success: async function (return_value) {
-      document.getElementById("photoresistor-1-get_light_level").innerHTML = "get_light_level:  " + return_value;
+      photoresistor_1_get_light_level.innerHTML = "get_light_level:  " + return_value;
       await new Promise(r => setTimeout(r, 1000.0));
-      read_value_photoresistor_1_get_light_level();
+      await read_value_photoresistor_1_get_light_level();
     },
     error: async function(xhr, error){
-      document.getElementById("photoresistor-1-get_light_level").innerHTML = "get_light_level:  null";
+      console.log(error);
+      photoresistor_1_get_light_level.innerHTML = "get_light_level:  null";
       await new Promise(r => setTimeout(r, 1000.0));
-      read_value_photoresistor_1_get_light_level();
+      await read_value_photoresistor_1_get_light_level();
     }
   });
 }

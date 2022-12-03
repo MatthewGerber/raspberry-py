@@ -1,12 +1,23 @@
 <div class="range">
   <label for="servo-1-set_degrees" class="form-label">servo-1 set_degrees</label>
-  <input type="range" class="form-range" min="0" max="180" step="1" id="servo-1-set_degrees" />
+  <input type="range" class="form-range" min="0" max="180" step="1" value="0" id="servo-1-set_degrees" />
 </div>
 <script>
-$("#servo-1-set_degrees").on("input", function () {
+servo_1_set_degrees_element = $("#servo-1-set_degrees");
+servo_1_set_degrees_range = servo_1_set_degrees_element[0];
+function servo_1_set_degrees (degrees, set_range) {
+  if (degrees < 0 || degrees > 180) {
+    return;
+  }
   $.ajax({
-    url: "http://10.0.0.59:5000/call/servo-1/set_degrees?degrees=int:" + $("#servo-1-set_degrees")[0].value,
+    url: "http://10.0.0.59:5000/call/servo-1/set_degrees?degrees=int:" + degrees,
     type: "GET"
   });
+  if (set_range) {
+    servo_1_set_degrees_range.value = degrees;
+  }
+}
+servo_1_set_degrees_element.on("input", function () {
+  servo_1_set_degrees(servo_1_set_degrees_range.value, false);
 });
 </script>

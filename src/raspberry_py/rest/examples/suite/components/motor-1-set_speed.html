@@ -1,12 +1,23 @@
 <div class="range">
   <label for="motor-1-set_speed" class="form-label">motor-1 set_speed</label>
-  <input type="range" class="form-range" min="-100" max="100" step="1" id="motor-1-set_speed" />
+  <input type="range" class="form-range" min="-100" max="100" step="1" value="0" id="motor-1-set_speed" />
 </div>
 <script>
-$("#motor-1-set_speed").on("input", function () {
+motor_1_set_speed_element = $("#motor-1-set_speed");
+motor_1_set_speed_range = motor_1_set_speed_element[0];
+function motor_1_set_speed (speed, set_range) {
+  if (speed < -100 || speed > 100) {
+    return;
+  }
   $.ajax({
-    url: "http://10.0.0.59:5000/call/motor-1/set_speed?speed=int:" + $("#motor-1-set_speed")[0].value,
+    url: "http://10.0.0.59:5000/call/motor-1/set_speed?speed=int:" + speed,
     type: "GET"
   });
+  if (set_range) {
+    motor_1_set_speed_range.value = speed;
+  }
+}
+motor_1_set_speed_element.on("input", function () {
+  motor_1_set_speed(motor_1_set_speed_range.value, false);
 });
 </script>

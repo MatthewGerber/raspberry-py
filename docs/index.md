@@ -21,7 +21,7 @@ Follow the links above (or below) for details:
 # Installation
 Create a new Python virtual environment and install `raspberry-py`:
 ```
-cd /path/to/raspberry-py/repo
+cd /path/to/raspberry-py
 virtualenv -p python3.9 venv
 . venv/bin/activate
 pip install -U pip

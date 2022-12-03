@@ -1,0 +1,16 @@
+<button type="button" class="btn btn-primary" id="active_buzzer-1">active_buzzer-1</button>
+<script>
+active_buzzer-1 = $("#active_buzzer-1");
+active_buzzer-1.on("mousedown touchstart", function () {
+  $.ajax({
+    url: "http://10.0.0.59:5000/call/active_buzzer-1/buzz",
+    type: "GET"
+  });
+});
+active_buzzer-1.on("mouseup touchend", function () {
+  $.ajax({
+    url: "http://10.0.0.59:5000/call/active_buzzer-1/stop",
+    type: "GET"
+  });
+});
+</script>

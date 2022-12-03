@@ -1,11 +1,12 @@
 <div class="form-check form-switch">
   <label class="form-check-label" for="servo-1-start-stop">servo-1 start/stop</label>
-  <input class="form-check-input" type="checkbox" role="switch" id="servo-1-start-stop" />
+  <input class="form-check-input" type="checkbox" role="switch" id="servo-1-start-stop"/>
 </div>
 <script>
-$("#servo-1-start-stop").on("change", function () {
+servo_1_start_stop = $("#servo-1-start-stop");
+servo_1_start_stop.on("change", function () {
   $.ajax({
-    url: $("#servo-1-start-stop").is(":checked") ? "http://10.0.0.59:5000/call/servo-1/start" : "http://10.0.0.59:5000/call/servo-1/stop",
+    url: servo_1_start_stop.is(":checked") ? "http://10.0.0.59:5000/call/servo-1/start" : "http://10.0.0.59:5000/call/servo-1/stop",
     type: "GET"
   });
 });

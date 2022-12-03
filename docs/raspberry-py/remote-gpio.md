@@ -56,20 +56,26 @@ generation, which are explained below.
 This example uses Apache, which is simple to configure on Ubuntu for Raspberry Pi (see [here](../index.md) for Ubuntu 
 installation on Raspberry Pi). Any modern HTTP server should suffice.
 [Install and configure](https://ubuntu.com/tutorials/install-and-configure-apache#1-overview) an Apache HTTP server. 
-An example site configuration file can be found [here](rpy-rest.conf), though beware of security vulerabilities like 
-lack of HTTPS and potential exposure of files.
-
+An example site configuration file can be found [here](rpy-rest.conf), though beware of security vulnerabilities like 
+lack of HTTPS and potential exposure of files. Following initial Apache installation, edit the `rpy-rest.conf` file
+so that the relevant paths match your local file system. Then proceed as follows:
+```shell
+sudo cp /path/to/rpy-rest.conf /etc/apache2/sites-available
+sudo a2ensite rpy-rest.conf
+sudo systemctl reload apache2
+```
 Once the Apache HTTP server is configured, it's time to generate HTML/JavaScript controls for the RpyFlask application 
 shown above. Consider the following command, which is listed in the top black arrow in the above figure:
 ```shell
-write_component_files --app rest.examples.servo.servo --rest-host 10.0.0.59 --rest-port 5000 --dir-path servo/components
+cd /path/to/raspberry-py/src/raspberry_py/rest/examples
+write_component_files --app servo.servo --rest-host 10.0.0.59 --rest-port 5000 --dir-path servo/components
 ```
 The arguments are as follows:
-* `--app`:  Where to look for the RpyFlask application. The command scans `rest.examples.servo.servo` for an `app` 
-variable, which is the RpyFlask application described above. This may be relative to the package in the current working 
-directory as here, or it may be the fully-qualified module name.
+* `--app`:  Where to look for the RpyFlask application. The command scans `servo.servo` for an `app` variable, which is 
+the RpyFlask application described above. This may be relative to the package in the current working directory as here, 
+or it may be the fully-qualified module name.
 * `--rest-host` and `--rest-port`:  The location of the REST server to contact when the user interacts with the 
-HTML/JavaScript controls. 
+HTML/JavaScript controls. This would normally be the IP address of the Raspberry Pi that is controlling the circuit.
 * `--dir-path`:  Directory in which to write the resulting HTML/JavaScript files. This will be created if it does not 
 already exist.
 
@@ -83,12 +89,13 @@ Consider the first of these in detail:
 ```html
 <div class="form-check form-switch">
   <label class="form-check-label" for="servo-1-start-stop">servo-1 start/stop</label>
-  <input class="form-check-input" type="checkbox" role="switch" id="servo-1-start-stop" />
+  <input class="form-check-input" type="checkbox" role="switch" id="servo-1-start-stop"/>
 </div>
 <script>
-$("#servo-1-start-stop").on("change", function () {
+servo_1_start_stop = $("#servo-1-start-stop");
+servo_1_start_stop.on("change", function () {
   $.ajax({
-    url: $("#servo-1-start-stop").is(":checked") ? "http://10.0.0.59:5000/call/servo-1/start" : "http://10.0.0.59:5000/call/servo-1/stop",
+    url: servo_1_start_stop.is(":checked") ? "http://10.0.0.59:5000/call/servo-1/start" : "http://10.0.0.59:5000/call/servo-1/stop",
     type: "GET"
   });
 });
@@ -98,16 +105,16 @@ The general pattern for the HTML/JavaScript files is to specify an HTML control 
 control with the circuit component running in the RpyFlask application. Here we have a labeled toggle switch, and the
 JavaScript calls either the `servo-1/start` or `servo-1/stop` REST endpoints depending on the status of the switch. The 
 HTML/JavaScript files can then be embedded within a full HTML page such as 
-[this](https://github.com/MatthewGerber/raspberry-py/blob/main/src/raspberry_py/rest/examples/servo/servo.html), which is rendered in a 
-browser as shown below:
+[this](https://github.com/MatthewGerber/raspberry-py/blob/main/src/raspberry_py/rest/examples/servo/servo.html), which 
+is rendered in a browser as shown below:
 
 ![rpy-flask-page](rpy-flask-page.png)
 
 # Flask REST Server
 As with the Apache HTTP server, any modern HTTP server should suffice for serving the REST endpoints that are contacted 
 by the JavaScript described above. For simplicity, we use Flask's built-in server, which is started as follows:
-```
-flask --app rest.examples.servo.servo run --host 0.0.0.0
+```shell
+flask --app servo.servo run --host 0.0.0.0
 ```
 The arguments are as follows:
 * `--app`:  Where to look for the RpyFlask application. This works similarly to the `--app` argument in the previous 
@@ -116,6 +123,35 @@ command. The sub-command `run` instructs Flask to run the server.
 special value of `0.0.0.0` causes Flask to listen on all the machine's IP addresses. The default port is 5000, which
 can be modified but must match the `--rest-port` used earlier. See the Flask 
 [site](https://flask.palletsprojects.com/) for more information.
+
+The output of starting the Flask server should resemble the following:
+```shell
+ * Serving Flask app 'servo.servo'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.0.0.59:5000
+Press CTRL+C to quit
+```
+You should now be able to visit `http://10.0.0.59/examples/servo/servo.html` from any web browser that has access to the
+host IP address. The page should appear as shown above, and interacting with the controls should cause the Flask server 
+to emit messages such as the following (e.g., for the servo's power switch and slider):
+```shell
+10.0.0.246 - - [02/Dec/2022 22:51:26] "GET /call/servo-1/start HTTP/1.1" 200 -
+INFO:werkzeug:10.0.0.246 - - [02/Dec/2022 22:51:26] "GET /call/servo-1/start HTTP/1.1" 200 -
+10.0.0.246 - - [02/Dec/2022 22:51:27] "GET /call/servo-1/set_degrees?degrees=int:1 HTTP/1.1" 200 -
+INFO:werkzeug:10.0.0.246 - - [02/Dec/2022 22:51:27] "GET /call/servo-1/set_degrees?degrees=int:1 HTTP/1.1" 200 -
+10.0.0.246 - - [02/Dec/2022 22:51:27] "GET /call/servo-1/set_degrees?degrees=int:2 HTTP/1.1" 200 -
+INFO:werkzeug:10.0.0.246 - - [02/Dec/2022 22:51:27] "GET /call/servo-1/set_degrees?degrees=int:2 HTTP/1.1" 200 -
+10.0.0.246 - - [02/Dec/2022 22:51:27] "GET /call/servo-1/set_degrees?degrees=int:3 HTTP/1.1" 200 -
+INFO:werkzeug:10.0.0.246 - - [02/Dec/2022 22:51:27] "GET /call/servo-1/set_degrees?degrees=int:3 HTTP/1.1" 200 -
+10.0.0.246 - - [02/Dec/2022 22:51:27] "GET /call/servo-1/set_degrees?degrees=int:4 HTTP/1.1" 200 -
+INFO:werkzeug:10.0.0.246 - - [02/Dec/2022 22:51:27] "GET /call/servo-1/set_degrees?degrees=int:4 HTTP/1.1" 200 -
+10.0.0.246 - - [02/Dec/2022 22:51:27] "GET /call/servo-1/set_degrees?degrees=int:5 HTTP/1.1" 200 -
+INFO:werkzeug:10.0.0.246 - - [02/Dec/2022 22:51:27] "GET /call/servo-1/set_degrees?degrees=int:5 HTTP/1.1" 200 -
+```
+If the circuit is properly built and powered on, the servo will activate and move accordingly.
 
 # Example:  Freenove 4WD Smart Car
 The [Freenove 4WD Smart Car](https://www.amazon.com/Freenove-Raspberry-Tracking-Avoidance-Ultrasonic/dp/B07YD2LT9D) 

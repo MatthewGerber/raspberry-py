@@ -2,19 +2,22 @@
   <label id="ultrasonic_range_finder-1-measure_distance_once">measure_distance_once:  null</label>
 </div>
 <script>
-function read_value_ultrasonic_range_finder_1_measure_distance_once() {
+ultrasonic_range_finder_1_measure_distance_once = $("#ultrasonic_range_finder-1-measure_distance_once")[0];
+
+async function read_value_ultrasonic_range_finder_1_measure_distance_once() {
   $.ajax({
     url: "http://10.0.0.59:5000/call/ultrasonic_range_finder-1/measure_distance_once",
     type: "GET",
     success: async function (return_value) {
-      document.getElementById("ultrasonic_range_finder-1-measure_distance_once").innerHTML = "measure_distance_once:  " + return_value;
+      ultrasonic_range_finder_1_measure_distance_once.innerHTML = "measure_distance_once:  " + return_value;
       await new Promise(r => setTimeout(r, 1000.0));
-      read_value_ultrasonic_range_finder_1_measure_distance_once();
+      await read_value_ultrasonic_range_finder_1_measure_distance_once();
     },
     error: async function(xhr, error){
-      document.getElementById("ultrasonic_range_finder-1-measure_distance_once").innerHTML = "measure_distance_once:  null";
+      console.log(error);
+      ultrasonic_range_finder_1_measure_distance_once.innerHTML = "measure_distance_once:  null";
       await new Promise(r => setTimeout(r, 1000.0));
-      read_value_ultrasonic_range_finder_1_measure_distance_once();
+      await read_value_ultrasonic_range_finder_1_measure_distance_once();
     }
   });
 }
