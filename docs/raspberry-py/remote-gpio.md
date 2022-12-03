@@ -53,12 +53,12 @@ This code specifies an RpyFlask application containing a servo. It is the basis 
 generation, which are explained below.
 
 # Apache HTTP Server
-This example uses Apache, which is simple to configure on Ubuntu for Raspberry Pi (see [here](../index.md) for Ubuntu 
-installation on Raspberry Pi). Any modern HTTP server should suffice.
-[Install and configure](https://ubuntu.com/tutorials/install-and-configure-apache#1-overview) an Apache HTTP server. 
-An example site configuration file can be found [here](rpy-rest.conf), though beware of security vulnerabilities like 
-lack of HTTPS and potential exposure of files. Following initial Apache installation, edit the `rpy-rest.conf` file
-so that the relevant paths match your local file system. Then proceed as follows:
+This example uses Apache, which is simple to configure on Ubuntu for Raspberry Pi. See [here](../index.md) for Ubuntu 
+installation on Raspberry Pi and [here](https://ubuntu.com/tutorials/install-and-configure-apache#1-overview) for 
+Apache HTTP server installation. An example Apache site configuration file can be found [here](rpy-rest.conf), though 
+beware of security vulnerabilities like lack of HTTPS and potential exposure of files. Following initial Apache 
+installation, edit the `rpy-rest.conf` file so that the relevant paths match your local file system. Then proceed as 
+follows to install and enable the site:
 ```shell
 sudo cp /path/to/rpy-rest.conf /etc/apache2/sites-available
 sudo a2ensite rpy-rest.conf
@@ -83,7 +83,7 @@ The command generates HTML/JavaScript controls for each of the circuit component
 circuit component may produce multiple such files, and in the case of our servo example there are
 [two](https://github.com/MatthewGerber/raspberry-py/tree/main/src/raspberry_py/rest/examples/servo/components):
 * `servo-1-start-stop.html`:  An on/off toggle for starting and stopping the servo.
-* `servo-1-set_degrees.html`:  A slider for setting the servo's angle.
+* `servo-1-set_degrees.html`:  A slider for setting the servo's angular position.
 
 Consider the first of these in detail:
 ```html
