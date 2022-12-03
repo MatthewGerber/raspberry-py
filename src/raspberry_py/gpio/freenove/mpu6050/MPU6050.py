@@ -46,11 +46,13 @@ THE SOFTWARE.
 ===============================================
 """
 
-import math
-import ctypes
-import time
-import smbus2
 import csv
+import ctypes
+import math
+import time
+
+import smbus2
+
 from raspberry_py.gpio.freenove.mpu6050.MPUConstants import MPUConstants as C
 from raspberry_py.gpio.freenove.mpu6050.Quaternion import Quaternion as Q
 from raspberry_py.gpio.freenove.mpu6050.Quaternion import XYZVector as V

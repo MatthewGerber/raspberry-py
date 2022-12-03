@@ -1,5 +1,6 @@
-from MPU6050 import MPU6050
 from SimplePID import SimplePID
+
+from MPU6050 import MPU6050
 
 
 def avg_from_array(a_array):

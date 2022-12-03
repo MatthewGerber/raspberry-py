@@ -2,12 +2,13 @@
 ########################################################################
 # Filename    : attitude.py
 # Description : Read data of MPU6050.
-# auther      : www.freenove.com
+# author      : www.freenove.com
 # modification: 2019/12/28
 ########################################################################
+import time
+
 from raspberry_py.gpio import cleanup
 from raspberry_py.gpio.freenove.mpu6050 import MPU6050
-import time
 
 
 def main():
