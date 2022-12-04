@@ -158,7 +158,8 @@ class RpyFlask(Flask):
                 (power_id, power_element),
                 RpyFlask.get_switch(component.camera.id, rest_host, rest_port, component.camera.enable_face_detection, component.camera.disable_face_detection, 'Face Detection', component.camera.run_face_detection),
                 RpyFlask.get_switch(component.camera.id, rest_host, rest_port, component.camera.enable_face_circles, component.camera.disable_face_circles, 'Face Circles', component.camera.circle_detected_faces),
-                RpyFlask.get_switch(component.id, rest_host, rest_port, component.enable_face_tracking, component.disable_face_tracking, 'Face Tracking', component.track_faces)
+                RpyFlask.get_switch(component.id, rest_host, rest_port, component.enable_face_tracking, component.disable_face_tracking, 'Face Tracking', component.track_faces),
+                RpyFlask.get_switch(component.id, rest_host, rest_port, component.enable_light_tracking, component.disable_light_tracking, 'Light Tracking', component.track_light)
             ]
 
             if component.connection_blackout_tolerance_seconds is not None:

@@ -8,6 +8,7 @@ from smbus2 import SMBus
 
 from raspberry_py.gpio import CkPin
 from raspberry_py.gpio import Component
+from raspberry_py.gpio.adc import ADS7830
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
 from raspberry_py.gpio.lights import LedStrip
 from raspberry_py.gpio.motors import DcMotor, DcMotorDriverPCA9685PW, Servo, ServoDriverPCA9685PW
@@ -33,7 +34,9 @@ class Car(Component):
     TODO:
       * Image overlay:  Guide lines
       * RLAI
-      * Sensors
+      * Left/right light tracking
+      * Line tracking
+      * Display power
     """
 
     class State(Component.State):
@@ -158,6 +161,10 @@ class Car(Component):
             self.camera_pan_servo.set_degrees(90)
             self.camera.turn_on()
 
+            # begin updating the light A/D state
+            self.light_sensor_adc_thread = Thread(target=self.update_light_adc_state)
+            self.light_sensor_adc_thread.start()
+
             # begin monitoring for connection blackout if specified
             if self.connection_blackout_tolerance_seconds is not None:
                 self.previous_connection_heartbeat_time = time.time()
@@ -179,6 +186,17 @@ class Car(Component):
                     print('Failed to access /dev/mem for LED strip. Check README for solutions.')
                 else:
                     raise e
+
+    def update_light_adc_state(
+            self
+    ):
+        """
+        Update the light sensor A/D state.
+        """
+
+        while self.on:
+            self.light_sensor_adc.update_state()
+            time.sleep(0.1)
 
     def monitor_connection_blackout(
             self
@@ -242,6 +260,10 @@ class Car(Component):
                 servo.stop()
 
             self.camera.turn_off()
+
+            if self.light_sensor_adc_thread is not None:
+                self.light_sensor_adc_thread.join()
+                self.light_sensor_adc_thread = None
 
             if self.monitor_connection_blackout_thread is not None:
                 self.monitor_connection_blackout_thread.join()
@@ -318,6 +340,39 @@ class Car(Component):
 
         self.track_faces = False
 
+    def track_light_intensity(
+            self,
+            left: float,
+            right: float
+    ):
+        """
+        Track light intensity.
+
+        :param left: Intensity of light on left side.
+        :param right: Intensity of light on right side.
+        """
+
+        if self.track_light:
+            print(f'Left:  {left}, right: {right}')
+
+    def enable_light_tracking(
+            self
+    ):
+        """
+        Enable light tracking.
+        """
+
+        self.track_light = True
+
+    def disable_light_tracking(
+            self
+    ):
+        """
+        Disable light tracking.
+        """
+
+        self.track_light = False
+
     def __init__(
             self,
             camera_pan_servo_correction_degrees: float = 0.0,
@@ -332,7 +387,8 @@ class Car(Component):
             connection_blackout_tolerance_seconds: Optional[float] = None,
             run_face_detection: bool = True,
             circle_detected_faces: bool = True,
-            track_faces: bool = True
+            track_faces: bool = True,
+            track_light: bool = False
     ):
         """
         Initialize the car.
@@ -358,6 +414,7 @@ class Car(Component):
         :param run_face_detection: Whether to run face detection.
         :param circle_detected_faces: Whether to circle detected faces.
         :param track_faces: Whether to track detected faces.
+        :param track_light: Whether to track light.
         """
 
         if reverse_wheels is None:
@@ -369,11 +426,14 @@ class Car(Component):
         self.max_speed = max_speed
         self.connection_blackout_tolerance_seconds = connection_blackout_tolerance_seconds
         self.track_faces = track_faces
+        self.track_light = track_light
+
         self.on = False
         self.on_off_lock = Lock()
 
-        # hardware pwm for motors/servos
         i2c_bus = SMBus('/dev/i2c-1')
+
+        # hardware pwm for motors/servos
         pca9685pw = PulseWaveModulatorPCA9685PW(
             bus=i2c_bus,
             address=PulseWaveModulatorPCA9685PW.PCA9685PW_ADDRESS
@@ -459,10 +519,24 @@ class Car(Component):
         )
         self.range_finder.id = 'range_finder'
 
-        # attributes for speed-differential turning
+        # speed-differential turning
         self.speed_differential_lock = RLock()
         self.current_all_wheel_speed = 0
         self.differential_speed = 0
+
+        # left/right light sensors are on A/D channels 0 and 1
+        self.light_sensor_adc = ADS7830(
+            input_voltage=3.3,
+            bus=i2c_bus,
+            address=0x48,
+            command=ADS7830.COMMAND,
+            channel_rescaled_range={
+                0: (0.0, 1.0),
+                1: (0.0, 1.0)
+            }
+        )
+        self.light_sensor_adc.event(lambda s: self.track_light_intensity(*s.channel_value.values()))
+        self.light_sensor_adc_thread = None
 
         # connection blackout
         self.monitor_connection_blackout_lock = Lock()
