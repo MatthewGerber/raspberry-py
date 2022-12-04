@@ -202,11 +202,11 @@ class PCF8591(AdcDevice):
     PCF8591 ADC.
     """
 
-    # default command.
-    COMMAND = 0x40
-
     # default address. check the address with `i2cdetect -y 1`.
     ADDRESS = 0x48
+
+    # default command.
+    COMMAND = 0x40
 
     def __init__(
             self,
@@ -271,7 +271,7 @@ class ADS7830(AdcDevice):
     ADS7830 ADC. See the docs/ads7830.pdf datasheet for full information.
     """
 
-    # default address:  bin(0x4b) == 10000100. check the address with `i2cdetect -y 1`.
+    # default address:  bin(0x4b) == 1001011. check the address with `i2cdetect -y 1`.
     ADDRESS = 0x4b
 
     # default command (single-ended inputs, internal reference off, A/D on):  bin(0x84) == 10000100. see page 13 of the
