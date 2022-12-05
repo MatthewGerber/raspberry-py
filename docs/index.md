@@ -19,9 +19,18 @@ Follow the links above (or below) for details:
 2. [Remote control of GPIO circuits via REST/HTML/JavaScript](raspberry-py/remote-gpio.md)
 
 # Installation
-Create a new Python virtual environment and install `raspberry-py`:
-```
-cd /path/to/raspberry-py
+The `raspberry-py` package can be consumed in two ways:
+
+1. Add `raspberry-py` to a project as a PyPI dependency. This is the best approach if you only want to use the 
+functionality provided by `raspberry-py`. The `raspberry-py` package is available 
+[here](https://pypi.org/project/raspberry-py/), and an example of adding the package dependency is provided
+[here](https://github.com/MatthewGerber/raspberry-py-dependency-example).
+2. [Fork](https://github.com/MatthewGerber/raspberry-py/fork) the present repository and then install it locally. This 
+is the best approach if you want to enhance and/or fix the functionality provided by `raspberry-py`. In the following, 
+`XXXX` is the user account into which the repository is forked:
+```shell
+git clone git@github.com:XXXX/raspberry-py.git
+cd raspberry-py
 virtualenv -p python3.9 venv
 . venv/bin/activate
 pip install -U pip
