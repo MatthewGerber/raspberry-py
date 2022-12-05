@@ -196,7 +196,7 @@ class Car(Component):
 
         while self.on:
             self.light_sensor_adc.update_state()
-            time.sleep(0.1)
+            time.sleep(0.5)
 
     def monitor_connection_blackout(
             self
@@ -353,7 +353,11 @@ class Car(Component):
         """
 
         if self.track_light:
-            print(f'Left:  {left}, right: {right}')
+            left_light_differential = left - right
+            differential_speed = int(left_light_differential * self.wheel_max_speed)
+            self.set_differential_speed(differential_speed)
+        else:
+            self.set_differential_speed(0)
 
     def enable_light_tracking(
             self
