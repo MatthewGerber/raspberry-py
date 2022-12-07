@@ -19,6 +19,7 @@
         </div>
       </div>
 
+      <!-- steering and camera feed -->
       <div class="rpy-div">
         <div class="row">
           <div class="col-md-1">
@@ -33,10 +34,14 @@
         </div>
       </div>
 
+      <!-- power, horn, and range -->
       <div class="rpy-div">
         <div class="row">
           <div class="col-md">
             <div id="div-car-1-start-stop"></div>
+          </div>
+          <div class="col-md">
+            <div id="div-car-1-get_battery_percent"></div>
           </div>
           <div class="col-md">
             <div id="div-buzzer"></div>
@@ -47,6 +52,7 @@
         </div>
       </div>
 
+      <!-- camera pan/tilt -->
       <div class="rpy-div">
         <div class="row">
           <div class="col-md">
@@ -60,6 +66,7 @@
         </div>
       </div>
 
+      <!-- display size and resolution -->
       <div class="rpy-div">
         <div class="row">
           <div class="col-md">
@@ -73,6 +80,7 @@
         </div>
       </div>
 
+      <!-- face tracking -->
       <div class="rpy-div">
         <div class="row">
           <div class="col-md">
@@ -87,6 +95,7 @@
         </div>
       </div>
 
+      <!-- light tracking -->
       <div class="rpy-div">
         <div class="row">
           <div class="col-md">
@@ -113,5 +122,6 @@
     <script>$("#div-car-1-enable_face_tracking-disable_face_tracking").load("components/car-1-enable_face_tracking-disable_face_tracking.html");</script>
     <script>$("#div-car-1-enable_light_tracking-disable_light_tracking").load("components/car-1-enable_light_tracking-disable_light_tracking.html");</script>
     <script type="text/javascript" src="components/car-1-connection_heartbeat.js"></script>
+    <script>$("#div-car-1-get_battery_percent").load("components/car-1-get_battery_percent.html");</script>
   </body>
 </html>

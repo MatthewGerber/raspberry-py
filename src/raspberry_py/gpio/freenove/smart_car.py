@@ -60,8 +60,8 @@ class Car(Component):
 
             return ''
 
-    @staticmethod
     def set_wheel_speed(
+            self,
             wheels: List[DcMotor],
             speed: int
     ):
@@ -72,8 +72,9 @@ class Car(Component):
         :param speed: Speed in [-100, 100].
         """
 
-        for wheel in wheels:
-            wheel.set_speed(speed)
+        with self.speed_lock:
+            for wheel in wheels:
+                wheel.set_speed(speed)
 
     def set_speed(
             self,
@@ -85,7 +86,7 @@ class Car(Component):
         :param speed: Speed in [-100,+100].
         """
 
-        with self.speed_differential_lock:
+        with self.speed_lock:
             self.current_all_wheel_speed = speed
             if self.differential_speed != 0:
                 self.set_differential_speed(self.differential_speed)
@@ -102,7 +103,8 @@ class Car(Component):
         :param speed: Speed in [-100,+100].
         """
 
-        self.set_wheel_speed(self.left_wheels, speed)
+        with self.speed_lock:
+            self.set_wheel_speed(self.left_wheels, speed)
 
     def set_right_speed(
             self,
@@ -114,7 +116,8 @@ class Car(Component):
         :param speed: Speed in [-100,+100].
         """
 
-        self.set_wheel_speed(self.right_wheels, speed)
+        with self.speed_lock:
+            self.set_wheel_speed(self.right_wheels, speed)
 
     def set_differential_speed(
             self,
@@ -128,7 +131,7 @@ class Car(Component):
         the car if moving backward, negative values make the right wheels spin faster than the left.
         """
 
-        with self.speed_differential_lock:
+        with self.speed_lock:
             self.differential_speed = differential_speed
             left_speed = self.current_all_wheel_speed - self.differential_speed
             left_speed = max(self.wheel_min_speed, min(self.wheel_max_speed, left_speed))
@@ -161,9 +164,9 @@ class Car(Component):
             self.camera_pan_servo.set_degrees(90)
             self.camera.turn_on()
 
-            # begin updating the light A/D state
-            self.light_sensor_adc_thread = Thread(target=self.update_light_adc_state)
-            self.light_sensor_adc_thread.start()
+            # begin updating the light/power A/D state
+            self.light_sensor_battery_adc_thread = Thread(target=self.update_adc_light_sensors_and_battery_state)
+            self.light_sensor_battery_adc_thread.start()
 
             # begin monitoring for connection blackout if specified
             if self.connection_blackout_tolerance_seconds is not None:
@@ -187,7 +190,7 @@ class Car(Component):
                 else:
                     raise e
 
-    def update_light_adc_state(
+    def update_adc_light_sensors_and_battery_state(
             self
     ):
         """
@@ -195,7 +198,7 @@ class Car(Component):
         """
 
         while self.on:
-            self.light_sensor_adc.update_state()
+            self.adc_light_sensors_and_battery.update_state()
             time.sleep(0.5)
 
     def monitor_connection_blackout(
@@ -261,9 +264,9 @@ class Car(Component):
 
             self.camera.turn_off()
 
-            if self.light_sensor_adc_thread is not None:
-                self.light_sensor_adc_thread.join()
-                self.light_sensor_adc_thread = None
+            if self.light_sensor_battery_adc_thread is not None:
+                self.light_sensor_battery_adc_thread.join()
+                self.light_sensor_battery_adc_thread = None
 
             if self.monitor_connection_blackout_thread is not None:
                 self.monitor_connection_blackout_thread.join()
@@ -376,6 +379,17 @@ class Car(Component):
         """
 
         self.track_light = False
+
+    def get_battery_percent(
+            self
+    ) -> float:
+        """
+        Get battery percent.
+
+        :return: Battery percent in [0,100].
+        """
+
+        return self.adc_light_sensors_and_battery.get_channel_value()[2]
 
     def __init__(
             self,
@@ -524,23 +538,24 @@ class Car(Component):
         self.range_finder.id = 'range_finder'
 
         # speed-differential turning
-        self.speed_differential_lock = RLock()
+        self.speed_lock = RLock()
         self.current_all_wheel_speed = 0
         self.differential_speed = 0
 
-        # left/right light sensors are on A/D channels 0 and 1
-        self.light_sensor_adc = ADS7830(
+        # left/right light sensors are on A/D channels 0 and 1; battery level is channel 2.
+        self.adc_light_sensors_and_battery = ADS7830(
             input_voltage=3.3,
             bus=i2c_bus,
             address=0x48,
             command=ADS7830.COMMAND,
             channel_rescaled_range={
                 0: (0.0, 1.0),
-                1: (0.0, 1.0)
+                1: (0.0, 1.0),
+                2: None
             }
         )
-        self.light_sensor_adc.event(lambda s: self.track_light_intensity(*s.channel_value.values()))
-        self.light_sensor_adc_thread = None
+        self.adc_light_sensors_and_battery.event(lambda s: self.track_light_intensity(*list(s.channel_value.values())[0:2]))
+        self.light_sensor_battery_adc_thread = None
 
         # connection blackout
         self.monitor_connection_blackout_lock = Lock()

@@ -1,0 +1,28 @@
+<div>
+  <label id="car-1-get_battery_percent">Battery %:  null</label>
+</div>
+<script>
+car_1_get_battery_percent = $("#car-1-get_battery_percent")[0];
+car_1_start_stop = $("#car-1-start-stop");
+async function read_value_car_1_get_battery_percent() {
+  while (!car_1_start_stop.is(":checked")) {
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  $.ajax({
+    url: "http://10.0.0.59:5000/call/car-1/get_battery_percent",
+    type: "GET",
+    success: async function (return_value) {
+      car_1_get_battery_percent.innerHTML = "Battery %:  " + return_value;
+      await new Promise(r => setTimeout(r, 1000.0));
+      await read_value_car_1_get_battery_percent();
+    },
+    error: async function(xhr, error){
+      console.log(error);
+      car_1_get_battery_percent.innerHTML = "Battery %:  null";
+      await new Promise(r => setTimeout(r, 1000.0));
+      await read_value_car_1_get_battery_percent();
+    }
+  });
+}
+read_value_car_1_get_battery_percent();
+</script>
