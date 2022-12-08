@@ -164,9 +164,9 @@ class Car(Component):
             self.camera_pan_servo.set_degrees(90)
             self.camera.turn_on()
 
-            # begin updating the light/power A/D state
-            self.light_sensor_battery_adc_thread = Thread(target=self.update_adc_light_sensors_and_battery_state)
-            self.light_sensor_battery_adc_thread.start()
+            # begin updating the A/D state
+            self.update_analog_to_digital_state_thread = Thread(target=self.update_analog_to_digital_state)
+            self.update_analog_to_digital_state_thread.start()
 
             # begin monitoring for connection blackout if specified
             if self.connection_blackout_tolerance_seconds is not None:
@@ -190,22 +190,32 @@ class Car(Component):
                 else:
                     raise e
 
-    def update_adc_light_sensors_and_battery_state(
+    def update_analog_to_digital_state(
             self
     ):
         """
-        Update the light sensor A/D state.
+        Update the A/D state while the car remains on.
         """
 
         while self.on:
-            self.adc_light_sensors_and_battery.update_state()
+
+            # ensure that the loop/thread doesn't die if updating the a/d state raises an exception, which can happen
+            # if we're tracking light and the updated state sets differential speed, while a separate thread (from the
+            # control screen) also sets the differential speed. we have a lock on the differential speed, but the two
+            # updates probably happen in too close proximity.
+            try:
+                self.analog_to_digital.update_state()
+            except:
+                pass
+
             time.sleep(0.5)
 
     def monitor_connection_blackout(
             self
     ):
         """
-        Shut the car down if a connection heartbeat is not received within the blackout tolerance.
+        Monitor connection blackout while the car remains on. Shut the car down if a connection heartbeat is not
+        received within the blackout tolerance.
         """
 
         while self.on:
@@ -233,11 +243,16 @@ class Car(Component):
             self
     ):
         """
-        Run the LED strip.
+        Run the LED strip while the car remains on.
         """
 
         while self.on:
-            self.led_strip.theater_chase(Color(0, 255, 0), iterations=1, wait_ms=250)
+
+            # ensure that the loop/thread doesn't die due to any strangeness in the underlying led api
+            try:
+                self.led_strip.theater_chase(Color(0, 255, 0), iterations=1, wait_ms=250)
+            except:
+                pass
 
         self.led_strip.color_wipe(0, 0)
 
@@ -264,9 +279,9 @@ class Car(Component):
 
             self.camera.turn_off()
 
-            if self.light_sensor_battery_adc_thread is not None:
-                self.light_sensor_battery_adc_thread.join()
-                self.light_sensor_battery_adc_thread = None
+            if self.update_analog_to_digital_state_thread is not None:
+                self.update_analog_to_digital_state_thread.join()
+                self.update_analog_to_digital_state_thread = None
 
             if self.monitor_connection_blackout_thread is not None:
                 self.monitor_connection_blackout_thread.join()
@@ -389,7 +404,7 @@ class Car(Component):
         :return: Battery percent in [0,100].
         """
 
-        return self.adc_light_sensors_and_battery.get_channel_value()[2]
+        return self.analog_to_digital.get_channel_value()[self.adc_battery_voltage_channel]
 
     def __init__(
             self,
@@ -438,7 +453,7 @@ class Car(Component):
         if reverse_wheels is None:
             reverse_wheels = []
 
-        super().__init__(Car.State())
+        super().__init__(Car.State())  # state is not used in the car like it is in other GPIO components
 
         self.min_speed = min_speed
         self.max_speed = max_speed
@@ -449,20 +464,36 @@ class Car(Component):
         self.on = False
         self.on_off_lock = Lock()
 
-        i2c_bus = SMBus('/dev/i2c-1')
+        self.i2c_bus = SMBus('/dev/i2c-1')
 
         # hardware pwm for motors/servos
-        pca9685pw = PulseWaveModulatorPCA9685PW(
-            bus=i2c_bus,
+        self.pwm = PulseWaveModulatorPCA9685PW(
+            bus=self.i2c_bus,
             address=PulseWaveModulatorPCA9685PW.PCA9685PW_ADDRESS
         )
-        pca9685pw.set_pwm_frequency(50)
+        self.pwm.set_pwm_frequency(50)
+
+        # analog-to-digital converter
+        self.adc_left_light_channel = 0
+        self.adc_right_light_channel = 1
+        self.adc_battery_voltage_channel = 2
+        self.analog_to_digital = ADS7830(
+            input_voltage=3.3,
+            bus=self.i2c_bus,
+            address=0x48,
+            command=ADS7830.COMMAND,
+            channel_rescaled_range={
+                self.adc_left_light_channel: (0.0, 1.0),
+                self.adc_right_light_channel: (0.0, 1.0),
+                self.adc_battery_voltage_channel: (0.0, 100.0)
+            }
+        )
 
         # wheels
         self.wheels = [
             DcMotor(
                 driver=DcMotorDriverPCA9685PW(
-                    pca9685pw=pca9685pw,
+                    pca9685pw=self.pwm,
                     motor_channel_1=wheel.value * 2,  # 4 wheel motors use PWM channels 0-7 (2 channels per motor)
                     motor_channel_2=wheel.value * 2 + 1,
                     reverse=wheel in reverse_wheels
@@ -488,7 +519,7 @@ class Car(Component):
         # 8 servos use PWM channels 8-15 (1 channel per servo)
         self.camera_pan_servo = Servo(
             driver=ServoDriverPCA9685PW(
-                pca9685pw=pca9685pw,
+                pca9685pw=self.pwm,
                 servo_channel=8,
                 reverse=False,
                 correction_degrees=camera_pan_servo_correction_degrees
@@ -501,7 +532,7 @@ class Car(Component):
 
         self.camera_tilt_servo = Servo(
             driver=ServoDriverPCA9685PW(
-                pca9685pw=pca9685pw,
+                pca9685pw=self.pwm,
                 servo_channel=9,
                 reverse=True,  # the tilt servo is mounted in reverse, such that 180 points up.
                 correction_degrees=camera_tilt_servo_correction_degrees
@@ -542,20 +573,12 @@ class Car(Component):
         self.current_all_wheel_speed = 0
         self.differential_speed = 0
 
-        # left/right light sensors are on A/D channels 0 and 1; battery level is channel 2.
-        self.adc_light_sensors_and_battery = ADS7830(
-            input_voltage=3.3,
-            bus=i2c_bus,
-            address=0x48,
-            command=ADS7830.COMMAND,
-            channel_rescaled_range={
-                0: (0.0, 1.0),
-                1: (0.0, 1.0),
-                2: None
-            }
-        )
-        self.adc_light_sensors_and_battery.event(lambda s: self.track_light_intensity(*list(s.channel_value.values())[0:2]))
-        self.light_sensor_battery_adc_thread = None
+        # track light intensity as the a/d state changes
+        self.analog_to_digital.event(lambda s: self.track_light_intensity(
+            left=s.channel_value[self.adc_left_light_channel],
+            right=s.channel_value[self.adc_right_light_channel]
+        ))
+        self.update_analog_to_digital_state_thread = None
 
         # connection blackout
         self.monitor_connection_blackout_lock = Lock()
