@@ -80,3 +80,32 @@ simpler than the previous approach.
 * [Add CAP_SYS_RAWIO capability](https://unix.stackexchange.com/questions/475800/non-root-read-access-to-dev-mem-by-kmem-group-members-fails)
 * [Remove CAP_SYS_RAWIO capability](https://unix.stackexchange.com/questions/303423/unset-setcap-additional-capabilities-on-excutable)
 * [Set /dev/mem permissions on boot](https://forums.developer.nvidia.com/t/dev-mem-changes-permissions-back-to-defaults-on-system-restart/65355/3)
+
+# Advanced:  LTE Smart Car
+The above setup works well when the car (Raspberry Pi) has an easily accessible IP address. This is usually the case 
+when the car is connected to a local Wi-Fi network. However, if the car is connected to an LTE network, then its IP 
+address might be inaccessible. The car's IP address might also be inaccessible if the car is behind a NAT system. If the
+controlling device (e.g., laptop) has an accessible IP address, then we can use SSH reverse tunneling to establish the
+connection.
+
+1. Configure Apache to listen on port 8080:
+```
+sudo emacs /etc/apache2/ports.conf
+```
+As noted at the top, editing the listening port also requires editing the listening port of the site's VirtualHost
+statement:
+```
+sudo emacs /etc/apache2/sites-available/rpy-rest.conf
+```
+Then restart Apache:
+```
+sudo systemctl restart apache2
+```
+2. Start the SSH reverse tunnel:
+```
+ssh -R localhost:5000:localhost:5000 -R localhost:8080:localhost:8080 -l mvg0419 macbook
+```
+3. Write component files that connect to the SSH reverse tunnel.
+```
+write_component_files --app freenove_smart_car.freenove_smart_car --rest-host localhost --rest-port 5000 --dir-path freenove_smart_car/components
+```
