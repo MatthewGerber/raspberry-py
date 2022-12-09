@@ -32,6 +32,10 @@ class Car(Component):
     The Freenove 4WD Smart Car.
 
     TODO:
+      * Latency display
+      * Battery and range label precision
+      * Connectivity via LTE:  Reverse tunneling
+      * MD Bootstrap accordion for divs
       * Image overlay:  Guide lines
       * RLAI
       * Left/right light tracking
@@ -205,8 +209,8 @@ class Car(Component):
             # updates probably happen in too close proximity.
             try:
                 self.analog_to_digital.update_state()
-            except:
-                pass
+            except Exception as e:
+                print(f'Caught exception when attempting to update A/D state (ignoring):  {e}')
 
             time.sleep(0.5)
 
@@ -251,8 +255,8 @@ class Car(Component):
             # ensure that the loop/thread doesn't die due to any strangeness in the underlying led api
             try:
                 self.led_strip.theater_chase(Color(0, 255, 0), iterations=1, wait_ms=250)
-            except:
-                pass
+            except Exception as e:
+                print(f'Caught exception when running LED strip (ignoring):  {e}')
 
         self.led_strip.color_wipe(0, 0)
 
