@@ -19,89 +19,106 @@
         </div>
       </div>
 
-      <!-- steering and camera feed -->
-      <div class="rpy-div">
-        <div class="row">
-          <div class="col-md-1">
-            <div id="div-car-1-set_speed"></div>
-          </div>
-          <div class="col-md-10">
-            <div id="div-camera-capture_image"></div>
-          </div>
-          <div class="col-md-1">
-            <div id="div-car-1-set_differential_speed"></div>
-          </div>
-        </div>
-      </div>
+      <div class="accordion" id="car-accordion">
 
-      <!-- power, horn, and range -->
-      <div class="rpy-div">
-        <div class="row">
-          <div class="col-md">
-            <div id="div-car-1-start-stop"></div>
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="main">
+            <button class="accordion-button" type="button" data-mdb-toggle="collapse" data-mdb-target="#collapse-main" aria-expanded="false" aria-controls="collapse-main" style="background-color: aliceblue;">
+              Main
+            </button>
+          </h2>
+          <div id="collapse-main" class="accordion-collapse collapse show" aria-labelledby="main">
+            <div class="accordion-body" style="background-color: #fafafa;">
+              <div class="row">
+                <div class="col-md-1">
+                  <div id="div-car-1-set_speed"></div>
+                </div>
+                <div class="col-md-10">
+                  <div id="div-camera-capture_image"></div>
+                </div>
+                <div class="col-md-1">
+                  <div id="div-car-1-set_differential_speed"></div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-2">
+                  <div id="div-car-1-start-stop"></div>
+                </div>
+                <div class="col-md-2">
+                  <div id="div-car-1-get_battery_percent"></div>
+                </div>
+                <div class="col-md-2">
+                  <div id="div-range_finder-measure_distance_once"></div>
+                </div>
+                <div class="col-md-5"></div>
+                <div class="col-md-1">
+                  <div id="div-buzzer"></div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="col-md">
-            <div id="div-car-1-get_battery_percent"></div>
-          </div>
-          <div class="col-md">
-            <div id="div-buzzer"></div>
-          </div>
-          <div class="col-md">
-          <div id="div-range_finder-measure_distance_once"></div>
         </div>
-        </div>
-      </div>
 
-      <!-- camera pan/tilt -->
-      <div class="rpy-div">
-        <div class="row">
-          <div class="col-md">
-            <div id="div-camera-pan-set_degrees"></div>
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="camera">
+            <button class="accordion-button" type="button" data-mdb-toggle="collapse" data-mdb-target="#collapse-camera" aria-expanded="false" aria-controls="collapse-camera" style="background-color: aliceblue;">
+              Camera
+            </button>
+          </h2>
+          <div id="collapse-camera" class="accordion-collapse collapse show" aria-labelledby="camera">
+            <div class="accordion-body" style="background-color: #fafafa;">
+              <div class="row">
+                <div class="col-md">
+                  <div id="div-camera-pan-set_degrees"></div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md">
+                  <div id="div-camera-tilt-set_degrees"></div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md">
+                  <div id="div-camera-multiply_resolution"></div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md">
+                  <div id="div-camera-capture_image-width"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="row">
-          <div class="col-md">
-            <div id="div-camera-tilt-set_degrees"></div>
-          </div>
-        </div>
-      </div>
 
-      <!-- display size and resolution -->
-      <div class="rpy-div">
-        <div class="row">
-          <div class="col-md">
-            <div id="div-camera-capture_image-width"></div>
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="tracking">
+            <button class="accordion-button collapsed" type="button" data-mdb-toggle="collapse" data-mdb-target="#collapse-tracking" aria-expanded="false" aria-controls="collapse-tracking" style="background-color: aliceblue;">
+              Tracking
+            </button>
+          </h2>
+          <div id="collapse-tracking" class="accordion-collapse collapse" aria-labelledby="tracking">
+            <div class="accordion-body" style="background-color: #fafafa;">
+              <div class="row">
+                <div class="col-md-2">
+                  <div id="div-camera-enable_face_detection-disable_face_detection"></div>
+                </div>
+                <div class="col-md-2">
+                  <div id="div-camera-enable_face_circles-disable_face_circles"></div>
+                </div>
+                <div class="col-md-2">
+                  <div id="div-car-1-enable_face_tracking-disable_face_tracking"></div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md">
+                  <div id="div-car-1-enable_light_tracking-disable_light_tracking"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="row">
-          <div class="col-md">
-            <div id="div-camera-multiply_resolution"></div>
-          </div>
-        </div>
-      </div>
 
-      <!-- face tracking -->
-      <div class="rpy-div">
-        <div class="row">
-          <div class="col-md">
-            <div id="div-camera-enable_face_detection-disable_face_detection"></div>
-          </div>
-          <div class="col-md">
-            <div id="div-camera-enable_face_circles-disable_face_circles"></div>
-          </div>
-          <div class="col-md">
-            <div id="div-car-1-enable_face_tracking-disable_face_tracking"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- light tracking -->
-      <div class="rpy-div">
-        <div class="row">
-          <div class="col-md">
-            <div id="div-car-1-enable_light_tracking-disable_light_tracking"></div>
-          </div>
-        </div>
       </div>
 
     </div>
