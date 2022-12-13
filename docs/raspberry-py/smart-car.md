@@ -101,11 +101,22 @@ Then restart Apache:
 ```
 sudo systemctl restart apache2
 ```
-2. Start the SSH reverse tunnel:
+2. Start the SSH reverse tunnels, one for REST traffic to the Flask server over port 5000, and the other for JavaScript
+traffic to the Apache web server over port 8080:
 ```
-ssh -R localhost:5000:localhost:5000 -R localhost:8080:localhost:8080 -l mvg0419 macbook
+ssh -R localhost:5000:localhost:5000 -R localhost:8080:localhost:8080 -l USER HOST
 ```
-3. Write component files that connect to the SSH reverse tunnel.
+In the above, `USER` and `HOST` are the user account and host of the controlling device. Once this SSH connection is 
+established, any connections established at the controlling device at the `localhost:5000` or `localhost:8080` ports
+will be forwarded to the car's localhost interface at the same ports.
+3. Next, write component files that connect to the SSH reverse tunnel via localhost:
 ```
 write_component_files --app freenove_smart_car.freenove_smart_car --rest-host localhost --rest-port 5000 --dir-path freenove_smart_car/components
 ```
+If all has gone well above, then you should be able to open a web browser on the controlling device and pull up 
+`http://localhost:8080`. Then browse to the car's control screen. All communication between the controlling device and
+the car will be secured via the SSH reverse tunnel.
+
+# Random
+1. MacOS runs AirPlay Receiver on port 5000. If you get unexpected errors when making REST calls to Flask, try disabling 
+AirPlay Receiver at System Preferences => Sharing => AirPlay Receiver.

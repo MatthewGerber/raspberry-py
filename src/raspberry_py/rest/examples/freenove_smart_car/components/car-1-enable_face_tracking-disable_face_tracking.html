@@ -6,7 +6,7 @@
 car_1_enable_face_tracking_disable_face_tracking = $("#car-1-enable_face_tracking-disable_face_tracking");
 car_1_enable_face_tracking_disable_face_tracking.on("change", function () {
   $.ajax({
-    url: car_1_enable_face_tracking_disable_face_tracking.is(":checked") ? "http://10.0.0.59:5000/call/car-1/enable_face_tracking" : "http://10.0.0.59:5000/call/car-1/disable_face_tracking",
+    url: car_1_enable_face_tracking_disable_face_tracking.is(":checked") ? "http://localhost:5000/call/car-1/enable_face_tracking" : "http://localhost:5000/call/car-1/disable_face_tracking",
     type: "GET"
   });
 });

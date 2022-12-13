@@ -10,7 +10,7 @@ function camera_multiply_resolution (factor, set_range) {
     return;
   }
   $.ajax({
-    url: "http://10.0.0.59:5000/call/camera/multiply_resolution?factor=int:" + factor,
+    url: "http://localhost:5000/call/camera/multiply_resolution?factor=int:" + factor,
     type: "GET"
   });
   if (set_range) {

@@ -6,7 +6,7 @@
 camera_enable_face_detection_disable_face_detection = $("#camera-enable_face_detection-disable_face_detection");
 camera_enable_face_detection_disable_face_detection.on("change", function () {
   $.ajax({
-    url: camera_enable_face_detection_disable_face_detection.is(":checked") ? "http://10.0.0.59:5000/call/camera/enable_face_detection" : "http://10.0.0.59:5000/call/camera/disable_face_detection",
+    url: camera_enable_face_detection_disable_face_detection.is(":checked") ? "http://localhost:5000/call/camera/enable_face_detection" : "http://localhost:5000/call/camera/disable_face_detection",
     type: "GET"
   });
 });
