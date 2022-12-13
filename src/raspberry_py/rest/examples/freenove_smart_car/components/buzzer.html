@@ -3,13 +3,13 @@
 buzzer = $("#buzzer");
 buzzer.on("mousedown touchstart", function () {
   $.ajax({
-    url: "http://localhost:5000/call/buzzer/buzz",
+    url: "http://10.0.0.59:5000/call/buzzer/buzz",
     type: "GET"
   });
 });
 buzzer.on("mouseup touchend", function () {
   $.ajax({
-    url: "http://localhost:5000/call/buzzer/stop",
+    url: "http://10.0.0.59:5000/call/buzzer/stop",
     type: "GET"
   });
 });

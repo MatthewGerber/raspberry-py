@@ -7,7 +7,8 @@ car = Car(
     reverse_wheels=[Wheel.REAR_LEFT],
     camera_width=160,
     camera_height=120,
-    connection_blackout_tolerance_seconds=2
+    connection_blackout_tolerance_seconds=2,
+    run_face_detection=False
 )
 car.id = 'car-1'
 

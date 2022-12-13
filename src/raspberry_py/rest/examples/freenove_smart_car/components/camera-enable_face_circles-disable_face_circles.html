@@ -6,7 +6,7 @@
 camera_enable_face_circles_disable_face_circles = $("#camera-enable_face_circles-disable_face_circles");
 camera_enable_face_circles_disable_face_circles.on("change", function () {
   $.ajax({
-    url: camera_enable_face_circles_disable_face_circles.is(":checked") ? "http://localhost:5000/call/camera/enable_face_circles" : "http://localhost:5000/call/camera/disable_face_circles",
+    url: camera_enable_face_circles_disable_face_circles.is(":checked") ? "http://10.0.0.59:5000/call/camera/enable_face_circles" : "http://10.0.0.59:5000/call/camera/disable_face_circles",
     type: "GET"
   });
 });

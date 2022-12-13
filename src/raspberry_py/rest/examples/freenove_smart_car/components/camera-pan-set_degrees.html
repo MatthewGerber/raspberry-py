@@ -10,7 +10,7 @@ function camera_pan_set_degrees (degrees, set_range) {
     return;
   }
   $.ajax({
-    url: "http://localhost:5000/call/camera-pan/set_degrees?degrees=int:" + degrees,
+    url: "http://10.0.0.59:5000/call/camera-pan/set_degrees?degrees=int:" + degrees,
     type: "GET"
   });
   if (set_range) {

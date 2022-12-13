@@ -9,7 +9,7 @@ async function read_value_car_1_get_battery_percent() {
     await new Promise(r => setTimeout(r, 1000));
   }
   $.ajax({
-    url: "http://localhost:5000/call/car-1/get_battery_percent",
+    url: "http://10.0.0.59:5000/call/car-1/get_battery_percent",
     type: "GET",
     success: async function (return_value) {
       car_1_get_battery_percent.innerHTML = "Battery %:  " + return_value;

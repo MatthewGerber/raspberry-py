@@ -32,15 +32,14 @@ class Car(Component):
     The Freenove 4WD Smart Car.
 
     TODO:
+      * Potentiometer input for light tracking gain
       * Latency display
-      * Battery and range label precision
+      * Battery (max 83.52941176470588) and range label precision
       * Connectivity via LTE:  Reverse tunneling
-      * MD Bootstrap accordion for divs
       * Image overlay:  Guide lines
       * RLAI
       * Left/right light tracking
       * Line tracking
-      * Display power
     """
 
     class State(Component.State):
@@ -370,13 +369,19 @@ class Car(Component):
         """
         Track light intensity.
 
-        :param left: Intensity of light on left side.
-        :param right: Intensity of light on right side.
+        :param left: Intensity of light on left side in [0.0,1.0].
+        :param right: Intensity of light on right side in [0.0, 1.0].
         """
 
         if self.track_light:
-            left_light_differential = left - right
-            differential_speed = int(left_light_differential * self.wheel_max_speed)
+            left_light_differential = self.light_difference_gain * (left - right)
+            differential_speed = max(
+                self.wheel_min_speed,
+                min(
+                    self.wheel_max_speed,
+                    int(left_light_differential * self.wheel_max_speed)
+                )
+            )
             self.set_differential_speed(differential_speed)
         else:
             self.set_differential_speed(0)
@@ -448,9 +453,11 @@ class Car(Component):
         :param max_speed: Maximum speed in [-100,+100].
         :param connection_blackout_tolerance_seconds: Maximum amount of time (seconds) to tolerate connection blackout,
         beyond which the car will automatically shut down. Pass None to not use this feature.
-        :param run_face_detection: Whether to run face detection.
-        :param circle_detected_faces: Whether to circle detected faces.
-        :param track_faces: Whether to track detected faces.
+        :param run_face_detection: Whether to run face detection when capturing camera images. This must be True in
+        order to circle and/or track faces.
+        :param circle_detected_faces: Whether to circle detected faces in the captured camera images.
+        `run_face_detection` must be True for this to work.
+        :param track_faces: Whether to track detected faces. `run_face_detection` must be true for this to work.
         :param track_light: Whether to track light.
         """
 
@@ -464,6 +471,7 @@ class Car(Component):
         self.connection_blackout_tolerance_seconds = connection_blackout_tolerance_seconds
         self.track_faces = track_faces
         self.track_light = track_light
+        self.light_difference_gain = 2.5
 
         self.on = False
         self.on_off_lock = Lock()

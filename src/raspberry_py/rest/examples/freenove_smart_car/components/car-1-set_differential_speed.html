@@ -10,7 +10,7 @@ function car_1_set_differential_speed (differential_speed, set_range) {
     return;
   }
   $.ajax({
-    url: "http://localhost:5000/call/car-1/set_differential_speed?differential_speed=int:" + differential_speed,
+    url: "http://10.0.0.59:5000/call/car-1/set_differential_speed?differential_speed=int:" + differential_speed,
     type: "GET"
   });
   if (set_range) {

@@ -9,7 +9,7 @@ async function read_value_range_finder_measure_distance_once() {
     await new Promise(r => setTimeout(r, 1000));
   }
   $.ajax({
-    url: "http://localhost:5000/call/range_finder/measure_distance_once",
+    url: "http://10.0.0.59:5000/call/range_finder/measure_distance_once",
     type: "GET",
     success: async function (return_value) {
       range_finder_measure_distance_once.innerHTML = "Range:  " + return_value;
