@@ -502,6 +502,7 @@ class Car(Component):
         )
 
         # wheels
+        # noinspection PyTypeChecker
         self.wheels = [
             DcMotor(
                 driver=DcMotorDriverPCA9685PW(

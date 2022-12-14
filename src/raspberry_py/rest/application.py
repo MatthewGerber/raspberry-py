@@ -122,15 +122,15 @@ class RpyFlask(Flask):
             ]
         elif isinstance(component, Photoresistor):
             elements = [
-                RpyFlask.get_label(component.id, rest_host, rest_port, component.get_light_level, timedelta(seconds=1), None, None)
+                RpyFlask.get_label(component.id, rest_host, rest_port, component.get_light_level, timedelta(seconds=1), None, None, None)
             ]
         elif isinstance(component, Thermistor):
             elements = [
-                RpyFlask.get_label(component.id, rest_host, rest_port, component.get_temperature_f, timedelta(seconds=1), None, None)
+                RpyFlask.get_label(component.id, rest_host, rest_port, component.get_temperature_f, timedelta(seconds=1), None, None, None)
             ]
         elif isinstance(component, UltrasonicRangeFinder):
             elements = [
-                RpyFlask.get_label(component.id, rest_host, rest_port, component.measure_distance_once, timedelta(seconds=1), None, None)
+                RpyFlask.get_label(component.id, rest_host, rest_port, component.measure_distance_once, timedelta(seconds=1), None, None, None)
             ]
         elif isinstance(component, ActiveBuzzer):
             elements = [
@@ -153,14 +153,14 @@ class RpyFlask(Flask):
                 RpyFlask.get_range(component.camera.id, 1, 5, 1, 1, False, False, [], [], [], False, rest_host, rest_port, component.camera.multiply_resolution, 'Display Resolution'),
                 RpyFlask.get_range(component.id, component.min_speed, component.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_speed, ''),
                 RpyFlask.get_range(component.id, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_differential_speed, ''),
-                RpyFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1), 'Range', power_id),
+                RpyFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1), 'Range', power_id, 1),
                 RpyFlask.get_button(component.buzzer.id, rest_host, rest_port, component.buzzer.buzz, None, component.buzzer.stop, None, 'Horn'),
                 (power_id, power_element),
                 RpyFlask.get_switch(component.camera.id, rest_host, rest_port, component.camera.enable_face_detection, component.camera.disable_face_detection, 'Face Detection', component.camera.run_face_detection),
                 RpyFlask.get_switch(component.camera.id, rest_host, rest_port, component.camera.enable_face_circles, component.camera.disable_face_circles, 'Face Circles', component.camera.circle_detected_faces),
                 RpyFlask.get_switch(component.id, rest_host, rest_port, component.enable_face_tracking, component.disable_face_tracking, 'Face Tracking', component.track_faces),
                 RpyFlask.get_switch(component.id, rest_host, rest_port, component.enable_light_tracking, component.disable_light_tracking, 'Light Tracking', component.track_light),
-                RpyFlask.get_label(component.id, rest_host, rest_port, component.get_battery_percent, timedelta(seconds=10), 'Battery %', power_id)
+                RpyFlask.get_label(component.id, rest_host, rest_port, component.get_battery_percent, timedelta(seconds=10), 'Battery %', power_id, 0)
             ]
 
             if component.connection_blackout_tolerance_seconds is not None:
@@ -452,7 +452,8 @@ class RpyFlask(Flask):
             function: Callable[[], Any],
             refresh_interval: timedelta,
             text: Optional[str],
-            pause_for_checkbox_id: Optional[str]
+            pause_for_checkbox_id: Optional[str],
+            float_precision: Optional[int]
     ) -> Tuple[str, str]:
         """
         Get label that refreshes periodically.
@@ -464,6 +465,8 @@ class RpyFlask(Flask):
         :param refresh_interval: How long to wait between refresh calls.
         :param text: Readable text to display.
         :param pause_for_checkbox_id: HTML identifier of checkbox to pause for before getting label.
+        :param float_precision: Floating-point precision to display, or None if the returned value is not a float or it
+        should be displayed with full precision.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
@@ -490,7 +493,7 @@ class RpyFlask(Flask):
             element_id,
             (
                 f'<div>\n'
-                f'  <label id="{element_id}">{text}:  null</label>\n'
+                f'  <label id="{element_id}">{text}:  None</label>\n'
                 f'</div>\n'
                 f'<script>\n'
                 f'{label_element} = $("#{element_id}")[0];\n'
@@ -501,13 +504,13 @@ class RpyFlask(Flask):
                 f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{function_name}",\n'
                 f'    type: "GET",\n'
                 f'    success: async function (return_value) {{\n'
-                f'      {label_element}.innerHTML = "{text}:  " + return_value;\n'
+                f'      {label_element}.innerHTML = "{text}:  " + return_value' + '' if float_precision is None else f'.toFixed({float_precision})' + ';\n'
                 f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
                 f'      await {read_value_function_name}();\n'
                 f'    }},\n'
                 f'    error: async function(xhr, error){{\n'
                 f'      console.log(error);\n'
-                f'      {label_element}.innerHTML = "{text}:  null";\n'
+                f'      {label_element}.innerHTML = "{text}:  None";\n'
                 f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
                 f'      await {read_value_function_name}();\n'
                 f'    }}\n'
