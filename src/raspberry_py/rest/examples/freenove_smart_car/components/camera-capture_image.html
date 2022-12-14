@@ -4,14 +4,25 @@
 <script>
 camera_capture_image = $("#camera-capture_image")[0];
 car_1_start_stop = $("#car-1-start-stop");
+camera_latency = $("#camera-latency")[0];
+running_latency = null;
+alpha = 0.99;
 async function capture_camera_capture_image() {
   while (!car_1_start_stop.is(":checked")) {
     await new Promise(r => setTimeout(r, 1000));
   }
+  call_time = Date.now();
   $.ajax({
     url: "http://10.0.0.59:5000/call/camera/capture_image",
     type: "GET",
     success: async function (return_value) {
+      latency = Date.now() - call_time;
+      if (running_latency === null) {
+        running_latency = latency;
+      else {
+        running_latency = alpha * running_latency + (1.0 - alpha) * latency;
+      }
+      camera_latency.innerHTML = 'Latency (ms):  ' + running_latency.toFixed(0);
       camera_capture_image.src = "data:image/jpg;base64," + return_value;
       await capture_camera_capture_image();
     },

@@ -34,7 +34,7 @@ class Car(Component):
     TODO:
       * Potentiometer input for light tracking gain
       * Latency display
-      * Battery (max 83.52941176470588) and range label precision
+      * Battery (max 83.52941176470588)
       * Connectivity via LTE:  Reverse tunneling
       * Image overlay:  Guide lines
       * RLAI
@@ -383,8 +383,6 @@ class Car(Component):
                 )
             )
             self.set_differential_speed(differential_speed)
-        else:
-            self.set_differential_speed(0)
 
     def enable_light_tracking(
             self

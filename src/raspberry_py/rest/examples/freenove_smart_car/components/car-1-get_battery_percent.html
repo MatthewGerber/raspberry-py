@@ -1,5 +1,5 @@
 <div>
-  <label id="car-1-get_battery_percent">Battery %:  null</label>
+  <label id="car-1-get_battery_percent">Battery (%):  None</label>
 </div>
 <script>
 car_1_get_battery_percent = $("#car-1-get_battery_percent")[0];
@@ -12,13 +12,19 @@ async function read_value_car_1_get_battery_percent() {
     url: "http://10.0.0.59:5000/call/car-1/get_battery_percent",
     type: "GET",
     success: async function (return_value) {
-      car_1_get_battery_percent.innerHTML = "Battery %:  " + return_value;
+      if (return_value !== null) {
+        return_value = return_value.toFixed(1);
+      }
+      if (return_value === null) {
+        return_value = "None";
+      }
+      car_1_get_battery_percent.innerHTML = "Battery (%):  " + return_value;
       await new Promise(r => setTimeout(r, 10000.0));
       await read_value_car_1_get_battery_percent();
     },
     error: async function(xhr, error){
       console.log(error);
-      car_1_get_battery_percent.innerHTML = "Battery %:  null";
+      car_1_get_battery_percent.innerHTML = "Battery (%):  None";
       await new Promise(r => setTimeout(r, 10000.0));
       await read_value_car_1_get_battery_percent();
     }

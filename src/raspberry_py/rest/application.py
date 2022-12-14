@@ -153,14 +153,14 @@ class RpyFlask(Flask):
                 RpyFlask.get_range(component.camera.id, 1, 5, 1, 1, False, False, [], [], [], False, rest_host, rest_port, component.camera.multiply_resolution, 'Display Resolution'),
                 RpyFlask.get_range(component.id, component.min_speed, component.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_speed, ''),
                 RpyFlask.get_range(component.id, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_differential_speed, ''),
-                RpyFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1), 'Range', power_id, 1),
+                RpyFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1), 'Range (cm)', power_id, 1),
                 RpyFlask.get_button(component.buzzer.id, rest_host, rest_port, component.buzzer.buzz, None, component.buzzer.stop, None, 'Horn'),
                 (power_id, power_element),
                 RpyFlask.get_switch(component.camera.id, rest_host, rest_port, component.camera.enable_face_detection, component.camera.disable_face_detection, 'Face Detection', component.camera.run_face_detection),
                 RpyFlask.get_switch(component.camera.id, rest_host, rest_port, component.camera.enable_face_circles, component.camera.disable_face_circles, 'Face Circles', component.camera.circle_detected_faces),
                 RpyFlask.get_switch(component.id, rest_host, rest_port, component.enable_face_tracking, component.disable_face_tracking, 'Face Tracking', component.track_faces),
                 RpyFlask.get_switch(component.id, rest_host, rest_port, component.enable_light_tracking, component.disable_light_tracking, 'Light Tracking', component.track_light),
-                RpyFlask.get_label(component.id, rest_host, rest_port, component.get_battery_percent, timedelta(seconds=10), 'Battery %', power_id, 0)
+                RpyFlask.get_label(component.id, rest_host, rest_port, component.get_battery_percent, timedelta(seconds=10), 'Battery (%)', power_id, 1)
             ]
 
             if component.connection_blackout_tolerance_seconds is not None:
@@ -489,6 +489,14 @@ class RpyFlask(Flask):
                 f'  }}\n'
             )
 
+        float_precision_javascript = ''
+        if float_precision is not None:
+            float_precision_javascript = (
+                f'      if (return_value !== null) {{\n'
+                f'        return_value = return_value.toFixed({float_precision});\n'
+                f'      }}\n'
+            )
+
         return (
             element_id,
             (
@@ -503,8 +511,12 @@ class RpyFlask(Flask):
                 f'  $.ajax({{\n'
                 f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{function_name}",\n'
                 f'    type: "GET",\n'
-                f'    success: async function (return_value) {{\n'
-                f'      {label_element}.innerHTML = "{text}:  " + return_value' + '' if float_precision is None else f'.toFixed({float_precision})' + ';\n'
+                f'    success: async function (return_value) {{\n'                
+                f'{float_precision_javascript}'
+                f'      if (return_value === null) {{\n'
+                f'        return_value = "None";\n'
+                f'      }}\n'
+                f'      {label_element}.innerHTML = "{text}:  " + return_value;\n'
                 f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
                 f'      await {read_value_function_name}();\n'
                 f'    }},\n'
