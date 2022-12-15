@@ -6,7 +6,7 @@
 car_1_start_stop = $("#car-1-start-stop");
 car_1_start_stop.on("change", function () {
   $.ajax({
-    url: car_1_start_stop.is(":checked") ? "http://10.0.0.59:5000/call/car-1/start" : "http://10.0.0.59:5000/call/car-1/stop",
+    url: car_1_start_stop.is(":checked") ? "http://" + rest_host + ":" + rest_port + "/call/car-1/start" : "http://" + rest_host + ":" + rest_port + "/call/car-1/stop",
     type: "GET"
   });
 });

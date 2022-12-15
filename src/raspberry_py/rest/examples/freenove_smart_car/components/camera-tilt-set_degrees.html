@@ -10,7 +10,7 @@ function camera_tilt_set_degrees (degrees, set_range) {
     return;
   }
   $.ajax({
-    url: "http://10.0.0.59:5000/call/camera-tilt/set_degrees?degrees=int:" + degrees,
+    url: "http://" + rest_host + ":" + rest_port + "/call/camera-tilt/set_degrees?degrees=int:" + degrees,
     type: "GET"
   });
   if (set_range) {

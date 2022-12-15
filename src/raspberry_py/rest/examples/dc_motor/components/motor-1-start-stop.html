@@ -6,7 +6,7 @@
 motor_1_start_stop = $("#motor-1-start-stop");
 motor_1_start_stop.on("change", function () {
   $.ajax({
-    url: motor_1_start_stop.is(":checked") ? "http://10.0.0.59:5000/call/motor-1/start" : "http://10.0.0.59:5000/call/motor-1/stop",
+    url: motor_1_start_stop.is(":checked") ? "http://" + rest_host + ":" + rest_port + "/call/motor-1/start" : "http://" + rest_host + ":" + rest_port + "/call/motor-1/stop",
     type: "GET"
   });
 });

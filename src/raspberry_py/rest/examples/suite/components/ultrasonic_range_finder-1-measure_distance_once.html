@@ -6,7 +6,7 @@ ultrasonic_range_finder_1_measure_distance_once = $("#ultrasonic_range_finder-1-
 
 async function read_value_ultrasonic_range_finder_1_measure_distance_once() {
   $.ajax({
-    url: "http://10.0.0.59:5000/call/ultrasonic_range_finder-1/measure_distance_once",
+    url: "http://" + rest_host + ":" + rest_port + "/call/ultrasonic_range_finder-1/measure_distance_once",
     type: "GET",
     success: async function (return_value) {
       ultrasonic_range_finder_1_measure_distance_once.innerHTML = "measure_distance_once:  " + return_value;

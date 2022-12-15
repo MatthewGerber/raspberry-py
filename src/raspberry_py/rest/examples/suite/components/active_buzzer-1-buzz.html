@@ -2,7 +2,7 @@
 <script>
 $("#active_buzzer-1-buzz").click(function () {
   $.ajax({
-    url: "http://10.0.0.59:5000/call/active_buzzer-1/buzz?duration=seconds:0.5",
+    url: "http://" + rest_host + ":" + rest_port + "/call/active_buzzer-1/buzz?duration=seconds:0.5",
     type: "GET"
   });
 });

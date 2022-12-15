@@ -6,7 +6,7 @@
 car_1_enable_light_tracking_disable_light_tracking = $("#car-1-enable_light_tracking-disable_light_tracking");
 car_1_enable_light_tracking_disable_light_tracking.on("change", function () {
   $.ajax({
-    url: car_1_enable_light_tracking_disable_light_tracking.is(":checked") ? "http://10.0.0.59:5000/call/car-1/enable_light_tracking" : "http://10.0.0.59:5000/call/car-1/disable_light_tracking",
+    url: car_1_enable_light_tracking_disable_light_tracking.is(":checked") ? "http://" + rest_host + ":" + rest_port + "/call/car-1/enable_light_tracking" : "http://" + rest_host + ":" + rest_port + "/call/car-1/disable_light_tracking",
     type: "GET"
   });
 });

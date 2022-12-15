@@ -5,11 +5,9 @@
 range_finder_measure_distance_once = $("#range_finder-measure_distance_once")[0];
 car_1_start_stop = $("#car-1-start-stop");
 async function read_value_range_finder_measure_distance_once() {
-  while (!car_1_start_stop.is(":checked")) {
-    await new Promise(r => setTimeout(r, 1000));
-  }
+  await is_checked(car_1_start_stop);
   $.ajax({
-    url: "http://10.0.0.59:5000/call/range_finder/measure_distance_once",
+    url: "http://" + rest_host + ":" + rest_port + "/call/range_finder/measure_distance_once",
     type: "GET",
     success: async function (return_value) {
       if (return_value !== null) {

@@ -6,7 +6,7 @@
 led_1_turn_on_turn_off = $("#led-1-turn_on-turn_off");
 led_1_turn_on_turn_off.on("change", function () {
   $.ajax({
-    url: led_1_turn_on_turn_off.is(":checked") ? "http://10.0.0.59:5000/call/led-1/turn_on" : "http://10.0.0.59:5000/call/led-1/turn_off",
+    url: led_1_turn_on_turn_off.is(":checked") ? "http://" + rest_host + ":" + rest_port + "/call/led-1/turn_on" : "http://" + rest_host + ":" + rest_port + "/call/led-1/turn_off",
     type: "GET"
   });
 });

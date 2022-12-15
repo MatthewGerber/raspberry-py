@@ -6,7 +6,7 @@ photoresistor_1_get_light_level = $("#photoresistor-1-get_light_level")[0];
 
 async function read_value_photoresistor_1_get_light_level() {
   $.ajax({
-    url: "http://10.0.0.59:5000/call/photoresistor-1/get_light_level",
+    url: "http://" + rest_host + ":" + rest_port + "/call/photoresistor-1/get_light_level",
     type: "GET",
     success: async function (return_value) {
       photoresistor_1_get_light_level.innerHTML = "get_light_level:  " + return_value;

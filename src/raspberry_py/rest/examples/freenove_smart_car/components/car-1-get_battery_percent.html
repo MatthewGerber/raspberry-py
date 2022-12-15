@@ -5,11 +5,9 @@
 car_1_get_battery_percent = $("#car-1-get_battery_percent")[0];
 car_1_start_stop = $("#car-1-start-stop");
 async function read_value_car_1_get_battery_percent() {
-  while (!car_1_start_stop.is(":checked")) {
-    await new Promise(r => setTimeout(r, 1000));
-  }
+  await is_checked(car_1_start_stop);
   $.ajax({
-    url: "http://10.0.0.59:5000/call/car-1/get_battery_percent",
+    url: "http://" + rest_host + ":" + rest_port + "/call/car-1/get_battery_percent",
     type: "GET",
     success: async function (return_value) {
       if (return_value !== null) {

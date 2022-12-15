@@ -10,7 +10,7 @@ function motor_1_set_speed (speed, set_range) {
     return;
   }
   $.ajax({
-    url: "http://10.0.0.59:5000/call/motor-1/set_speed?speed=int:" + speed,
+    url: "http://" + rest_host + ":" + rest_port + "/call/motor-1/set_speed?speed=int:" + speed,
     type: "GET"
   });
   if (set_range) {

@@ -6,7 +6,7 @@ thermistor_1_get_temperature_f = $("#thermistor-1-get_temperature_f")[0];
 
 async function read_value_thermistor_1_get_temperature_f() {
   $.ajax({
-    url: "http://10.0.0.59:5000/call/thermistor-1/get_temperature_f",
+    url: "http://" + rest_host + ":" + rest_port + "/call/thermistor-1/get_temperature_f",
     type: "GET",
     success: async function (return_value) {
       thermistor_1_get_temperature_f.innerHTML = "get_temperature_f:  " + return_value;
