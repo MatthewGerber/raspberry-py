@@ -1,4 +1,4 @@
-import {rest_host, rest_port} from './globals.js';
+import {rest_host, rest_port} from "./globals.js";
 async function car_1_connection_heartbeat() {
   $.ajax({
     url: "http://" + rest_host + ":" + rest_port + "/call/car-1/connection_heartbeat",

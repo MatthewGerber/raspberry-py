@@ -1,21 +1,24 @@
 <div>
-  <label id="thermistor-1-get_temperature_f">get_temperature_f:  null</label>
+  <label id="thermistor-1-get_temperature_f">get_temperature_f:  None</label>
 </div>
-<script>
-thermistor_1_get_temperature_f = $("#thermistor-1-get_temperature_f")[0];
-
+<script type="module">
+import {rest_host, rest_port} from "./globals.js";
+const thermistor_1_get_temperature_f = $("#thermistor-1-get_temperature_f")[0];
 async function read_value_thermistor_1_get_temperature_f() {
   $.ajax({
     url: "http://" + rest_host + ":" + rest_port + "/call/thermistor-1/get_temperature_f",
     type: "GET",
     success: async function (return_value) {
+      if (return_value === null) {
+        return_value = "None";
+      }
       thermistor_1_get_temperature_f.innerHTML = "get_temperature_f:  " + return_value;
       await new Promise(r => setTimeout(r, 1000.0));
       await read_value_thermistor_1_get_temperature_f();
     },
     error: async function(xhr, error){
       console.log(error);
-      thermistor_1_get_temperature_f.innerHTML = "get_temperature_f:  null";
+      thermistor_1_get_temperature_f.innerHTML = "get_temperature_f:  None";
       await new Promise(r => setTimeout(r, 1000.0));
       await read_value_thermistor_1_get_temperature_f();
     }

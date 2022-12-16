@@ -1,6 +1,7 @@
 <button type="button" class="btn btn-primary" id="active_buzzer-1">active_buzzer-1</button>
-<script>
-active_buzzer-1 = $("#active_buzzer-1");
+<script type="module">
+import {rest_host, rest_port} from "./globals.js";
+const active_buzzer-1 = $("#active_buzzer-1");
 active_buzzer-1.on("mousedown touchstart", function () {
   $.ajax({
     url: "http://" + rest_host + ":" + rest_port + "/call/active_buzzer-1/buzz",

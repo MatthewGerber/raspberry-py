@@ -1,10 +1,11 @@
 <div style="text-align: center">
   <img alt="camera-capture-image" id="camera-capture_image" width="160" src="" />
+  <label id="camera-latency">Latency (ms):  None</label>
 </div>
 <script type="module">
-import {rest_host, rest_port} from './globals.js';
-import {is_checked} from '../../utils.js';
-import {init_latency, set_call_time, update_latency} from '../../utils.js';
+import {rest_host, rest_port} from "./globals.js";
+import {is_checked} from "./utils.js";
+import {init_latency, set_call_time, update_latency} from "./utils.js";
 const camera_latency = $("#camera-latency")[0];
 init_latency("camera-latency", 0.99);
 const camera_capture_image = $("#camera-capture_image")[0];
@@ -17,7 +18,7 @@ async function capture_camera_capture_image() {
     type: "GET",
     success: async function (return_value) {
       camera_capture_image.src = "data:image/jpg;base64," + return_value;
-      camera_latency.innerHTML = 'Latency (ms):  ' + update_latency("camera-latency").toFixed(0);
+      camera_latency.innerHTML = "Latency (ms):  " + update_latency("camera-latency").toFixed(0);
       await capture_camera_capture_image();
     },
     error: async function(xhr, error){

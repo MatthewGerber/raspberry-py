@@ -2,8 +2,9 @@
   <label class="form-check-label" for="motor-1-start-stop">motor-1 start/stop</label>
   <input class="form-check-input" type="checkbox" role="switch" id="motor-1-start-stop"/>
 </div>
-<script>
-motor_1_start_stop = $("#motor-1-start-stop");
+<script type="module">
+import {rest_host, rest_port} from "./globals.js";
+const motor_1_start_stop = $("#motor-1-start-stop");
 motor_1_start_stop.on("change", function () {
   $.ajax({
     url: motor_1_start_stop.is(":checked") ? "http://" + rest_host + ":" + rest_port + "/call/motor-1/start" : "http://" + rest_host + ":" + rest_port + "/call/motor-1/stop",

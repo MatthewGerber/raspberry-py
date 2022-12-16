@@ -2,9 +2,10 @@
   <label for="servo-1-set_degrees" class="form-label">servo-1 set_degrees</label>
   <input type="range" class="form-range" min="0" max="180" step="1" value="0" id="servo-1-set_degrees" />
 </div>
-<script>
-servo_1_set_degrees_element = $("#servo-1-set_degrees");
-servo_1_set_degrees_range = servo_1_set_degrees_element[0];
+<script type="module">
+import {rest_host, rest_port} from "./globals.js";
+const servo_1_set_degrees_element = $("#servo-1-set_degrees");
+const servo_1_set_degrees_range = servo_1_set_degrees_element[0];
 function servo_1_set_degrees (degrees, set_range) {
   if (degrees < 0 || degrees > 180) {
     return;

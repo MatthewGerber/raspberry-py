@@ -2,8 +2,9 @@
   <label class="form-check-label" for="led-1-turn_on-turn_off">led-1 turn_on/turn_off</label>
   <input class="form-check-input" type="checkbox" role="switch" id="led-1-turn_on-turn_off"/>
 </div>
-<script>
-led_1_turn_on_turn_off = $("#led-1-turn_on-turn_off");
+<script type="module">
+import {rest_host, rest_port} from "./globals.js";
+const led_1_turn_on_turn_off = $("#led-1-turn_on-turn_off");
 led_1_turn_on_turn_off.on("change", function () {
   $.ajax({
     url: led_1_turn_on_turn_off.is(":checked") ? "http://" + rest_host + ":" + rest_port + "/call/led-1/turn_on" : "http://" + rest_host + ":" + rest_port + "/call/led-1/turn_off",

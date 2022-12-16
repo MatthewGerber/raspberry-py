@@ -72,7 +72,7 @@ class RpyFlask(Flask):
             os.mkdir(dir_path)
 
         for component in self.components_to_write:
-            for element_id, element_content in self.get_ui_elements(component, rest_host, rest_port):
+            for element_id, element_content in self.get_ui_elements(component):
 
                 # element id can be either a string (which is assumed to be html) or a 2-tuple of the id and extension.
                 if isinstance(element_id, str):
@@ -87,84 +87,126 @@ class RpyFlask(Flask):
                     component_file.write(f'{element_content}\n')
                 print(f'Wrote {path}')
 
+        globals_path = join(dir_path, 'globals.js')
+        with open(globals_path, 'w') as globals_file:
+            globals_file.writelines([
+                f'export const rest_host = "{rest_host}";\n',
+                f'export const rest_port = {rest_port};'
+            ])
+        print(f'Wrote {globals_path}')
+
+        utils_path = join(dir_path, 'utils.js')
+        with open(utils_path, 'w') as utils_file:
+            utils_file.write("""
+const element_id_call_time = {};
+const element_id_latency = {};
+const element_id_alpha = {};
+
+export function init_latency(element_id, alpha) {
+  element_id_latency[element_id] = null;
+  element_id_alpha[element_id] = alpha;
+}
+
+export function set_call_time(element_id) {
+  element_id_call_time[element_id] = Date.now()
+}
+
+export function update_latency(element_id) {
+    const latency = Date.now() - element_id_call_time[element_id];
+    const alpha = element_id_alpha[element_id];
+    let running_latency = element_id_latency[element_id];
+    if (running_latency === null) {
+      running_latency = latency;
+    }
+    else {
+      running_latency = alpha * running_latency + (1.0 - alpha) * latency;
+    }
+    element_id_latency[element_id] = running_latency;
+    return running_latency;
+}
+
+export async function is_checked(element) {
+  while (!element.is(":checked")) {
+    await new Promise(r => setTimeout(r, 1000));
+  }
+}
+""")
+            print(f'Wrote {utils_path}')
+
     @staticmethod
     def get_ui_elements(
-            component: Component,
-            rest_host: str,
-            rest_port: int,
+            component: Component
     ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
         """
         Get UI elements for a component.
 
         :param component: Component.
-        :param rest_host: Host serving the REST application.
-        :param rest_port: Port serving the REST application.
         :return: List of 2-tuples of (1) element keys and (2) element content for the component.
         """
 
         if isinstance(component, LED):
             elements = [
-                RpyFlask.get_switch(component.id, rest_host, rest_port, component.turn_on, component.turn_off, None, component.is_on())
+                RpyFlask.get_switch(component.id, component.turn_on, component.turn_off, None, component.is_on())
             ]
         elif isinstance(component, DcMotor):
             elements = [
-                RpyFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, None, component.state.on),
-                RpyFlask.get_range(component.id, component.min_speed, component.max_speed, 1, component.get_speed(), False, False, [], [], [], False, rest_host, rest_port, component.set_speed, None)
+                RpyFlask.get_switch(component.id, component.start, component.stop, None, component.state.on),
+                RpyFlask.get_range(component.id, component.min_speed, component.max_speed, 1, component.get_speed(), False, False, [], [], [], False, component.set_speed, None)
             ]
         elif isinstance(component, Servo):
             elements = [
-                RpyFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, None, component.state.on),
-                RpyFlask.get_range(component.id, int(component.min_degree), int(component.max_degree), 1, int(component.get_degrees()), False, False, [], [], [], False, rest_host, rest_port, component.set_degrees, None)
+                RpyFlask.get_switch(component.id, component.start, component.stop, None, component.state.on),
+                RpyFlask.get_range(component.id, int(component.min_degree), int(component.max_degree), 1, int(component.get_degrees()), False, False, [], [], [], False, component.set_degrees, None)
             ]
         elif isinstance(component, Stepper):
             elements = [
-                RpyFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, None, False)
+                RpyFlask.get_switch(component.id, component.start, component.stop, None, False)
             ]
         elif isinstance(component, Photoresistor):
             elements = [
-                RpyFlask.get_label(component.id, rest_host, rest_port, component.get_light_level, timedelta(seconds=1), None, None, None)
+                RpyFlask.get_label(component.id, component.get_light_level, timedelta(seconds=1), None, None, None)
             ]
         elif isinstance(component, Thermistor):
             elements = [
-                RpyFlask.get_label(component.id, rest_host, rest_port, component.get_temperature_f, timedelta(seconds=1), None, None, None)
+                RpyFlask.get_label(component.id, component.get_temperature_f, timedelta(seconds=1), None, None, None)
             ]
         elif isinstance(component, UltrasonicRangeFinder):
             elements = [
-                RpyFlask.get_label(component.id, rest_host, rest_port, component.measure_distance_once, timedelta(seconds=1), None, None, None)
+                RpyFlask.get_label(component.id, component.measure_distance_once, timedelta(seconds=1), None, None, None)
             ]
         elif isinstance(component, ActiveBuzzer):
             elements = [
-                RpyFlask.get_button(component.id, rest_host, rest_port, component.buzz, None, component.stop, None, None)
+                RpyFlask.get_button(component.id, component.buzz, None, component.stop, None, None)
             ]
         elif isinstance(component, Camera):
             elements = [
-                RpyFlask.get_image(component.id, component.width, rest_host, rest_port, component.capture_image, timedelta(seconds=1.0 / component.fps), None)
+                RpyFlask.get_image(component.id, component.width, component.capture_image, timedelta(seconds=1.0 / component.fps), None)
             ]
         elif isinstance(component, Car):
 
-            power_id, power_element = RpyFlask.get_switch(component.id, rest_host, rest_port, component.start, component.stop, 'Power', component.on)
-            camera_id, camera_element = RpyFlask.get_image(component.camera.id, component.camera.width, rest_host, rest_port, component.camera.capture_image, None, power_id)
+            power_id, power_element = RpyFlask.get_switch(component.id, component.start, component.stop, 'Power', component.on)
+            camera_id, camera_element = RpyFlask.get_image(component.camera.id, component.camera.width, component.camera.capture_image, None, power_id)
 
             elements = [
                 (camera_id, camera_element),
-                RpyFlask.get_range(component.camera_pan_servo.id, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 3, int(component.camera_pan_servo.get_degrees()), False, False, ['s'], ['f'], ['r'], False, rest_host, rest_port, component.camera_pan_servo.set_degrees, 'Pan'),
-                RpyFlask.get_range(component.camera_tilt_servo.id, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 3, int(component.camera_tilt_servo.get_degrees()), False, False, ['d'], ['e'], ['r'], False, rest_host, rest_port, component.camera_tilt_servo.set_degrees, 'Tilt'),
+                RpyFlask.get_range(component.camera_pan_servo.id, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 3, int(component.camera_pan_servo.get_degrees()), False, False, ['s'], ['f'], ['r'], False, component.camera_pan_servo.set_degrees, 'Pan'),
+                RpyFlask.get_range(component.camera_tilt_servo.id, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 3, int(component.camera_tilt_servo.get_degrees()), False, False, ['d'], ['e'], ['r'], False, component.camera_tilt_servo.set_degrees, 'Tilt'),
                 RpyFlask.get_range_html_attribute(camera_id, 'width', 100, 800, 10, component.camera.width, 'Display Size '),
-                RpyFlask.get_range(component.camera.id, 1, 5, 1, 1, False, False, [], [], [], False, rest_host, rest_port, component.camera.multiply_resolution, 'Display Resolution'),
-                RpyFlask.get_range(component.id, component.min_speed, component.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_speed, ''),
-                RpyFlask.get_range(component.id, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, rest_host, rest_port, component.set_differential_speed, ''),
-                RpyFlask.get_label(component.range_finder.id, rest_host, rest_port, component.range_finder.measure_distance_once, timedelta(seconds=1), 'Range (cm)', power_id, 1),
-                RpyFlask.get_button(component.buzzer.id, rest_host, rest_port, component.buzzer.buzz, None, component.buzzer.stop, None, 'Horn'),
+                RpyFlask.get_range(component.camera.id, 1, 5, 1, 1, False, False, [], [], [], False, component.camera.multiply_resolution, 'Display Resolution'),
+                RpyFlask.get_range(component.id, component.min_speed, component.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, component.set_speed, ''),
+                RpyFlask.get_range(component.id, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, component.set_differential_speed, ''),
+                RpyFlask.get_label(component.range_finder.id, component.range_finder.measure_distance_once, timedelta(seconds=1), 'Range (cm)', power_id, 1),
+                RpyFlask.get_button(component.buzzer.id, component.buzzer.buzz, None, component.buzzer.stop, None, 'Horn'),
                 (power_id, power_element),
-                RpyFlask.get_switch(component.camera.id, rest_host, rest_port, component.camera.enable_face_detection, component.camera.disable_face_detection, 'Face Detection', component.camera.run_face_detection),
-                RpyFlask.get_switch(component.camera.id, rest_host, rest_port, component.camera.enable_face_circles, component.camera.disable_face_circles, 'Face Circles', component.camera.circle_detected_faces),
-                RpyFlask.get_switch(component.id, rest_host, rest_port, component.enable_face_tracking, component.disable_face_tracking, 'Face Tracking', component.track_faces),
-                RpyFlask.get_switch(component.id, rest_host, rest_port, component.enable_light_tracking, component.disable_light_tracking, 'Light Tracking', component.track_light),
-                RpyFlask.get_label(component.id, rest_host, rest_port, component.get_battery_percent, timedelta(seconds=10), 'Battery (%)', power_id, 1)
+                RpyFlask.get_switch(component.camera.id, component.camera.enable_face_detection, component.camera.disable_face_detection, 'Face Detection', component.camera.run_face_detection),
+                RpyFlask.get_switch(component.camera.id, component.camera.enable_face_circles, component.camera.disable_face_circles, 'Face Circles', component.camera.circle_detected_faces),
+                RpyFlask.get_switch(component.id, component.enable_face_tracking, component.disable_face_tracking, 'Face Tracking', component.track_faces),
+                RpyFlask.get_switch(component.id, component.enable_light_tracking, component.disable_light_tracking, 'Light Tracking', component.track_light),
+                RpyFlask.get_label(component.id, component.get_battery_percent, timedelta(seconds=10), 'Battery (%)', power_id, 1)
             ]
 
             if component.connection_blackout_tolerance_seconds is not None:
-                blackout_id, blackout_element = RpyFlask.get_repeater(component.id, rest_host, rest_port, component.connection_heartbeat, timedelta(seconds=component.connection_blackout_tolerance_seconds / 4.0))
+                blackout_id, blackout_element = RpyFlask.get_repeater(component.id, component.connection_heartbeat, timedelta(seconds=component.connection_blackout_tolerance_seconds / 4.0))
                 elements.append(((blackout_id, 'js'), blackout_element))
 
         else:
@@ -175,8 +217,6 @@ class RpyFlask(Flask):
     @staticmethod
     def get_switch(
             component_id: str,
-            rest_host: str,
-            rest_port: int,
             on_function: Callable[[], None],
             off_function: Callable[[], None],
             text: Optional[str],
@@ -186,8 +226,6 @@ class RpyFlask(Flask):
         Get switch UI element.
 
         :param component_id: Component id.
-        :param rest_host: Host.
-        :param rest_port: Port.
         :param on_function: Function to call when switch is flipped on.
         :param off_function: Function to call when switch is flipped off.
         :param text: Readable text to display.
@@ -212,11 +250,12 @@ class RpyFlask(Flask):
                 f'  <label class="form-check-label" for="{element_id}">{text}</label>\n'
                 f'  <input class="form-check-input" type="checkbox" role="switch" id="{element_id}"{checked}/>\n'
                 f'</div>\n'
-                f'<script>\n'
-                f'{element_var} = $("#{element_id}");\n'
+                f'<script type="module">\n'
+                f'import {{rest_host, rest_port}} from "./globals.js";\n'
+                f'const {element_var} = $("#{element_id}");\n'
                 f'{element_var}.on("change", function () {{\n'
                 f'  $.ajax({{\n'
-                f'    url: {element_var}.is(":checked") ? "http://{rest_host}:{rest_port}/call/{component_id}/{on_function_name}" : "http://{rest_host}:{rest_port}/call/{component_id}/{off_function_name}",\n'
+                f'    url: {element_var}.is(":checked") ? "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{on_function_name}" : "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{off_function_name}",\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'}});\n'
@@ -237,8 +276,6 @@ class RpyFlask(Flask):
             increment_keys: List[str],
             reset_to_initial_value_keys: List[str],
             vertical: bool,
-            rest_host: str,
-            rest_port: int,
             on_input_function: Callable[[int], None],
             text: Optional[str]
     ) -> Tuple[str, str]:
@@ -259,8 +296,6 @@ class RpyFlask(Flask):
         :param increment_keys: Keyboard keys that increment the range value.
         :param reset_to_initial_value_keys: Keyboard keys that reset the range to the initial value.
         :param vertical: Whether the range should be displayed vertically.
-        :param rest_host: Host.
-        :param rest_port: Port.
         :param on_input_function: Function to call when range value changes.
         :param text: Readable text to display.
         :return: 2-tuple of (1) element id and (2) UI element.
@@ -371,15 +406,16 @@ class RpyFlask(Flask):
                 f'  <label for="{element_id}" class="form-label">{text}</label>\n'
                 f'  <input type="range"{vertical_style} class="form-range" min="{min_value}" max="{max_value}" step="{step}" value="{initial_value}" id="{element_id}" />\n'
                 f'</div>\n'
-                f'<script>\n'
-                f'{element_var} = $("#{element_id}");\n'
-                f'{range_var} = {element_var}[0];\n'
+                f'<script type="module">\n'
+                f'import {{rest_host, rest_port}} from "./globals.js";\n'
+                f'const {element_var} = $("#{element_id}");\n'
+                f'const {range_var} = {element_var}[0];\n'
                 f'function {js_set_value_function_name} ({value_param}, set_range) {{\n'
                 f'  if ({value_param} < {min_value} || {value_param} > {max_value}) {{\n'
                 f'    return;\n'
                 f'  }}\n'
                 f'  $.ajax({{\n'
-                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{on_input_function_name}?{value_param}=int:" + {value_param},\n'
+                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{on_input_function_name}?{value_param}=int:" + {value_param},\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'  if (set_range) {{\n'
@@ -433,10 +469,10 @@ class RpyFlask(Flask):
                 f'  <label for="{range_element_id}" class="form-label">{text}</label>\n'
                 f'  <input type="range" class="form-range" min="{min_value}" max="{max_value}" step="{step}" value="{initial_value}" id="{range_element_id}" />\n'
                 f'</div>\n'
-                f'<script>\n'
-                f'{element_var} = $("#{element_id}")[0];\n'
-                f'{range_element_var} = $("#{range_element_id}");\n'
-                f'{range_var} = {range_element_var}[0];\n'
+                f'<script type="module">\n'
+                f'const {element_var} = $("#{element_id}")[0];\n'
+                f'const {range_element_var} = $("#{range_element_id}");\n'
+                f'const {range_var} = {range_element_var}[0];\n'
                 f'{range_element_var}.on("input", function () {{\n'
                 f'  {element_var}.{element_attribute} = {range_var}.value\n'
                 f'}});\n'
@@ -447,8 +483,6 @@ class RpyFlask(Flask):
     @staticmethod
     def get_label(
             component_id: str,
-            rest_host: str,
-            rest_port: int,
             function: Callable[[], Any],
             refresh_interval: timedelta,
             text: Optional[str],
@@ -459,8 +493,6 @@ class RpyFlask(Flask):
         Get label that refreshes periodically.
 
         :param component_id: Component id.
-        :param rest_host: Host.
-        :param rest_port: Port.
         :param function: Function to call to obtain new value.
         :param refresh_interval: How long to wait between refresh calls.
         :param text: Readable text to display.
@@ -478,16 +510,14 @@ class RpyFlask(Flask):
         if text is None:
             text = function_name
 
+        pause_import_javascript = ''
         pause_element_javascript = ''
-        pause_while_javascript = ''
+        pause_await_javascript = ''
         if pause_for_checkbox_id is not None:
+            pause_import_javascript = 'import {is_checked} from "./utils.js";\n'
             pause_var_javascript = pause_for_checkbox_id.replace('-', '_')
-            pause_element_javascript = f'{pause_var_javascript} = $("#{pause_for_checkbox_id}");'
-            pause_while_javascript = (
-                f'  while (!{pause_var_javascript}.is(":checked")) {{\n'
-                f'    await new Promise(r => setTimeout(r, 1000));\n'
-                f'  }}\n'
-            )
+            pause_element_javascript = f'const {pause_var_javascript} = $("#{pause_for_checkbox_id}");\n'
+            pause_await_javascript = f'  await is_checked({pause_var_javascript});\n'
 
         float_precision_javascript = ''
         if float_precision is not None:
@@ -503,13 +533,15 @@ class RpyFlask(Flask):
                 f'<div>\n'
                 f'  <label id="{element_id}">{text}:  None</label>\n'
                 f'</div>\n'
-                f'<script>\n'
-                f'{label_element} = $("#{element_id}")[0];\n'
-                f'{pause_element_javascript}\n'
+                f'<script type="module">\n'
+                f'import {{rest_host, rest_port}} from "./globals.js";\n'
+                f'{pause_import_javascript}'
+                f'const {label_element} = $("#{element_id}")[0];\n'
+                f'{pause_element_javascript}'
                 f'async function {read_value_function_name}() {{\n'
-                f'{pause_while_javascript}'
+                f'{pause_await_javascript}'
                 f'  $.ajax({{\n'
-                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{function_name}",\n'
+                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{function_name}",\n'
                 f'    type: "GET",\n'
                 f'    success: async function (return_value) {{\n'                
                 f'{float_precision_javascript}'
@@ -537,8 +569,6 @@ class RpyFlask(Flask):
     def get_image(
             component_id: str,
             width: int,
-            rest_host: str,
-            rest_port: int,
             function: Callable[[], Any],
             refresh_interval: Optional[timedelta],
             pause_for_checkbox_id: Optional[str]
@@ -548,8 +578,6 @@ class RpyFlask(Flask):
 
         :param component_id: Component id.
         :param width: Initial width of HTML image.
-        :param rest_host: Host.
-        :param rest_port: Port.
         :param function: Function to call to obtain new image.
         :param refresh_interval: How long to wait between refresh calls, or None for no interval.
         :param pause_for_checkbox_id: HTML identifier of checkbox to pause for before capturing image.
@@ -558,6 +586,8 @@ class RpyFlask(Flask):
 
         function_name = function.__name__
         element_id = f'{component_id}-{function_name}'
+        latency_label_id = f'{component_id}-latency'
+        latency_label_var = latency_label_id.replace('-', '_')
         capture_function_name = f'capture_{element_id}'.replace('-', '_')
         img_alt = element_id.replace('_', '-')
         image_element = element_id.replace('-', '_')
@@ -566,33 +596,39 @@ class RpyFlask(Flask):
         if refresh_interval is not None:
             refresh_interval_javascript = f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
 
+        pause_import_javascript = ''
         pause_element_javascript = ''
-        pause_while_javascript = ''
+        pause_await_javascript = ''
         if pause_for_checkbox_id is not None:
+            pause_import_javascript = 'import {is_checked} from "./utils.js";\n'
             pause_var_javascript = pause_for_checkbox_id.replace('-', '_')
-            pause_element_javascript = f'{pause_var_javascript} = $("#{pause_for_checkbox_id}");'
-            pause_while_javascript = (
-                f'  while (!{pause_var_javascript}.is(":checked")) {{\n'
-                f'    await new Promise(r => setTimeout(r, 1000));\n'
-                f'  }}\n'
-            )
+            pause_element_javascript = f'const {pause_var_javascript} = $("#{pause_for_checkbox_id}");\n'
+            pause_await_javascript = f'  await is_checked({pause_var_javascript});\n'
 
         return (
             element_id,
             (
                 f'<div style="text-align: center">\n'
                 f'  <img alt="{img_alt}" id="{element_id}" width="{width}" src="" />\n'
+                f'  <label id="{latency_label_id}">Latency (ms):  None</label>\n'
                 f'</div>\n'
-                f'<script>\n'
-                f'{image_element} = $("#{element_id}")[0];\n'
-                f'{pause_element_javascript}\n'
+                f'<script type="module">\n'
+                f'import {{rest_host, rest_port}} from "./globals.js";\n'
+                f'{pause_import_javascript}'
+                f'import {{init_latency, set_call_time, update_latency}} from "./utils.js";\n'
+                f'const {latency_label_var} = $("#{latency_label_id}")[0];\n'
+                f'init_latency("{latency_label_id}", 0.99);\n'
+                f'const {image_element} = $("#{element_id}")[0];\n'
+                f'{pause_element_javascript}'
                 f'async function {capture_function_name}() {{\n'
-                f'{pause_while_javascript}'
+                f'{pause_await_javascript}'
+                f'  set_call_time("{latency_label_id}");\n'
                 f'  $.ajax({{\n'
-                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{function_name}",\n'
+                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{function_name}",\n'
                 f'    type: "GET",\n'
                 f'    success: async function (return_value) {{\n'
                 f'      {image_element}.src = "data:image/jpg;base64," + return_value;\n'
+                f'      {latency_label_var}.innerHTML = "Latency (ms):  " + update_latency("{latency_label_id}").toFixed(0);\n'
                 f'{refresh_interval_javascript}'
                 f'      await {capture_function_name}();\n'
                 f'    }},\n'
@@ -611,8 +647,6 @@ class RpyFlask(Flask):
     @staticmethod
     def get_button(
             component_id: str,
-            rest_host: str,
-            rest_port: int,
             pressed_function: Optional[Callable[[], Any]],
             pressed_query: Optional[str],
             released_function: Optional[Callable[[], Any]],
@@ -623,8 +657,6 @@ class RpyFlask(Flask):
         Get button.
 
         :param component_id: Component id.
-        :param rest_host: Host.
-        :param rest_port: Port.
         :param pressed_function: Function to call when the button is pressed.
         :param pressed_query: Query to submit with pressed_function call, or None for no query.
         :param released_function: Function to call when the button is released.
@@ -650,7 +682,7 @@ class RpyFlask(Flask):
             pressed_event = (
                 f'{element_id}.on("mousedown touchstart", function () {{\n'
                 f'  $.ajax({{\n'
-                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{pressed_function_name}{pressed_query}",\n'
+                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{pressed_function_name}{pressed_query}",\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'}});\n'
@@ -668,7 +700,7 @@ class RpyFlask(Flask):
             released_event = (
                 f'{element_id}.on("mouseup touchend", function () {{\n'
                 f'  $.ajax({{\n'
-                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{released_function_name}{released_query}",\n'
+                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{released_function_name}{released_query}",\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'}});\n'
@@ -678,8 +710,9 @@ class RpyFlask(Flask):
             element_id,
             (
                 f'<button type="button" class="btn btn-primary" id="{element_id}">{text}</button>\n'
-                f'<script>\n'
-                f'{element_id} = $("#{element_id}");\n'
+                f'<script type="module">\n'
+                f'import {{rest_host, rest_port}} from "./globals.js";\n'
+                f'const {element_id} = $("#{element_id}");\n'
                 f'{pressed_event}'
                 f'{released_event}'
                 f'</script>'
@@ -689,8 +722,6 @@ class RpyFlask(Flask):
     @staticmethod
     def get_repeater(
             component_id: str,
-            rest_host: str,
-            rest_port: int,
             function: Callable[[], Any],
             refresh_interval: timedelta
     ) -> Tuple[str, str]:
@@ -698,8 +729,6 @@ class RpyFlask(Flask):
         Get a script that periodically calls a function.
 
         :param component_id: Component id.
-        :param rest_host: Host.
-        :param rest_port: Port.
         :param function: Function to call to obtain new value.
         :param refresh_interval: How long to wait between refresh calls.
         :return: 2-tuple of (1) element id and (2) UI element.
@@ -712,9 +741,10 @@ class RpyFlask(Flask):
         return (
             element_id,
             (
+                f'import {{rest_host, rest_port}} from "./globals.js";\n'
                 f'async function {js_function_name}() {{\n'
                 f'  $.ajax({{\n'
-                f'    url: "http://{rest_host}:{rest_port}/call/{component_id}/{function_name}",\n'
+                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{function_name}",\n'
                 f'    type: "GET",\n'
                 f'    success: async function (_) {{\n'
                 f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'

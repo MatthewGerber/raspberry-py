@@ -1,21 +1,24 @@
 <div>
-  <label id="ultrasonic_range_finder-1-measure_distance_once">measure_distance_once:  null</label>
+  <label id="ultrasonic_range_finder-1-measure_distance_once">measure_distance_once:  None</label>
 </div>
-<script>
-ultrasonic_range_finder_1_measure_distance_once = $("#ultrasonic_range_finder-1-measure_distance_once")[0];
-
+<script type="module">
+import {rest_host, rest_port} from "./globals.js";
+const ultrasonic_range_finder_1_measure_distance_once = $("#ultrasonic_range_finder-1-measure_distance_once")[0];
 async function read_value_ultrasonic_range_finder_1_measure_distance_once() {
   $.ajax({
     url: "http://" + rest_host + ":" + rest_port + "/call/ultrasonic_range_finder-1/measure_distance_once",
     type: "GET",
     success: async function (return_value) {
+      if (return_value === null) {
+        return_value = "None";
+      }
       ultrasonic_range_finder_1_measure_distance_once.innerHTML = "measure_distance_once:  " + return_value;
       await new Promise(r => setTimeout(r, 1000.0));
       await read_value_ultrasonic_range_finder_1_measure_distance_once();
     },
     error: async function(xhr, error){
       console.log(error);
-      ultrasonic_range_finder_1_measure_distance_once.innerHTML = "measure_distance_once:  null";
+      ultrasonic_range_finder_1_measure_distance_once.innerHTML = "measure_distance_once:  None";
       await new Promise(r => setTimeout(r, 1000.0));
       await read_value_ultrasonic_range_finder_1_measure_distance_once();
     }

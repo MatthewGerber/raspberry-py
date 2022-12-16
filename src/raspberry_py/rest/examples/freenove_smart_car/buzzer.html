@@ -1,6 +1,6 @@
 <button type="button" class="btn btn-primary" id="buzzer">Horn</button>
 <script type="module">
-import {rest_host, rest_port} from './globals.js';
+import {rest_host, rest_port} from "./globals.js";
 const buzzer = $("#buzzer");
 buzzer.on("mousedown touchstart", function () {
   $.ajax({

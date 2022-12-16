@@ -2,9 +2,8 @@
   <label id="range_finder-measure_distance_once">Range (cm):  None</label>
 </div>
 <script type="module">
-import {rest_host, rest_port} from './globals.js';
-import {init_latency, set_call_time, update_latency} from '../../utils.js';
-import {is_checked} from '../../utils.js';
+import {rest_host, rest_port} from "./globals.js";
+import {is_checked} from "./utils.js";
 const range_finder_measure_distance_once = $("#range_finder-measure_distance_once")[0];
 const car_1_start_stop = $("#car-1-start-stop");
 async function read_value_range_finder_measure_distance_once() {
