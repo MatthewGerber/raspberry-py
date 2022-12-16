@@ -33,7 +33,6 @@ class Car(Component):
 
     TODO:
       * Potentiometer input for light tracking gain
-      * Latency display
       * Battery (max 83.52941176470588)
       * Connectivity via LTE:  Reverse tunneling
       * Image overlay:  Guide lines
