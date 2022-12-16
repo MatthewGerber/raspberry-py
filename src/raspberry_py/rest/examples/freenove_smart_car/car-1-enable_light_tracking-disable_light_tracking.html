@@ -2,8 +2,9 @@
   <label class="form-check-label" for="car-1-enable_light_tracking-disable_light_tracking">Light Tracking</label>
   <input class="form-check-input" type="checkbox" role="switch" id="car-1-enable_light_tracking-disable_light_tracking"/>
 </div>
-<script>
-car_1_enable_light_tracking_disable_light_tracking = $("#car-1-enable_light_tracking-disable_light_tracking");
+<script type="module">
+import {rest_host, rest_port} from './globals.js';
+const car_1_enable_light_tracking_disable_light_tracking = $("#car-1-enable_light_tracking-disable_light_tracking");
 car_1_enable_light_tracking_disable_light_tracking.on("change", function () {
   $.ajax({
     url: car_1_enable_light_tracking_disable_light_tracking.is(":checked") ? "http://" + rest_host + ":" + rest_port + "/call/car-1/enable_light_tracking" : "http://" + rest_host + ":" + rest_port + "/call/car-1/disable_light_tracking",

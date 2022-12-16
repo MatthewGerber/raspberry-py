@@ -2,9 +2,10 @@
   <label for="camera-tilt-set_degrees" class="form-label">Tilt</label>
   <input type="range" class="form-range" min="85" max="180" step="3" value="90" id="camera-tilt-set_degrees" />
 </div>
-<script>
-camera_tilt_set_degrees_element = $("#camera-tilt-set_degrees");
-camera_tilt_set_degrees_range = camera_tilt_set_degrees_element[0];
+<script type="module">
+import {rest_host, rest_port} from './globals.js';
+const camera_tilt_set_degrees_element = $("#camera-tilt-set_degrees");
+const camera_tilt_set_degrees_range = camera_tilt_set_degrees_element[0];
 function camera_tilt_set_degrees (degrees, set_range) {
   if (degrees < 85 || degrees > 180) {
     return;

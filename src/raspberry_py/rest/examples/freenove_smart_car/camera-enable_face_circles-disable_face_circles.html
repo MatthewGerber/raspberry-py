@@ -2,8 +2,9 @@
   <label class="form-check-label" for="camera-enable_face_circles-disable_face_circles">Face Circles</label>
   <input class="form-check-input" type="checkbox" role="switch" id="camera-enable_face_circles-disable_face_circles" checked />
 </div>
-<script>
-camera_enable_face_circles_disable_face_circles = $("#camera-enable_face_circles-disable_face_circles");
+<script type="module">
+import {rest_host, rest_port} from './globals.js';
+const camera_enable_face_circles_disable_face_circles = $("#camera-enable_face_circles-disable_face_circles");
 camera_enable_face_circles_disable_face_circles.on("change", function () {
   $.ajax({
     url: camera_enable_face_circles_disable_face_circles.is(":checked") ? "http://" + rest_host + ":" + rest_port + "/call/camera/enable_face_circles" : "http://" + rest_host + ":" + rest_port + "/call/camera/disable_face_circles",

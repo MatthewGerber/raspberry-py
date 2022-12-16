@@ -2,9 +2,10 @@
   <label for="car-1-set_speed" class="form-label"></label>
   <input type="range" orient="vertical" class="form-range" min="-100" max="100" step="1" value="0" id="car-1-set_speed" />
 </div>
-<script>
-car_1_set_speed_element = $("#car-1-set_speed");
-car_1_set_speed_range = car_1_set_speed_element[0];
+<script type="module">
+import {rest_host, rest_port} from './globals.js';
+const car_1_set_speed_element = $("#car-1-set_speed");
+const car_1_set_speed_range = car_1_set_speed_element[0];
 function car_1_set_speed (speed, set_range) {
   if (speed < -100 || speed > 100) {
     return;

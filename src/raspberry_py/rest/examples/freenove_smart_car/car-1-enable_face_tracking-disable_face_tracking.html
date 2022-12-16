@@ -2,8 +2,9 @@
   <label class="form-check-label" for="car-1-enable_face_tracking-disable_face_tracking">Face Tracking</label>
   <input class="form-check-input" type="checkbox" role="switch" id="car-1-enable_face_tracking-disable_face_tracking" checked />
 </div>
-<script>
-car_1_enable_face_tracking_disable_face_tracking = $("#car-1-enable_face_tracking-disable_face_tracking");
+<script type="module">
+import {rest_host, rest_port} from './globals.js';
+const car_1_enable_face_tracking_disable_face_tracking = $("#car-1-enable_face_tracking-disable_face_tracking");
 car_1_enable_face_tracking_disable_face_tracking.on("change", function () {
   $.ajax({
     url: car_1_enable_face_tracking_disable_face_tracking.is(":checked") ? "http://" + rest_host + ":" + rest_port + "/call/car-1/enable_face_tracking" : "http://" + rest_host + ":" + rest_port + "/call/car-1/disable_face_tracking",

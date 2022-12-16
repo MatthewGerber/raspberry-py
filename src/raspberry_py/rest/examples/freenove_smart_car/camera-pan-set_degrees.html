@@ -2,9 +2,10 @@
   <label for="camera-pan-set_degrees" class="form-label">Pan</label>
   <input type="range" class="form-range" min="0" max="180" step="3" value="90" id="camera-pan-set_degrees" />
 </div>
-<script>
-camera_pan_set_degrees_element = $("#camera-pan-set_degrees");
-camera_pan_set_degrees_range = camera_pan_set_degrees_element[0];
+<script type="module">
+import {rest_host, rest_port} from './globals.js';
+const camera_pan_set_degrees_element = $("#camera-pan-set_degrees");
+const camera_pan_set_degrees_range = camera_pan_set_degrees_element[0];
 function camera_pan_set_degrees (degrees, set_range) {
   if (degrees < 0 || degrees > 180) {
     return;

@@ -1,9 +1,11 @@
 <div>
   <label id="car-1-get_battery_percent">Battery (%):  None</label>
 </div>
-<script>
-car_1_get_battery_percent = $("#car-1-get_battery_percent")[0];
-car_1_start_stop = $("#car-1-start-stop");
+<script type="module">
+import {rest_host, rest_port} from './globals.js';
+import {is_checked} from '../../utils.js';
+const car_1_get_battery_percent = $("#car-1-get_battery_percent")[0];
+const car_1_start_stop = $("#car-1-start-stop");
 async function read_value_car_1_get_battery_percent() {
   await is_checked(car_1_start_stop);
   $.ajax({
