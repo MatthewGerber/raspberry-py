@@ -27,9 +27,15 @@ window.addEventListener("keydown", (event) => {
   switch (event.key) {
     case "s":
       new_degrees = current_degrees - 3;
+      if (event.shiftKey) {
+        new_degrees = -90;
+      }
       break;
     case "f":
       new_degrees = current_degrees + 3;
+      if (event.shiftKey) {
+        new_degrees = 90;
+      }
       break;
     case "r":
       new_degrees = 90;

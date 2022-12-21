@@ -151,12 +151,12 @@ export async function is_checked(element) {
         elif isinstance(component, DcMotor):
             elements = [
                 RpyFlask.get_switch(component.id, component.start, component.stop, None, component.state.on),
-                RpyFlask.get_range(component.id, component.min_speed, component.max_speed, 1, component.get_speed(), False, False, [], [], [], False, component.set_speed, None)
+                RpyFlask.get_range(component.id, component.min_speed, component.max_speed, 1, component.get_speed(), False, False, [], [], [], False, component.set_speed, None, False)
             ]
         elif isinstance(component, Servo):
             elements = [
                 RpyFlask.get_switch(component.id, component.start, component.stop, None, component.state.on),
-                RpyFlask.get_range(component.id, int(component.min_degree), int(component.max_degree), 1, int(component.get_degrees()), False, False, [], [], [], False, component.set_degrees, None)
+                RpyFlask.get_range(component.id, int(component.min_degree), int(component.max_degree), 1, int(component.get_degrees()), False, False, [], [], [], False, component.set_degrees, None, False)
             ]
         elif isinstance(component, Stepper):
             elements = [
@@ -189,12 +189,12 @@ export async function is_checked(element) {
 
             elements = [
                 (camera_id, camera_element),
-                RpyFlask.get_range(component.camera_pan_servo.id, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 3, int(component.camera_pan_servo.get_degrees()), False, False, ['s'], ['f'], ['r'], False, component.camera_pan_servo.set_degrees, 'Pan'),
-                RpyFlask.get_range(component.camera_tilt_servo.id, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 3, int(component.camera_tilt_servo.get_degrees()), False, False, ['d'], ['e'], ['r'], False, component.camera_tilt_servo.set_degrees, 'Tilt'),
+                RpyFlask.get_range(component.camera_pan_servo.id, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 3, int(component.camera_pan_servo.get_degrees()), False, False, ['s'], ['f'], ['r'], False, component.camera_pan_servo.set_degrees, 'Pan', True),
+                RpyFlask.get_range(component.camera_tilt_servo.id, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 3, int(component.camera_tilt_servo.get_degrees()), False, False, ['d'], ['e'], ['r'], False, component.camera_tilt_servo.set_degrees, 'Tilt', True),
                 RpyFlask.get_range_html_attribute(camera_id, 'width', 100, 800, 10, component.camera.width, 'Display Size '),
-                RpyFlask.get_range(component.camera.id, 1, 5, 1, 1, False, False, [], [], [], False, component.camera.multiply_resolution, 'Display Resolution'),
-                RpyFlask.get_range(component.id, component.min_speed, component.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, component.set_speed, ''),
-                RpyFlask.get_range(component.id, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, component.set_differential_speed, ''),
+                RpyFlask.get_range(component.camera.id, 1, 5, 1, 1, False, False, [], [], [], False, component.camera.multiply_resolution, 'Display Resolution', False),
+                RpyFlask.get_range(component.id, component.min_speed, component.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, component.set_speed, '', False),
+                RpyFlask.get_range(component.id, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, component.set_differential_speed, '', False),
                 RpyFlask.get_label(component.range_finder.id, component.range_finder.measure_distance_once, timedelta(seconds=1), 'Range (cm)', power_id, 1),
                 RpyFlask.get_button(component.buzzer.id, component.buzzer.buzz, None, component.buzzer.stop, None, 'Horn'),
                 (power_id, power_element),
@@ -277,7 +277,8 @@ export async function is_checked(element) {
             reset_to_initial_value_keys: List[str],
             vertical: bool,
             on_input_function: Callable[[int], None],
-            text: Optional[str]
+            text: Optional[str],
+            shift_sets_extreme: bool
     ) -> Tuple[str, str]:
         """
         Get range UI element.
@@ -298,6 +299,8 @@ export async function is_checked(element) {
         :param vertical: Whether the range should be displayed vertically.
         :param on_input_function: Function to call when range value changes.
         :param text: Readable text to display.
+        :param shift_sets_extreme: Whether holding shift while pressing an increment/decrement key sets the servo to its
+        extreme value.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
@@ -348,10 +351,19 @@ export async function is_checked(element) {
                     f'      }}\n'
                 )
 
+            decrement_shift = ''
+            if shift_sets_extreme:
+                decrement_shift = (
+                    f'      if (event.shiftKey) {{\n'
+                    f'        new_degrees = {min_value};\n'
+                    f'      }}\n'
+                )
+
             decrement_case += (
                 f'\n'
                 f'{decrement_zero_range}'
                 f'      {js_new_value} = {js_current_value} - {step};\n'
+                f'{decrement_shift}'
                 f'      break;\n'
             )
 
@@ -366,10 +378,19 @@ export async function is_checked(element) {
                     f'      }}\n'
                 )
 
+            increment_shift = ''
+            if shift_sets_extreme:
+                increment_shift = (
+                    f'      if (event.shiftKey) {{\n'
+                    f'        new_degrees = {max_value};\n'
+                    f'      }}\n'
+                )
+
             increment_case += (
                 f'\n'
                 f'{increment_zero_range}'
                 f'      {js_new_value} = {js_current_value} + {step};\n'
+                f'{increment_shift}'
                 f'      break;\n'
             )
 
