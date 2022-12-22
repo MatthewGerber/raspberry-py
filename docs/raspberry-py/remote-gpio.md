@@ -68,7 +68,7 @@ Once the Apache HTTP server is configured, it's time to generate HTML/JavaScript
 shown above. Consider the following command, which is listed in the top black arrow in the above figure:
 ```shell
 cd /path/to/raspberry-py/src/raspberry_py/rest/examples
-write_component_files --app servo.servo --rest-host 10.0.0.59 --rest-port 5000 --dir-path servo/components
+write_component_files --app servo.servo --rest-host 10.0.0.59 --rest-port 5000 --dir-path servo
 ```
 The arguments are as follows:
 * `--app`:  Where to look for the RpyFlask application. The command scans `servo.servo` for an `app` variable, which is 
@@ -81,21 +81,24 @@ already exist.
 
 The command generates HTML/JavaScript controls for each of the circuit components in the RpyFlask application. A single 
 circuit component may produce multiple such files, and in the case of our servo example there are
-[two](https://github.com/MatthewGerber/raspberry-py/tree/main/src/raspberry_py/rest/examples/servo/components):
+[two](https://github.com/MatthewGerber/raspberry-py/tree/main/src/raspberry_py/rest/examples/servo):
 * `servo-1-start-stop.html`:  An on/off toggle for starting and stopping the servo.
 * `servo-1-set_degrees.html`:  A slider for setting the servo's angular position.
 
-Consider the first of these in detail:
+The command also generates the supporting files `globals.js` (global variables like the REST host and port to contact)
+and `utils.js` (utility functions) that are used by the JavaScript controls. Consider `servo-1-start-stop.html` in  full
+detail:
 ```html
 <div class="form-check form-switch">
   <label class="form-check-label" for="servo-1-start-stop">servo-1 start/stop</label>
   <input class="form-check-input" type="checkbox" role="switch" id="servo-1-start-stop"/>
 </div>
-<script>
-servo_1_start_stop = $("#servo-1-start-stop");
+<script type="module">
+import {rest_host, rest_port} from "./globals.js";
+const servo_1_start_stop = $("#servo-1-start-stop");
 servo_1_start_stop.on("change", function () {
   $.ajax({
-    url: servo_1_start_stop.is(":checked") ? "http://10.0.0.59:5000/call/servo-1/start" : "http://10.0.0.59:5000/call/servo-1/stop",
+    url: servo_1_start_stop.is(":checked") ? "http://" + rest_host + ":" + rest_port + "/call/servo-1/start" : "http://" + rest_host + ":" + rest_port + "/call/servo-1/stop",
     type: "GET"
   });
 });
@@ -103,8 +106,8 @@ servo_1_start_stop.on("change", function () {
 ```
 The general pattern for the HTML/JavaScript files is to specify an HTML control followed by JavaScript that connects the 
 control with the circuit component running in the RpyFlask application. Here we have a labeled toggle switch, and the
-JavaScript calls either the `servo-1/start` or `servo-1/stop` REST endpoints depending on the status of the switch. The 
-HTML/JavaScript files can then be embedded within a full HTML page such as 
+JavaScript calls either the `servo-1/start` or `servo-1/stop` REST endpoints depending on the status of the switch. 
+These HTML/JavaScript files can then be embedded within a full HTML page such as 
 [this](https://github.com/MatthewGerber/raspberry-py/blob/main/src/raspberry_py/rest/examples/servo/servo.html), which 
 is rendered in a browser as shown below:
 
