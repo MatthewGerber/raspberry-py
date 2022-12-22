@@ -13,7 +13,7 @@ async function read_value_car_1_get_battery_percent() {
     type: "GET",
     success: async function (return_value) {
       if (return_value !== null) {
-        return_value = return_value.toFixed(1);
+        return_value = return_value.toFixed(5);
       }
       if (return_value === null) {
         return_value = "None";
