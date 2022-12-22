@@ -351,19 +351,18 @@ export async function is_checked(element) {
                     f'      }}\n'
                 )
 
-            decrement_shift = ''
-            if shift_sets_extreme:
-                decrement_shift = (
-                    f'      if (event.shiftKey) {{\n'
-                    f'        new_degrees = {min_value};\n'
-                    f'      }}\n'
-                )
-
             decrement_case += (
                 f'\n'
                 f'{decrement_zero_range}'
                 f'      {js_new_value} = {js_current_value} - {step};\n'
-                f'{decrement_shift}'
+                f'      break;\n'
+            )
+
+        decrement_shift_case = "\n".join([f'    case \"{k.upper()}\":' for k in decrement_keys if shift_sets_extreme])
+        if decrement_shift_case != '':
+            decrement_shift_case += (
+                f'\n'
+                f'      new_degrees = {min_value};\n'
                 f'      break;\n'
             )
 
@@ -378,19 +377,18 @@ export async function is_checked(element) {
                     f'      }}\n'
                 )
 
-            increment_shift = ''
-            if shift_sets_extreme:
-                increment_shift = (
-                    f'      if (event.shiftKey) {{\n'
-                    f'        new_degrees = {max_value};\n'
-                    f'      }}\n'
-                )
-
             increment_case += (
                 f'\n'
                 f'{increment_zero_range}'
                 f'      {js_new_value} = {js_current_value} + {step};\n'
-                f'{increment_shift}'
+                f'      break;\n'
+            )
+
+        increment_shift_case = "\n".join([f'    case \"{k.upper()}\":' for k in increment_keys if shift_sets_extreme])
+        if increment_shift_case != '':
+            increment_shift_case += (
+                f'\n'
+                f'      new_degrees = {max_value};\n'
                 f'      break;\n'
             )
 
@@ -410,7 +408,9 @@ export async function is_checked(element) {
                 f'  let {js_new_value} = {js_current_value};\n'
                 f'  switch (event.key) {{\n'
                 f'{decrement_case}'
+                f'{decrement_shift_case}'
                 f'{increment_case}'
+                f'{increment_shift_case}'
                 f'{reset_case}'
                 f'  }}\n'
                 f'  if ({js_new_value} !== {js_current_value}) {{\n'
