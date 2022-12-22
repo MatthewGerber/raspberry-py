@@ -28,10 +28,31 @@ window.addEventListener("keydown", (event) => {
     case "d":
       new_degrees = current_degrees - 3;
       break;
+    case "D":
+      new_degrees = 85;
+      break;
     case "e":
       new_degrees = current_degrees + 3;
       break;
+    case "E":
+      new_degrees = 180;
+      break;
     case "r":
+      new_degrees = 90;
+      break;
+  }
+  if (new_degrees !== current_degrees) {
+    camera_tilt_set_degrees(new_degrees, true);
+  }
+  event.preventDefault();
+}, true);
+
+window.addEventListener("keyup", (event) => {
+  let current_degrees = parseInt(camera_tilt_set_degrees_range.value);
+  let new_degrees = current_degrees;
+  switch (event.key) {
+    case "D":
+    case "E":
       new_degrees = 90;
       break;
   }

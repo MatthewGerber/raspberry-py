@@ -32,6 +32,8 @@ class Car(Component):
     The Freenove 4WD Smart Car.
 
     TODO:
+      * Update docs
+      * WiFi connection/display via LCD and keypad
       * Potentiometer input for light tracking gain
       * Battery (max 83.52941176470588)
       * Connectivity via LTE:  Reverse tunneling
