@@ -332,9 +332,9 @@ export async function is_checked(element) {
         js_current_value = f'current_{value_param}'
         js_new_value = f'new_{value_param}'
 
-        release_event = ''
+        mouse_touch_release_event = ''
         if reset_to_initial_value_upon_release:
-            release_event = (
+            mouse_touch_release_event = (
                 f'{element_var}.on("mouseup touchend", function () {{\n'
                 f'  {js_set_value_function_name}({initial_value}, true);\n'
                 f'}});\n'
@@ -400,9 +400,9 @@ export async function is_checked(element) {
                 f'      break;\n'
             )
 
-        window_event_listener = ''
+        window_key_down_event_listener = ''
         if len(decrement_case) + len(increment_case) + len(reset_case) > 0:
-            window_event_listener = (
+            window_key_down_event_listener = (
                 f'window.addEventListener("keydown", (event) => {{\n'
                 f'  let {js_current_value} = parseInt({range_var}.value);\n'
                 f'  let {js_new_value} = {js_current_value};\n'
@@ -412,6 +412,25 @@ export async function is_checked(element) {
                 f'{increment_case}'
                 f'{increment_shift_case}'
                 f'{reset_case}'
+                f'  }}\n'
+                f'  if ({js_new_value} !== {js_current_value}) {{\n'
+                f'    {js_set_value_function_name}({js_new_value}, true);\n'
+                f'  }}\n'
+                f'  event.preventDefault();\n'
+                f'}}, true);\n'
+            )
+
+        window_key_up_event_listener = ''
+        if shift_sets_extreme and len(increment_keys + decrement_keys) > 0:
+            key_cases = "\n".join([f'    case \"{k.upper()}\":' for k in increment_keys + decrement_keys])
+            window_key_up_event_listener = (
+                f'window.addEventListener("keyup", (event) => {{\n'
+                f'  let {js_current_value} = parseInt({range_var}.value);\n'
+                f'  let {js_new_value} = {js_current_value};\n'
+                f'  switch (event.key) {{\n'
+                f'{key_cases}\n'
+                f'      {js_new_value} = {initial_value};\n'
+                f'      break;\n'
                 f'  }}\n'
                 f'  if ({js_new_value} !== {js_current_value}) {{\n'
                 f'    {js_set_value_function_name}({js_new_value}, true);\n'
@@ -446,8 +465,9 @@ export async function is_checked(element) {
                 f'{element_var}.on("input", function () {{\n'
                 f'  {js_set_value_function_name}({range_var}.value, false);\n'
                 f'}});\n'
-                f'{release_event}'
-                f'{window_event_listener}'
+                f'{mouse_touch_release_event}'
+                f'{window_key_down_event_listener}'
+                f'{window_key_up_event_listener}'
                 f'</script>'
             )
         )

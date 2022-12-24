@@ -82,6 +82,15 @@ simpler than the previous approach.
 * [Set /dev/mem permissions on boot](https://forums.developer.nvidia.com/t/dev-mem-changes-permissions-back-to-defaults-on-system-restart/65355/3)
 
 # Advanced:  LTE Smart Car
+
+## Cellular Antenna
+* https://www.thinkpenguin.com/gnu-linux/usb-4g-lte-advanced-modem-gnulinux-tpe-usb4glte
+* https://www.amazon.com/dp/B07XXBQPZL/
+
+## Cellular Connections
+See [here](https://ubuntu.com/core/docs/networkmanager/configure-cellular-connections).
+
+## SSH Reverse-Tunneling 
 The above setup works well when the car (Raspberry Pi) has an easily accessible IP address. This is usually the case 
 when the car is connected to a local Wi-Fi network. However, if the car is connected to an LTE network, then its IP 
 address might be inaccessible. The car's IP address might also be inaccessible if the car is behind a NAT system. If the
