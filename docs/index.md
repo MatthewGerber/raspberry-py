@@ -67,3 +67,14 @@ Enabling and testing the Raspberry Pi video camera:
 3. Give permission:  `sudo usermod -a -G video ubuntu`
 4. Restart:  `sudo shutdown -r now`
 5. Test:  `raspistill -o test.jpg`
+
+# Using `mjpg_streamer`
+```shell
+sudo apt install subversion libjpeg-turbo8-dev imagemagick ffmpeg libv4l-dev cmake libgphoto2-dev libopencv-dev libsdl-dev libprotobuf-c-dev
+git clone https://github.com/jacksonliam/mjpg-streamer.git
+cd mjpg-streamer/mjpg-streamer-experimental/
+export LD_LIBRARY_PATH=.
+make
+./mjpg_streamer -i "input_uvc.so -fps 15" -o "output_http.so -p 8081 -w www"
+```
+Then navigate to `http://rpi:8081/` for an overview or `http://rpi:8081/?action=stream` for a dedicated stream. 

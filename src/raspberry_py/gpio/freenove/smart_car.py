@@ -32,6 +32,7 @@ class Car(Component):
     The Freenove 4WD Smart Car.
 
     TODO:
+      * Switch to mjpeg_streamer for video
       * WiFi connection/display via LCD and keypad
       * Potentiometer input for light tracking gain
       * Battery (max 83.52941176470588, min 72.54902)
