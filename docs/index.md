@@ -68,13 +68,65 @@ Enabling and testing the Raspberry Pi video camera:
 4. Restart:  `sudo shutdown -r now`
 5. Test:  `raspistill -o test.jpg`
 
-# Using `mjpg_streamer`
+# Using [mjpg_streamer](https://github.com/jacksonliam/mjpg-streamer)
+The `mjpg_streamer` utility is an efficient way to stream video from various input devices (e.g., Raspberry Pi camera 
+module or USB webcam) to various output devices (e.g., web browser). Install as follows:
+
 ```shell
-sudo apt install subversion libjpeg-turbo8-dev imagemagick ffmpeg libv4l-dev cmake libgphoto2-dev libopencv-dev libsdl-dev libprotobuf-c-dev
+sudo apt install subversion libjpeg-turbo8-dev imagemagick ffmpeg libv4l-dev cmake libgphoto2-dev libopencv-dev libsdl-dev libprotobuf-c-dev v4l-utils
 git clone https://github.com/jacksonliam/mjpg-streamer.git
 cd mjpg-streamer/mjpg-streamer-experimental/
 export LD_LIBRARY_PATH=.
 make
-./mjpg_streamer -i "input_uvc.so -fps 15" -o "output_http.so -p 8081 -w www"
 ```
-Then navigate to `http://rpi:8081/` for an overview or `http://rpi:8081/?action=stream` for a dedicated stream. 
+List connected video devices:
+```
+v4l2-ctl --list-devices
+
+mmal service 16.1 (platform:bcm2835-v4l2):
+	/dev/video2
+
+WEB CAM: WEB CAM (usb-0000:01:00.0-1.1):
+	/dev/video0
+	/dev/video1
+	/dev/media0
+```
+The first (connected to `/dev/video2`) is 
+[a Raspberry Pi camera module](https://www.raspberrypi.com/products/camera-module-v2/). The second (connected to 
+`/dev/video0`) is [a USB webcam](https://www.amazon.com/dp/B087M3BVP9).
+
+To stream the Raspberry Pi camera module:
+```
+./mjpg_streamer -i "input_uvc.so -d /dev/video2 -fps 15" -o "output_http.so -p 8081 -w ./www"
+```
+Alternatively, to stream the USB webcam:
+```
+./mjpg_streamer -i "input_uvc.so -d /dev/video0 -fps 15" -o "./output_http.so -p 8081 -w ./www"
+```
+In both of the above:
+* `-d /dev/video*` selects the video input device.
+* `-f 15` runs the camera at 15 frames per second.
+* `-p 8081` serves the MJPG stream on port 8081 of all IP interfaces.
+* `-w ./www` points the streamer at the `www` directory.
+
+Once the streamer is up and running, navigate to `http://xxxx:8081/` for an overview or 
+`http://xxxx:8081/?action=stream` for a dedicated stream (where `xxxx` is the IP address of the Raspberry Pi). 
+
+It can happen that a process is holding a `/dev/video*` device, which prevents your camera from connecting. List video
+devices:
+```
+sudo fuser /dev/video*
+/dev/video0:          1418m
+```
+Dig a bit more:
+```
+ps aux | grep 1418
+root        1418  0.0  0.8 304784 65344 ?        Sl   20:36   0:02 ...
+```
+Then kill the process if you wish:
+```
+sudo kill 1418
+```
+
+References:
+* https://community.octoprint.org/t/setting-up-octoprint-on-a-raspberry-pi-running-raspberry-pi-os-debian/2337#optional-webcam-9
