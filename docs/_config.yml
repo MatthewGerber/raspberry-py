@@ -9,4 +9,4 @@ plugins:
   - jekyll-remote-theme
 
 title: "raspberry-py"
-tagline: "A Python/REST interface for GPIO circuits running on the Raspberry Pi"
+description: "A Python/REST interface for GPIO circuits running on the Raspberry Pi"
