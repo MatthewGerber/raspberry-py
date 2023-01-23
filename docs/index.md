@@ -1,7 +1,3 @@
----
-title: A Python/REST interface for GPIO circuits running on the Raspberry Pi
----
-
 # raspberry-py
 This package provides two related capabilities. [First](raspberry-py/python-gpio.md), it provides a high-level, 
 event-driven Python interface for GPIO circuits running on the Raspberry Pi. Sensors, motors, LEDs, switches, and many 
