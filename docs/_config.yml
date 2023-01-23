@@ -7,5 +7,5 @@ url: "https://matthewgerber.github.io/raspberry-py"
 plugins:
   - jekyll-sitemap
 
-title : raspberry-py
-tagline: A Python/REST interface for GPIO circuits running on the Raspberry Pi
+title: "raspberry-py"
+tagline: "A Python/REST interface for GPIO circuits running on the Raspberry Pi"
