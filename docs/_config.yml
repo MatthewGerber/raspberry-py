@@ -6,7 +6,6 @@ include:
 url: "https://matthewgerber.github.io/raspberry-py"
 plugins:
   - jekyll-sitemap
-  - jekyll-github-metadata
 
 title: "raspberry-py"
 tagline: "A Python/REST interface for GPIO circuits running on the Raspberry Pi"
