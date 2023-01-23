@@ -1,4 +1,4 @@
-theme: leap-day
+remote_theme: pages-themes/leap-day@v0.2.0
 
 include:
  - "**/*.md"
@@ -6,6 +6,7 @@ include:
 url: "https://matthewgerber.github.io/raspberry-py"
 plugins:
   - jekyll-sitemap
+  - jekyll-remote-theme
 
 title: "raspberry-py"
 tagline: "A Python/REST interface for GPIO circuits running on the Raspberry Pi"
