@@ -1,7 +1,5 @@
 [Home](../index.md) > [Freenove 4WD Smart Car](https://www.amazon.com/Freenove-Raspberry-Tracking-Avoidance-Ultrasonic/dp/B07YD2LT9D)
 
-![smart-car](smart-car.png)
-
 # Overview
 
 # RpyFlask Application
