@@ -3,24 +3,24 @@ Home
 {:toc}
 
 # Introduction
-This package provides two related capabilities. [First](raspberry-py/python-gpio.md), it provides a high-level, 
+This package provides two related capabilities. [First](python-gpio.md), it provides a high-level, 
 event-driven Python interface for GPIO circuits running on the Raspberry Pi. Sensors, motors, LEDs, switches, and many 
 other components are covered.
 
 {% include youtubePlayer.html id="e6PrM2QVSA4" %}
 
-[Second](raspberry-py/remote-gpio.md), this package enables remote control of GPIO circuits via REST APIs 
+[Second](remote-gpio.md), this package enables remote control of GPIO circuits via REST APIs 
 invoked from HTML/JavaScript front-ends. Want to control your circuit remotely from your phone? Look no further. This 
 package auto-generates HTML/JavaScript for GPIO circuits based on 
 [Material Design for Bootstrap](https://mdbootstrap.com). These HTML/JavaScript elements can be embedded in full web 
-pages for remote control of the ciruit. The remote control screen for the 
+pages for remote control of the circuit. The remote control screen for the 
 [Freenove Smart Car](https://matthewgerber.github.io/raspberry-py/raspberry-py/smart-car.html) is shown below:
 
-![freenove-smart-car](raspberry-py/smart-car.png)
+![freenove-smart-car](smart-car.png)
 
 Follow the links above (or below) for details:
-1. [Python interface for GPIO circuits](raspberry-py/python-gpio.md)
-2. [Remote control of GPIO circuits via REST/HTML/JavaScript](raspberry-py/remote-gpio.md)
+1. [Python interface for GPIO circuits](python-gpio.md)
+2. [Remote control of GPIO circuits via REST/HTML/JavaScript](remote-gpio.md)
 
 # Installation
 The `raspberry-py` package can be consumed in two ways:
@@ -53,7 +53,7 @@ KERNEL=="gpio*", OWNER="root", GROUP="dialout"
 ```
 2. Reboot for the new permissions to take effect.
 
-Use of I2C with the Raspberry Pi (e.g., page 111 of [the tutorial](freenove-tutorial.pdf)) requires configuration 
+Use of I2C with the Raspberry Pi (e.g., page 111 of [the tutorial](../docs/freenove-tutorial.pdf)) requires configuration 
 with the `raspi-config` utility, which is installed by default in the Raspberry Pi OS but not in Ubuntu. 
 Install `raspi-config` for Ubuntu with the following commands:
 ```

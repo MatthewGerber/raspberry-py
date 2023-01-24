@@ -1,4 +1,4 @@
-[Home](../index.md) > Python Interface for GPIO Circuits
+[Home](index.md) > Python Interface for GPIO Circuits
 * Content
 {:toc}
 

@@ -1,3 +1,5 @@
+from typing import List
+
 from raspberry_py.gpio import Component
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
 from raspberry_py.gpio.motors import Servo, ServoDriverPCA9685PW
@@ -79,8 +81,6 @@ class RaspberryPyArm(Component):
         for servo in self.servos:
             servo.start()
 
-        print('arm started')
-
     def stop(
             self
     ):
@@ -90,8 +90,6 @@ class RaspberryPyArm(Component):
 
         for servo in self.servos:
             servo.stop()
-
-        print('arm stopped')
 
     def set_x(
             self,
@@ -184,6 +182,17 @@ class RaspberryPyArm(Component):
 
         super().set_state(state)
 
+    def get_components(
+            self
+    ) -> List[Component]:
+        """
+        Get a list of all GPIO circuit components in the arm.
+
+        :return: List of components.
+        """
+
+        return self.servos
+
     def __init__(
             self,
             pwm: PulseWaveModulatorPCA9685PW,
@@ -197,7 +206,7 @@ class RaspberryPyArm(Component):
 
         :param pwm: Pulse-wave modulator.
         :param x_servo_channel: Channel for x-axis servo.
-        :param z_servo_channel: Channel for z_axis servo.
+        :param z_servo_channel: Channel for z-axis servo.
         :param wrist_servo_channel: Channel for wrist servo.
         :param pinch_servo_channel: Channel for pinch servo.
         """
@@ -215,9 +224,9 @@ class RaspberryPyArm(Component):
                 pca9685pw=pwm,
                 servo_channel=self.x_servo_channel
             ),
-            degrees=0,
-            min_degree=-90,
-            max_degree=90
+            degrees=90,
+            min_degree=0,
+            max_degree=180
         )
         self.x_servo.id = 'arm-x'
 
@@ -227,8 +236,8 @@ class RaspberryPyArm(Component):
                 servo_channel=self.z_servo_channel
             ),
             degrees=0,
-            min_degree=-90,
-            max_degree=90
+            min_degree=-180,
+            max_degree=180
         )
         self.z_servo.id = 'arm-z'
 
@@ -238,8 +247,8 @@ class RaspberryPyArm(Component):
                 servo_channel=self.wrist_servo_channel
             ),
             degrees=0,
-            min_degree=-90,
-            max_degree=90
+            min_degree=-180,
+            max_degree=180
         )
         self.wrist_servo.id = 'arm-wrist'
 
@@ -249,7 +258,7 @@ class RaspberryPyArm(Component):
                 servo_channel=self.pinch_servo_channel
             ),
             degrees=0,
-            min_degree=-90,
+            min_degree=0,
             max_degree=90
         )
         self.pinch_servo.id = 'arm-pinch'

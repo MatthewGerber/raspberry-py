@@ -1,4 +1,4 @@
-[Home](../index.md) > Remote Control of GPIO Circuits via REST/HTML/JavaScript
+[Home](index.md) > Remote Control of GPIO Circuits via REST/HTML/JavaScript
 * Content
 {:toc}
 
@@ -53,7 +53,7 @@ This code specifies an RpyFlask application containing a servo. It is the basis 
 generation, which are explained below.
 
 # Apache HTTP Server
-This example uses Apache, which is simple to configure on Ubuntu for Raspberry Pi. See [here](../index.md) for Ubuntu 
+This example uses Apache, which is simple to configure on Ubuntu for Raspberry Pi. See [here](index.md) for Ubuntu 
 installation on Raspberry Pi and [here](https://ubuntu.com/tutorials/install-and-configure-apache#1-overview) for 
 Apache HTTP server installation. An example Apache site configuration file can be found [here](rpy-rest.conf), though 
 beware of security vulnerabilities like lack of HTTPS and potential exposure of files. Following initial Apache 

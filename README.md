@@ -19,6 +19,6 @@ from your phone? Look no further. This package auto-generates HTML/JavaScript fo
 pages for remote control of the ciruit. The remote control screen for the 
 [Freenove Smart Car](https://matthewgerber.github.io/raspberry-py/raspberry-py/smart-car.html) is shown below:
 
-![freenove-smart-car](docs/raspberry-py/smart-car.png)
+![freenove-smart-car](gh-pages/smart-car.png)
 
 Please see the [project website](https://matthewgerber.github.io/raspberry-py/) for more information.
