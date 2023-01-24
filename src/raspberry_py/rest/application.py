@@ -16,6 +16,7 @@ from raspberry_py.gpio import Component, setup
 from raspberry_py.gpio.freenove.smart_car import Car
 from raspberry_py.gpio.lights import LED
 from raspberry_py.gpio.motors import DcMotor, Servo, Stepper
+from raspberry_py.gpio.robotics import RaspberryPyArm
 from raspberry_py.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder, Camera
 from raspberry_py.gpio.sounds import ActiveBuzzer
 
@@ -149,13 +150,15 @@ export async function is_checked(element) {
                 RpyFlask.get_switch(component.id, component.turn_on, component.turn_off, None, component.is_on())
             ]
         elif isinstance(component, DcMotor):
+            curr_state: DcMotor.State = component.state
             elements = [
-                RpyFlask.get_switch(component.id, component.start, component.stop, None, component.state.on),
+                RpyFlask.get_switch(component.id, component.start, component.stop, None, curr_state.on),
                 RpyFlask.get_range(component.id, component.min_speed, component.max_speed, 1, component.get_speed(), False, False, [], [], [], False, component.set_speed, None, False)
             ]
         elif isinstance(component, Servo):
+            curr_state: Servo.State = component.state
             elements = [
-                RpyFlask.get_switch(component.id, component.start, component.stop, None, component.state.on),
+                RpyFlask.get_switch(component.id, component.start, component.stop, None, curr_state.on),
                 RpyFlask.get_range(component.id, int(component.min_degree), int(component.max_degree), 1, int(component.get_degrees()), False, False, [], [], [], False, component.set_degrees, None, False)
             ]
         elif isinstance(component, Stepper):
@@ -209,6 +212,13 @@ export async function is_checked(element) {
                 blackout_id, blackout_element = RpyFlask.get_repeater(component.id, component.connection_heartbeat, timedelta(seconds=component.connection_blackout_tolerance_seconds / 4.0))
                 elements.append(((blackout_id, 'js'), blackout_element))
 
+        elif isinstance(component, RaspberryPyArm):
+            elements = [
+                RpyFlask.get_range(component.x_servo.id, int(component.x_servo.min_degree), int(component.x_servo.max_degree), 3, int(component.x_servo.get_degrees()), False, False, [], [], [], False, component.x_servo.set_degrees, 'X', False),
+                RpyFlask.get_range(component.z_servo.id, int(component.z_servo.min_degree), int(component.z_servo.max_degree), 3, int(component.z_servo.get_degrees()), False, False, [], [], [], False, component.z_servo.set_degrees, 'Z', False),
+                RpyFlask.get_range(component.wrist_servo.id, int(component.wrist_servo.min_degree), int(component.wrist_servo.max_degree), 3, int(component.wrist_servo.get_degrees()), False, False, [], [], [], False, component.wrist_servo.set_degrees, 'Wrist', False),
+                RpyFlask.get_range(component.pinch_servo.id, int(component.pinch_servo.min_degree), int(component.pinch_servo.max_degree), 3, int(component.pinch_servo.get_degrees()), False, False, [], [], [], False, component.pinch_servo.set_degrees, 'Pinch', False)
+            ]
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
 

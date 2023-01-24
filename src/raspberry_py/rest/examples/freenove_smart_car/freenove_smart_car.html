@@ -60,6 +60,38 @@
         </div>
 
         <div class="accordion-item">
+          <h2 class="accordion-header" id="arm">
+            <button class="accordion-button" type="button" data-mdb-toggle="collapse" data-mdb-target="#collapse-arm" aria-expanded="false" aria-controls="collapse-arm" style="background-color: aliceblue;">
+              Arm
+            </button>
+          </h2>
+          <div id="collapse-arm" class="accordion-collapse collapse show" aria-labelledby="arm">
+            <div class="accordion-body" style="background-color: #fafafa;">
+              <div class="row">
+                <div class="col-md">
+                  <div id="div-arm-x-set_degrees"></div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md">
+                  <div id="div-arm-z-set_degrees"></div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md">
+                  <div id="div-arm-wrist-set_degrees"></div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md">
+                  <div id="div-arm-pinch-set_degrees"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
           <h2 class="accordion-header" id="camera">
             <button class="accordion-button" type="button" data-mdb-toggle="collapse" data-mdb-target="#collapse-camera" aria-expanded="false" aria-controls="collapse-camera" style="background-color: aliceblue;">
               Camera
@@ -140,5 +172,9 @@
     <script>$("#div-car-1-enable_light_tracking-disable_light_tracking").load("car-1-enable_light_tracking-disable_light_tracking.html");</script>
     <script type="module" src="./car-1-connection_heartbeat.js"></script>
     <script>$("#div-car-1-get_battery_percent").load("car-1-get_battery_percent.html");</script>
+    <script>$("#div-arm-x-set_degrees").load("arm-x-set_degrees.html");</script>
+    <script>$("#div-arm-z-set_degrees").load("arm-z-set_degrees.html");</script>
+    <script>$("#div-arm-wrist-set_degrees").load("arm-wrist-set_degrees.html");</script>
+    <script>$("#div-arm-pinch-set_degrees").load("arm-pinch-set_degrees.html");</script>
   </body>
 </html>

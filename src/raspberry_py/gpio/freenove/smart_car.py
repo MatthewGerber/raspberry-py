@@ -45,24 +45,47 @@ class Car(Component):
 
     class State(Component.State):
         """
-        Car state. Currently not used.
+        Car state.
         """
 
-        def __eq__(self, other: object) -> bool:
+        def __init__(
+                self,
+                on: bool
+        ):
+            """
+            Initialize the state.
+
+            :param on: Whether the car is on.
+            """
+
+            self.on = on
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
             """
             Check equality with another state.
+
+            :param other: Other state.
+            :return: True if equal and False otherwise.
             """
 
-            return False
+            if not isinstance(other, Car.State):
+                raise ValueError(f'Expected a {Car.State}')
 
-        def __str__(self) -> str:
+            return self.on == other.on
+
+        def __str__(
+                self
+        ) -> str:
             """
             Get string.
 
             :return: String.
             """
 
-            return ''
+            return f'on={self.on}'
 
     def set_wheel_speed(
             self,
@@ -194,6 +217,8 @@ class Car(Component):
                 else:
                     raise e
 
+            self.set_state(Car.State(on=True))
+
     def update_analog_to_digital_state(
             self
     ):
@@ -294,6 +319,8 @@ class Car(Component):
             if self.run_led_strip_thread is not None:
                 self.run_led_strip_thread.join()
                 self.run_led_strip_thread = None
+
+            self.set_state(Car.State(on=False))
 
     def get_components(
             self
@@ -463,7 +490,7 @@ class Car(Component):
         if reverse_wheels is None:
             reverse_wheels = []
 
-        super().__init__(Car.State())  # state is not used in the car like it is in other GPIO components
+        super().__init__(Car.State(on=False))
 
         self.min_speed = min_speed
         self.max_speed = max_speed
@@ -500,13 +527,13 @@ class Car(Component):
             }
         )
 
-        # wheels
+        # 4 wheel motors use PWM channels 0-7 (2 channels per motor)
         # noinspection PyTypeChecker
         self.wheels = [
             DcMotor(
                 driver=DcMotorDriverPCA9685PW(
                     pca9685pw=self.pwm,
-                    motor_channel_1=wheel.value * 2,  # 4 wheel motors use PWM channels 0-7 (2 channels per motor)
+                    motor_channel_1=wheel.value * 2,
                     motor_channel_2=wheel.value * 2 + 1,
                     reverse=wheel in reverse_wheels
                 ),

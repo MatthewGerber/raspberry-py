@@ -8,4 +8,4 @@
 cd /home/ubuntu/Repos/raspberry-py || exit
 . venv/bin/activate
 cd src/raspberry_py/rest/examples || exit
-flask --app freenove_smart_car.freenove_smart_car run --host 0.0.0.0
+flask --app freenove_smart_car.freenove_smart_car run --host 0.0.0.0 --port 5050

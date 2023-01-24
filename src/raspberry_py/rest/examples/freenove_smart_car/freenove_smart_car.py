@@ -1,4 +1,5 @@
 from raspberry_py.gpio.freenove.smart_car import Car, Wheel
+from raspberry_py.gpio.robotics import RaspberryPyArm
 from raspberry_py.rest.application import app
 
 car = Car(
@@ -11,5 +12,15 @@ car = Car(
     run_face_detection=False
 )
 car.id = 'car-1'
-
 app.add_component(car, True)
+
+arm = RaspberryPyArm(
+    pwm=car.pwm,
+    x_servo_channel=10,
+    z_servo_channel=11,
+    wrist_servo_channel=12,
+    pinch_servo_channel=13
+)
+arm.id = 'arm-1'
+app.add_component(arm, True)
+car.event(lambda s: arm.start() if s.on else arm.stop())

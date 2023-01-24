@@ -46,13 +46,12 @@ window.addEventListener("keydown", (event) => {
   }
   event.preventDefault();
 }, true);
-
 window.addEventListener("keyup", (event) => {
   let current_degrees = parseInt(camera_tilt_set_degrees_range.value);
   let new_degrees = current_degrees;
   switch (event.key) {
-    case "D":
     case "E":
+    case "D":
       new_degrees = 90;
       break;
   }
