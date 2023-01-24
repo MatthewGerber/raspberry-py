@@ -53,7 +53,7 @@ KERNEL=="gpio*", OWNER="root", GROUP="dialout"
 ```
 2. Reboot for the new permissions to take effect.
 
-Use of I2C with the Raspberry Pi (e.g., page 111 of [the tutorial](../docs/freenove-tutorial.pdf)) requires configuration 
+Use of I2C with the Raspberry Pi (e.g., page 111 of [the tutorial](../manuals/freenove-tutorial.pdf)) requires configuration 
 with the `raspi-config` utility, which is installed by default in the Raspberry Pi OS but not in Ubuntu. 
 Install `raspi-config` for Ubuntu with the following commands:
 ```
