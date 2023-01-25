@@ -561,10 +561,10 @@ class Car(Component):
                 pca9685pw=self.pwm,
                 servo_channel=8,
                 min_degree=0.0,
-                min_degree_pulse_width_ms=1.0,
+                min_degree_pulse_width_ms=0.5,
                 max_degree=180.0,
-                max_degree_pulse_width_ms=2.0,
-                reverse=False,
+                max_degree_pulse_width_ms=2.5,
+                reverse=True,
                 correction_degrees=camera_pan_servo_correction_degrees
             ),
             degrees=90.0,
@@ -578,10 +578,9 @@ class Car(Component):
                 pca9685pw=self.pwm,
                 servo_channel=9,
                 min_degree=0.0,
-                min_degree_pulse_width_ms=1.0,
+                min_degree_pulse_width_ms=0.5,
                 max_degree=180.0,
-                max_degree_pulse_width_ms=2.0,
-                reverse=True,  # the tilt servo is mounted in reverse, such that 180 points up.
+                max_degree_pulse_width_ms=2.5,
                 correction_degrees=camera_tilt_servo_correction_degrees
             ),
             degrees=90.0,

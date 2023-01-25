@@ -1,13 +1,13 @@
 <div class="range">
   <label for="arm-z-set_degrees" class="form-label">Z</label>
-  <input type="range" class="form-range" min="-180" max="180" step="3" value="0" id="arm-z-set_degrees" />
+  <input type="range" class="form-range" min="0" max="180" step="3" value="90" id="arm-z-set_degrees" />
 </div>
 <script type="module">
 import {rest_host, rest_port} from "./globals.js";
 const arm_z_set_degrees_element = $("#arm-z-set_degrees");
 const arm_z_set_degrees_range = arm_z_set_degrees_element[0];
 function arm_z_set_degrees (degrees, set_range) {
-  if (degrees < -180 || degrees > 180) {
+  if (degrees < 0 || degrees > 180) {
     return;
   }
   $.ajax({

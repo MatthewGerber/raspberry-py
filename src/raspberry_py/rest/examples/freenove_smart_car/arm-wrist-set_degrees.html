@@ -1,13 +1,13 @@
 <div class="range">
   <label for="arm-wrist-set_degrees" class="form-label">Wrist</label>
-  <input type="range" class="form-range" min="0" max="360" step="3" value="0" id="arm-wrist-set_degrees" />
+  <input type="range" class="form-range" min="0" max="180" step="3" value="90" id="arm-wrist-set_degrees" />
 </div>
 <script type="module">
 import {rest_host, rest_port} from "./globals.js";
 const arm_wrist_set_degrees_element = $("#arm-wrist-set_degrees");
 const arm_wrist_set_degrees_range = arm_wrist_set_degrees_element[0];
 function arm_wrist_set_degrees (degrees, set_range) {
-  if (degrees < 0 || degrees > 360) {
+  if (degrees < 0 || degrees > 180) {
     return;
   }
   $.ajax({

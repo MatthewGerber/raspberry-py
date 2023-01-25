@@ -9,8 +9,10 @@ from raspberry_py.gpio.motors import DcMotor, DcMotorDriverPCA9685PW, Servo, Ser
 
 def main():
     """
-    This example demonstrates the use of hardware pulse-wave modulation. It is designed for use with the Freenove 4WD
-    Smart Car.
+    This example demonstrates the use of hardware pulse-wave modulation. It is designed for use with the PCA9685PW IC
+    (see manuals/PCA9685.pdf) with a DcMotor attached to PWM output channels 0 and 1 and a Servo attached to PWM output
+    channel 8. This is the setup used in the Freenove SmartCar; however, nothing about this example is specific to that
+    application beyond the channel connections.
     """
 
     setup()
@@ -23,7 +25,6 @@ def main():
         address=PulseWaveModulatorPCA9685PW.PCA9685PW_ADDRESS,
         frequency_hz=50
     )
-    pca9685pw.set_pwm_frequency(50)
 
     # test motor
     motor = DcMotor(
@@ -48,9 +49,9 @@ def main():
             pca9685pw=pca9685pw,
             servo_channel=8,
             min_degree=0.0,
-            min_degree_pulse_width_ms=1.0,
+            min_degree_pulse_width_ms=0.5,
             max_degree=180.0,
-            max_degree_pulse_width_ms=2.0
+            max_degree_pulse_width_ms=2.5
         ),
         degrees=0.0,
         min_degree=0.0,

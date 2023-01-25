@@ -28,7 +28,7 @@ def main():
     pwm_b = gpio.PWM(led_b.output_pin, 2000)
     pwm_b.start(0)
 
-    def set_pwms(
+    def set_pwm(
             r: float,
             g: float,
             b: float,
@@ -49,14 +49,14 @@ def main():
         time.sleep(duration_sec)
 
     # show pure red/green/blue
-    set_pwms(0.0, 100.0, 100.0, 1.0)
-    set_pwms(100.0, 0.0, 100.0, 1.0)
-    set_pwms(100.0, 100.0, 0.0, 1.0)
+    set_pwm(0.0, 100.0, 100.0, 1.0)
+    set_pwm(100.0, 0.0, 100.0, 1.0)
+    set_pwm(100.0, 100.0, 0.0, 1.0)
 
     # random colors
     try:
         while True:
-            set_pwms(
+            set_pwm(
                 random.randint(0, 100),
                 random.randint(0, 100),
                 random.randint(0, 100),

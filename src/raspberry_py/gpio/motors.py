@@ -321,12 +321,12 @@ class ServoDriver(ABC):
         """
         Initialize the driver.
 
-        :param min_degree: Mininum degree.
+        :param min_degree: Minimum degree.
         :param max_degree: Maximum degree.
         """
 
         if min_degree >= max_degree:
-            raise ValueError('Mininum degree must be less than maximum degree.')
+            raise ValueError('Minimum degree must be less than maximum degree.')
 
         self.min_degree = min_degree
         self.max_degree = max_degree
@@ -489,7 +489,7 @@ class ServoDriverPCA9685PW(ServoDriver):
         """
 
         if min_degree_pulse_width_ms >= max_degree_pulse_width_ms:
-            raise ValueError('Mininum-degree pulse width must be less than maximum-degree pulse width.')
+            raise ValueError('Minimum-degree pulse width must be less than maximum-degree pulse width.')
 
         super().__init__(
             min_degree=min_degree,
@@ -573,7 +573,10 @@ class Servo(Component):
 
         constrained_degrees = min(self.max_degree, max(state.degrees, self.min_degree))
         if constrained_degrees != state.degrees:
-            logging.warning(f'Requested servo degrees ({state.degrees}) is out of bounds [{self.min_degree},{self.max_degree}]. Constraining to be in bounds.')
+            logging.warning(
+                f'Requested servo degrees ({state.degrees}) is out of bounds [{self.min_degree},{self.max_degree}]. '
+                f'Constraining to be in bounds.'
+            )
             state.degrees = constrained_degrees
 
         self.driver.change_state(self.state, state)

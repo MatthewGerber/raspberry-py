@@ -578,7 +578,7 @@ class SevenSegmentLedShiftRegister(Component):
 
 class FourDigitSevenSegmentLED(Component):
     """
-    A four-digit, sevent-segment LED driven by a cycling shift register.
+    A four-digit, seven-segment LED driven by a cycling shift register.
     """
 
     class State(Component.State):
