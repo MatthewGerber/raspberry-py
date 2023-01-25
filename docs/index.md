@@ -14,7 +14,7 @@ invoked from HTML/JavaScript front-ends. Want to control your circuit remotely f
 package auto-generates HTML/JavaScript for GPIO circuits based on 
 [Material Design for Bootstrap](https://mdbootstrap.com). These HTML/JavaScript elements can be embedded in full web 
 pages for remote control of the circuit. The remote control screen for the 
-[Freenove Smart Car](https://matthewgerber.github.io/raspberry-py/raspberry-py/smart-car.html) is shown below:
+[Freenove Smart Car](smart-car.md) is shown below:
 
 ![freenove-smart-car](smart-car.png)
 
