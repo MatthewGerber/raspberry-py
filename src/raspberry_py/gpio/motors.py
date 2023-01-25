@@ -1,11 +1,10 @@
+import RPi.GPIO as gpio
 import logging
+import numpy as np
 import time
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from typing import Optional
-
-import RPi.GPIO as gpio
-import numpy as np
 
 from raspberry_py.gpio import Component
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
@@ -314,6 +313,26 @@ class ServoDriver(ABC):
         :param new_state: New state.
         """
 
+    def __init__(
+            self,
+            min_degree: float,
+            max_degree: float
+    ):
+        """
+        Initialize the driver.
+
+        :param min_degree: Mininum degree.
+        :param max_degree: Maximum degree.
+        """
+
+        if min_degree >= max_degree:
+            raise ValueError('Mininum degree must be less than maximum degree.')
+
+        self.min_degree = min_degree
+        self.max_degree = max_degree
+
+        self.degree_range = self.max_degree - self.min_degree
+
 
 class ServoDriverSoftwarePWM(ServoDriver):
     """
@@ -385,18 +404,22 @@ class ServoDriverSoftwarePWM(ServoDriver):
         :param max_degree: Servo's maximum degree angle.
         """
 
+        super().__init__(
+            min_degree=min_degree,
+            max_degree=max_degree
+        )
+
         self.signal_pin = signal_pin
         self.min_pwm_high_ms = min_pwm_high_ms
         self.max_pwm_high_ms = max_pwm_high_ms
         self.pwm_high_offset_ms = pwm_high_offset_ms
-        self.min_degree = min_degree
-        self.max_degree = max_degree
 
         self.pwm_hz = 50
         self.pwm_tick_ms = 1000 / self.pwm_hz
         if self.max_pwm_high_ms > self.pwm_tick_ms:
             raise ValueError(
-                f'The value of max_pwm_high_ms ({self.max_pwm_high_ms}) must be less than the PWM tick duration ({self.pwm_tick_ms}).'
+                f'The value of max_pwm_high_ms ({self.max_pwm_high_ms}) must be less than the PWM tick duration '
+                f'({self.pwm_tick_ms}).'
             )
 
         gpio.setup(self.signal_pin, gpio.OUT)
@@ -406,7 +429,8 @@ class ServoDriverSoftwarePWM(ServoDriver):
 
 class ServoDriverPCA9685PW(ServoDriver):
     """
-    Servo driver via PCA9685PW IC (hardware pulse-wave modulator).
+    Servo driver via PCA9685PW IC (hardware pulse-wave modulator). This is intended for use with servos with angular
+    ranges that correspond to ranges in the PWM pulse width. For example, see the SG90 servo (sg90_servo.pdf).
     """
 
     def change_state(
@@ -423,22 +447,30 @@ class ServoDriverPCA9685PW(ServoDriver):
 
         if new_state.on:
 
+            # constrain degrees to the specified range
+            degrees_to_set = max(min(new_state.degrees + self.correction_degrees, self.max_degree), self.min_degree)
+
+            # convert to percent of range and reverse if specified
+            percent_of_range = (degrees_to_set - self.min_degree) / self.degree_range
             if self.reverse:
-                pulse = 500 + (new_state.degrees + self.correction_degrees) / 0.09
-            else:
-                pulse = 2500 - (new_state.degrees + self.correction_degrees) / 0.09
+                percent_of_range = 1.0 - percent_of_range
 
-            duty = int(pulse * 4096 / 20000)  # PWM frequency is 50HZ, the period is 20000us
-
+            # calculate pulse width and convert to discrete tick
+            pulse_width_ms = self.min_degree_pulse_width_ms + percent_of_range * self.pulse_width_range
+            off_tick = self.pca9685pw.get_tick(pulse_width_ms)
         else:
-            duty = 0
+            off_tick = 0
 
-        self.pca9685pw.set_channel_pwm_on_off(self.servo_channel, 0, duty)
+        self.pca9685pw.set_channel_pwm_on_off(self.servo_channel, 0, off_tick)
 
     def __init__(
             self,
             pca9685pw: PulseWaveModulatorPCA9685PW,
             servo_channel: int,
+            min_degree: float,
+            min_degree_pulse_width_ms: float,
+            max_degree: float,
+            max_degree_pulse_width_ms: float,
             reverse: bool = False,
             correction_degrees: float = 0.0
     ):
@@ -447,15 +479,31 @@ class ServoDriverPCA9685PW(ServoDriver):
 
         :param pca9685pw: IC.
         :param servo_channel: Channel of PCA9685PW to which the servo is connected.
+        :param min_degree: Minimum degree of the servo.
+        :param min_degree_pulse_width_ms: Pulse width (ms) corresponding to the minimum degree.
+        :param max_degree: Maximum degree of the servo.
+        :param max_degree_pulse_width_ms: Pulse width (ms) corresponding to the maximum degree.
         :param reverse: Whether to reverse the degrees upon output.
         :param correction_degrees: Correction degrees to be added to any requested degrees to account for assembly
         errors (e.g., a servo not being mounted perfectly).
         """
 
+        if min_degree_pulse_width_ms >= max_degree_pulse_width_ms:
+            raise ValueError('Mininum-degree pulse width must be less than maximum-degree pulse width.')
+
+        super().__init__(
+            min_degree=min_degree,
+            max_degree=max_degree
+        )
+
         self.pca9685pw = pca9685pw
         self.servo_channel = servo_channel
+        self.min_degree_pulse_width_ms = min_degree_pulse_width_ms
+        self.max_degree_pulse_width_ms = max_degree_pulse_width_ms
         self.reverse = reverse
         self.correction_degrees = correction_degrees
+
+        self.pulse_width_range = self.max_degree_pulse_width_ms - self.min_degree_pulse_width_ms
 
 
 class Servo(Component):
@@ -596,20 +644,19 @@ class Servo(Component):
             self,
             driver: ServoDriver,
             degrees: float,
-            min_degree: float = 0.0,
-            max_degree: float = 180.0
+            min_degree: float,
+            max_degree: float
     ):
         """
         Initialize the servo.
 
         :param driver: Driver.
         :param degrees: Initial degree angle.
-        :param min_degree: Minimum allowable degree.
-        :param max_degree: Maximum allowable degree.
+        :param min_degree: Minimum degree. This minimum differs from the driver's minimum in that the former is used to
+        constrain the movement of the servo, whereas the latter is used to establish the range of the servo.
+        :param max_degree: Maximum degree. This maximum differs from the driver's maximum in that the former is used to
+        constrain the movement of the servo, whereas the latter is used to establish the range of the servo.
         """
-
-        if min_degree > max_degree:
-            raise ValueError('Minimum degree must not be greater than maximum degree.')
 
         super().__init__(Servo.State(on=False, degrees=degrees))
 

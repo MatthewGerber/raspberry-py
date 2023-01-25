@@ -24,7 +24,9 @@ def main():
     )
     servo = Servo(
         driver=driver,
-        degrees=0.0
+        degrees=0.0,
+        min_degree=0.0,
+        max_degree=180.0
     )
 
     servo.start()

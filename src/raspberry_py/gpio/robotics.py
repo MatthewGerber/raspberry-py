@@ -222,44 +222,60 @@ class RaspberryPyArm(Component):
         self.x_servo = Servo(
             driver=ServoDriverPCA9685PW(
                 pca9685pw=pwm,
-                servo_channel=self.x_servo_channel
+                servo_channel=self.x_servo_channel,
+                min_degree=0.0,
+                min_degree_pulse_width_ms=1.0,
+                max_degree=180.0,
+                max_degree_pulse_width_ms=2.0
             ),
-            degrees=90,
-            min_degree=0,
-            max_degree=180
+            degrees=90.0,
+            min_degree=0.0,
+            max_degree=180.0
         )
         self.x_servo.id = 'arm-x'
 
         self.z_servo = Servo(
             driver=ServoDriverPCA9685PW(
                 pca9685pw=pwm,
-                servo_channel=self.z_servo_channel
+                servo_channel=self.z_servo_channel,
+                min_degree=0.0,
+                min_degree_pulse_width_ms=1.0,
+                max_degree=180.0,
+                max_degree_pulse_width_ms=2.0
             ),
-            degrees=0,
-            min_degree=-180,
-            max_degree=180
+            degrees=90.0,
+            min_degree=0.0,
+            max_degree=180.0
         )
         self.z_servo.id = 'arm-z'
 
         self.wrist_servo = Servo(
             driver=ServoDriverPCA9685PW(
                 pca9685pw=pwm,
-                servo_channel=self.wrist_servo_channel
+                servo_channel=self.wrist_servo_channel,
+                min_degree=0.0,
+                min_degree_pulse_width_ms=1.0,
+                max_degree=180.0,
+                max_degree_pulse_width_ms=2.0
             ),
-            degrees=0,
-            min_degree=-180,
-            max_degree=180
+            degrees=90.0,
+            min_degree=0.0,
+            max_degree=180.0
         )
         self.wrist_servo.id = 'arm-wrist'
 
         self.pinch_servo = Servo(
             driver=ServoDriverPCA9685PW(
                 pca9685pw=pwm,
-                servo_channel=self.pinch_servo_channel
+                servo_channel=self.pinch_servo_channel,
+                min_degree=0.0,
+                min_degree_pulse_width_ms=1.0,
+                max_degree=180.0,
+                max_degree_pulse_width_ms=2.0
             ),
-            degrees=0,
-            min_degree=0,
-            max_degree=90
+            degrees=0.0,
+            min_degree=0.0,
+            max_degree=90.0
         )
         self.pinch_servo.id = 'arm-pinch'
 

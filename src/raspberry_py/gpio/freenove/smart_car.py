@@ -507,9 +507,9 @@ class Car(Component):
         # hardware pwm for motors/servos
         self.pwm = PulseWaveModulatorPCA9685PW(
             bus=self.i2c_bus,
-            address=PulseWaveModulatorPCA9685PW.PCA9685PW_ADDRESS
+            address=PulseWaveModulatorPCA9685PW.PCA9685PW_ADDRESS,
+            frequency_hz=50
         )
-        self.pwm.set_pwm_frequency(50)
 
         # analog-to-digital converter
         self.adc_left_light_channel = 0
@@ -560,12 +560,16 @@ class Car(Component):
             driver=ServoDriverPCA9685PW(
                 pca9685pw=self.pwm,
                 servo_channel=8,
+                min_degree=0.0,
+                min_degree_pulse_width_ms=1.0,
+                max_degree=180.0,
+                max_degree_pulse_width_ms=2.0,
                 reverse=False,
                 correction_degrees=camera_pan_servo_correction_degrees
             ),
-            degrees=90,
-            min_degree=0,
-            max_degree=180
+            degrees=90.0,
+            min_degree=0.0,
+            max_degree=180.0
         )
         self.camera_pan_servo.id = 'camera-pan'
 
@@ -573,12 +577,16 @@ class Car(Component):
             driver=ServoDriverPCA9685PW(
                 pca9685pw=self.pwm,
                 servo_channel=9,
+                min_degree=0.0,
+                min_degree_pulse_width_ms=1.0,
+                max_degree=180.0,
+                max_degree_pulse_width_ms=2.0,
                 reverse=True,  # the tilt servo is mounted in reverse, such that 180 points up.
                 correction_degrees=camera_tilt_servo_correction_degrees
             ),
-            degrees=90,
-            min_degree=85,  # don't permit tiling too low, as this will hit the servo mounts.
-            max_degree=180
+            degrees=90.0,
+            min_degree=85.0,  # don't permit tiling too low, as this will hit the servo mounts.
+            max_degree=180.0
         )
         self.camera_tilt_servo.id = 'camera-tilt'
 

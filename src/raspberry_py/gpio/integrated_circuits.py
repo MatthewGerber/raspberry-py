@@ -248,17 +248,17 @@ class PulseWaveModulatorPCA9685PW:
 
     def set_pwm_frequency(
             self,
-            frequency: float
+            frequency_hz: int
     ):
         """
         Set pulse-wave modulation frequency.
 
-        :param frequency: Frequency (Hz).
+        :param frequency_hz: Frequency (Hz).
         """
 
         prescale_value = 25000000.0  # 25MHz
         prescale_value /= 4096.0  # 12-bit
-        prescale_value /= float(frequency)
+        prescale_value /= float(frequency_hz)
         prescale_value -= 1.0
         prescale_value = math.floor(prescale_value + 0.5)
 
@@ -269,6 +269,26 @@ class PulseWaveModulatorPCA9685PW:
         self.write(self.__MODE1, oldmode)
         time.sleep(0.005)
         self.write(self.__MODE1, oldmode | 0x80)
+
+    def get_tick(
+            self,
+            offset_ms: float
+    ) -> int:
+        """
+        Get tick for an offset into the PWM period.
+
+        :param offset_ms:  Offset (ms) into the PWM period.
+        """
+
+        if offset_ms > self.period_ms:
+            raise ValueError(f'Offset {offset_ms} must be <= the period {self.period_ms}')
+
+        if offset_ms < 0.0:
+            raise ValueError(f'Offset {offset_ms} be >= 0.0')
+
+        percentage_of_period = offset_ms / self.period_ms
+
+        return int(percentage_of_period * 4095)
 
     def set_channel_pwm_on_off(
             self,
@@ -284,9 +304,10 @@ class PulseWaveModulatorPCA9685PW:
         :param off_tick: Off tick in [0,4095].
         """
 
-        # each output channel is controlled by 4 8-bit registers:  2 registers for the on time and 2 registers for the
-        # off time. each pair specifies the low and high bits of a 12-bit value. so only the lower 12 of 16 bits are
-        # used to specify each value [0,4095].
+        # each output channel (e.g., led) is controlled by 2 12-bit registers. each register is fed by 2 input channels,
+        # one for the lower byte and one for the higher byte (the highest 4 bits are unused). thus, there are 4 input
+        # channels per output channel. the 2 registers specify, respectively, the on and off times of the output channel
+        # from the range [0,4095].
         channel_register_offset = 4 * channel
 
         # write lower/higher byte of the on time
@@ -300,16 +321,21 @@ class PulseWaveModulatorPCA9685PW:
     def __init__(
             self,
             bus: SMBus,
-            address: int
+            address: int,
+            frequency_hz: int
     ):
         """
         Instantiate the PWM IC.
 
         :param bus: Bus.
         :param address: I2C address.
+        :param frequency_hz: PWM frequency.
         """
 
         self.bus = bus
         self.address = address
+        self.frequency_hz = frequency_hz
 
+        self.period_ms = 1000.0 / self.frequency_hz
         self.write(self.__MODE1, 0x00)
+        self.set_pwm_frequency(self.frequency_hz)

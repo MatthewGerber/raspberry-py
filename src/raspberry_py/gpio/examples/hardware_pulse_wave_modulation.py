@@ -20,7 +20,8 @@ def main():
 
     pca9685pw = PulseWaveModulatorPCA9685PW(
         bus=i2c_bus,
-        address=PulseWaveModulatorPCA9685PW.PCA9685PW_ADDRESS
+        address=PulseWaveModulatorPCA9685PW.PCA9685PW_ADDRESS,
+        frequency_hz=50
     )
     pca9685pw.set_pwm_frequency(50)
 
@@ -45,9 +46,15 @@ def main():
     servo = Servo(
         driver=ServoDriverPCA9685PW(
             pca9685pw=pca9685pw,
-            servo_channel=8
+            servo_channel=8,
+            min_degree=0.0,
+            min_degree_pulse_width_ms=1.0,
+            max_degree=180.0,
+            max_degree_pulse_width_ms=2.0
         ),
-        degrees=0,
+        degrees=0.0,
+        min_degree=0.0,
+        max_degree=180.0
     )
     servo.start()
     time.sleep(1)
