@@ -9,7 +9,9 @@ remote-controlled [Freenove Smart Car](smart-car.md).
 
 # Materials and Tech
 
-* 3D printer:  [Creality Ender-3](https://www.creality.com/products/ender-3-3d-printer)
 * CAD software:  [Autodesk Fusion 360](https://www.autodesk.com/products/fusion-360/personal)
+* Mesh slicer:  [UltiMaker Cura](https://ultimaker.com/software/ultimaker-cura)
+* 3D printer:  [Creality Ender-3](https://www.creality.com/products/ender-3-3d-printer)
+* 3D printer web interface:  [OctoPrint](https://octoprint.org)
 
 # Iteration 1
