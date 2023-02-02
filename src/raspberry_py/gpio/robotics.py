@@ -17,22 +17,25 @@ class RaspberryPyArm(Component):
 
         def __init__(
                 self,
-                x_rotation: float,
-                z_rotation: float,
+                base_rotation: float,
+                arm_elevation: float,
+                wrist_elevation: float,
                 wrist_rotation: float,
                 pinch: float
         ):
             """
             Initialize the state.
 
-            :param x_rotation: Rotation around the x axis.
-            :param z_rotation: Rotation around the z axis.
+            :param base_rotation: Base rotation.
+            :param arm_elevation: Arm elevation.
+            :param wrist_elevation: Wrist elevation.
             :param wrist_rotation: Wrist rotation.
             :param pinch: Pinch.
             """
 
-            self.x_rotation = x_rotation
-            self.z_rotation = z_rotation
+            self.base_rotation = base_rotation
+            self.arm_elevation = arm_elevation
+            self.wrist_elevation = wrist_elevation
             self.wrist_rotation = wrist_rotation
             self.pinch = pinch
 
@@ -51,8 +54,9 @@ class RaspberryPyArm(Component):
                 raise ValueError(f'Expected a {RaspberryPyArm.State}')
 
             return (
-                self.x_rotation == other.x_rotation and
-                self.z_rotation == other.z_rotation and
+                self.base_rotation == other.base_rotation and
+                self.arm_elevation == other.arm_elevation and
+                self.wrist_elevation == other.wrist_elevation and
                 self.wrist_rotation == other.wrist_rotation and
                 self.pinch == other.pinch
             )
@@ -67,8 +71,8 @@ class RaspberryPyArm(Component):
             """
 
             return (
-                f'x={self.x_rotation:.1f}, z={self.z_rotation:.1f}, wrist={self.wrist_rotation:.1f}, '
-                f'pinch={self.pinch:.1f}'
+                f'({self.base_rotation:.1f},{self.arm_elevation:.1f},{self.wrist_elevation},'
+                f'{self.wrist_rotation:.1f},{self.pinch:.1f}'
             )
 
     def start(
@@ -91,43 +95,64 @@ class RaspberryPyArm(Component):
         for servo in self.servos:
             servo.stop()
 
-    def set_x(
+    def set_base_rotation(
             self,
             rotation: float
     ):
         """
-        Set x rotation.
+        Set base rotation.
 
         :param rotation: Rotation.
         """
 
         self.state: RaspberryPyArm.State
         self.set_state(RaspberryPyArm.State(
-            x_rotation=rotation,
-            z_rotation=self.state.z_rotation,
+            base_rotation=rotation,
+            arm_elevation=self.state.arm_elevation,
+            wrist_elevation=self.state.wrist_elevation,
             wrist_rotation=self.state.wrist_rotation,
             pinch=self.state.pinch
         ))
 
-    def set_z(
+    def set_arm_elevation(
             self,
-            rotation: float
+            elevation: float
     ):
         """
-        Set z rotation.
+        Set arm elevation.
 
-        :param rotation: Rotation.
+        :param elevation: Elevation.
         """
 
         self.state: RaspberryPyArm.State
         self.set_state(RaspberryPyArm.State(
-            x_rotation=self.state.x_rotation,
-            z_rotation=rotation,
+            base_rotation=self.state.base_rotation,
+            arm_elevation=elevation,
+            wrist_elevation=self.state.wrist_elevation,
             wrist_rotation=self.state.wrist_rotation,
             pinch=self.state.pinch
         ))
 
-    def set_wrist(
+    def set_wrist_elevation(
+            self,
+            elevation: float
+    ):
+        """
+        Set wrist elevation.
+
+        :param elevation: Elevation.
+        """
+
+        self.state: RaspberryPyArm.State
+        self.set_state(RaspberryPyArm.State(
+            base_rotation=self.state.base_rotation,
+            arm_elevation=self.state.arm_elevation,
+            wrist_elevation=elevation,
+            wrist_rotation=self.state.wrist_rotation,
+            pinch=self.state.pinch
+        ))
+
+    def set_wrist_rotation(
             self,
             rotation: float
     ):
@@ -139,8 +164,9 @@ class RaspberryPyArm(Component):
 
         self.state: RaspberryPyArm.State
         self.set_state(RaspberryPyArm.State(
-            x_rotation=self.state.x_rotation,
-            z_rotation=self.state.z_rotation,
+            base_rotation=self.state.base_rotation,
+            arm_elevation=self.state.arm_elevation,
+            wrist_elevation=self.state.wrist_elevation,
             wrist_rotation=rotation,
             pinch=self.state.pinch
         ))
@@ -157,8 +183,9 @@ class RaspberryPyArm(Component):
 
         self.state: RaspberryPyArm.State
         self.set_state(RaspberryPyArm.State(
-            x_rotation=self.state.x_rotation,
-            z_rotation=self.state.z_rotation,
+            base_rotation=self.state.base_rotation,
+            arm_elevation=self.state.arm_elevation,
+            wrist_elevation=self.state.wrist_elevation,
             wrist_rotation=self.state.wrist_rotation,
             pinch=pinch
         ))
@@ -175,9 +202,10 @@ class RaspberryPyArm(Component):
 
         state: RaspberryPyArm.State
 
-        self.x_servo.set_degrees(state.x_rotation)
-        self.z_servo.set_degrees(state.z_rotation)
-        self.wrist_servo.set_degrees(state.wrist_rotation)
+        self.base_rotator_servo.set_degrees(state.base_rotation)
+        self.arm_elevator_servo.set_degrees(state.arm_elevation)
+        self.wrist_elevator_servo.set_degrees(state.wrist_elevation)
+        self.wrist_rotator_servo.set_degrees(state.wrist_rotation)
         self.pinch_servo.set_degrees(state.pinch)
 
         super().set_state(state)
@@ -196,61 +224,75 @@ class RaspberryPyArm(Component):
     def __init__(
             self,
             pwm: PulseWaveModulatorPCA9685PW,
-            x_servo_channel: int,
-            z_servo_channel: int,
-            wrist_servo_channel: int,
+            base_rotator_channel: int,
+            arm_elevator_channel: int,
+            wrist_elevator_channel: int,
+            wrist_rotator_channel: int,
             pinch_servo_channel: int
     ):
         """
         Initialize the arm.
 
         :param pwm: Pulse-wave modulator.
-        :param x_servo_channel: Channel for x-axis servo.
-        :param z_servo_channel: Channel for z-axis servo.
-        :param wrist_servo_channel: Channel for wrist servo.
-        :param pinch_servo_channel: Channel for pinch servo.
+        :param base_rotator_channel: Base rotator servo channel.
+        :param arm_elevator_channel: Arm elevator servo channel.
+        :param wrist_elevator_channel: Wrist elevator servo channel.
+        :param wrist_rotator_channel: Wrist rotator servo channel.
+        :param pinch_servo_channel: Pinch servo channel.
         """
 
-        super().__init__(RaspberryPyArm.State(0, 0, 0, 0))
+        super().__init__(RaspberryPyArm.State(0, 0, 0, 0, 0))
 
         self.pwm = pwm
-        self.x_servo_channel = x_servo_channel
-        self.z_servo_channel = z_servo_channel
-        self.wrist_servo_channel = wrist_servo_channel
+        self.base_rotator_channel = base_rotator_channel
+        self.arm_elevator_channel = arm_elevator_channel
+        self.wrist_elevator_channel = wrist_elevator_channel
+        self.wrist_rotator_channel = wrist_rotator_channel
         self.pinch_servo_channel = pinch_servo_channel
 
-        self.x_servo = Servo(
+        self.base_rotator_servo = Servo(
             driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
-                servo_channel=self.x_servo_channel
+                servo_channel=self.base_rotator_channel
             ),
             degrees=90.0,
             min_degree=0.0,
             max_degree=180.0
         )
-        self.x_servo.id = 'arm-x'
+        self.base_rotator_servo.id = 'arm-base-rotator'
 
-        self.z_servo = Servo(
+        self.arm_elevator_servo = Servo(
             driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
-                servo_channel=self.z_servo_channel
+                servo_channel=self.arm_elevator_channel
             ),
             degrees=90.0,
             min_degree=0.0,
             max_degree=180.0
         )
-        self.z_servo.id = 'arm-z'
+        self.arm_elevator_servo.id = 'arm-elevator'
 
-        self.wrist_servo = Servo(
+        self.wrist_elevator_servo = Servo(
             driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
-                servo_channel=self.wrist_servo_channel
+                servo_channel=self.wrist_elevator_channel
             ),
             degrees=90.0,
             min_degree=0.0,
             max_degree=180.0
         )
-        self.wrist_servo.id = 'arm-wrist'
+        self.wrist_elevator_servo.id = 'arm-wrist-elevator'
+
+        self.wrist_rotator_servo = Servo(
+            driver=Sg90DriverPCA9685PW(
+                pca9685pw=pwm,
+                servo_channel=self.wrist_rotator_channel
+            ),
+            degrees=90.0,
+            min_degree=0.0,
+            max_degree=180.0
+        )
+        self.wrist_rotator_servo.id = 'arm-wrist-rotator'
 
         self.pinch_servo = Servo(
             driver=Sg90DriverPCA9685PW(
@@ -264,8 +306,9 @@ class RaspberryPyArm(Component):
         self.pinch_servo.id = 'arm-pinch'
 
         self.servos = [
-            self.x_servo,
-            self.z_servo,
-            self.wrist_servo,
+            self.base_rotator_servo,
+            self.arm_elevator_servo,
+            self.wrist_elevator_servo,
+            self.wrist_rotator_servo,
             self.pinch_servo
         ]
