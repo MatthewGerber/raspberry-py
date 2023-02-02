@@ -11,7 +11,7 @@ from raspberry_py.gpio import Component
 from raspberry_py.gpio.adc import ADS7830
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
 from raspberry_py.gpio.lights import LedStrip
-from raspberry_py.gpio.motors import DcMotor, DcMotorDriverPCA9685PW, Servo, ServoDriverPCA9685PW
+from raspberry_py.gpio.motors import DcMotor, DcMotorDriverPCA9685PW, Servo, Sg90DriverPCA9685PW
 from raspberry_py.gpio.sensors import Camera, UltrasonicRangeFinder
 from raspberry_py.gpio.sounds import ActiveBuzzer
 
@@ -557,13 +557,9 @@ class Car(Component):
 
         # 8 servos use PWM channels 8-15 (1 channel per servo)
         self.camera_pan_servo = Servo(
-            driver=ServoDriverPCA9685PW(
+            driver=Sg90DriverPCA9685PW(
                 pca9685pw=self.pwm,
                 servo_channel=8,
-                min_degree=0.0,
-                min_degree_pulse_width_ms=0.5,
-                max_degree=180.0,
-                max_degree_pulse_width_ms=2.5,
                 reverse=True,
                 correction_degrees=camera_pan_servo_correction_degrees
             ),
@@ -574,13 +570,9 @@ class Car(Component):
         self.camera_pan_servo.id = 'camera-pan'
 
         self.camera_tilt_servo = Servo(
-            driver=ServoDriverPCA9685PW(
+            driver=Sg90DriverPCA9685PW(
                 pca9685pw=self.pwm,
                 servo_channel=9,
-                min_degree=0.0,
-                min_degree_pulse_width_ms=0.5,
-                max_degree=180.0,
-                max_degree_pulse_width_ms=2.5,
                 correction_degrees=camera_tilt_servo_correction_degrees
             ),
             degrees=90.0,

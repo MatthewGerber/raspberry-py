@@ -1,10 +1,11 @@
-import RPi.GPIO as gpio
 import logging
-import numpy as np
 import time
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from typing import Optional
+
+import RPi.GPIO as gpio
+import numpy as np
 
 from raspberry_py.gpio import Component
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
@@ -504,6 +505,41 @@ class ServoDriverPCA9685PW(ServoDriver):
         self.correction_degrees = correction_degrees
 
         self.pulse_width_range = self.max_degree_pulse_width_ms - self.min_degree_pulse_width_ms
+
+
+class Sg90DriverPCA9685PW(ServoDriverPCA9685PW):
+    """
+    A SG-90 specific servo driver based on the PCA9685PW PWM chip. See manuals/sg90_servo.pdf for details about the
+    servo.
+    """
+
+    def __init__(
+            self,
+            pca9685pw: PulseWaveModulatorPCA9685PW,
+            servo_channel: int,
+            reverse: bool = False,
+            correction_degrees: float = 0.0
+    ):
+        """
+        Initialize the driver.
+
+        :param pca9685pw: IC.
+        :param servo_channel: Channel of PCA9685PW to which the servo is connected.
+        :param reverse: Whether to reverse the degrees upon output.
+        :param correction_degrees: Correction degrees to be added to any requested degrees to account for assembly
+        errors (e.g., a servo not being mounted perfectly).
+        """
+
+        super().__init__(
+            pca9685pw=pca9685pw,
+            servo_channel=servo_channel,
+            reverse=reverse,
+            min_degree=0.0,
+            min_degree_pulse_width_ms=0.5,
+            max_degree=180.0,
+            max_degree_pulse_width_ms=2.5,
+            correction_degrees=correction_degrees
+        )
 
 
 class Servo(Component):

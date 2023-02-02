@@ -2,7 +2,7 @@ from typing import List
 
 from raspberry_py.gpio import Component
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
-from raspberry_py.gpio.motors import Servo, ServoDriverPCA9685PW
+from raspberry_py.gpio.motors import Servo, Sg90DriverPCA9685PW
 
 
 class RaspberryPyArm(Component):
@@ -220,13 +220,9 @@ class RaspberryPyArm(Component):
         self.pinch_servo_channel = pinch_servo_channel
 
         self.x_servo = Servo(
-            driver=ServoDriverPCA9685PW(
+            driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
-                servo_channel=self.x_servo_channel,
-                min_degree=0.0,
-                min_degree_pulse_width_ms=0.5,
-                max_degree=180.0,
-                max_degree_pulse_width_ms=2.5
+                servo_channel=self.x_servo_channel
             ),
             degrees=90.0,
             min_degree=0.0,
@@ -235,13 +231,9 @@ class RaspberryPyArm(Component):
         self.x_servo.id = 'arm-x'
 
         self.z_servo = Servo(
-            driver=ServoDriverPCA9685PW(
+            driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
-                servo_channel=self.z_servo_channel,
-                min_degree=0.0,
-                min_degree_pulse_width_ms=0.5,
-                max_degree=180.0,
-                max_degree_pulse_width_ms=2.5
+                servo_channel=self.z_servo_channel
             ),
             degrees=90.0,
             min_degree=0.0,
@@ -250,13 +242,9 @@ class RaspberryPyArm(Component):
         self.z_servo.id = 'arm-z'
 
         self.wrist_servo = Servo(
-            driver=ServoDriverPCA9685PW(
+            driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
-                servo_channel=self.wrist_servo_channel,
-                min_degree=0.0,
-                min_degree_pulse_width_ms=0.5,
-                max_degree=180.0,
-                max_degree_pulse_width_ms=2.5
+                servo_channel=self.wrist_servo_channel
             ),
             degrees=90.0,
             min_degree=0.0,
@@ -265,13 +253,9 @@ class RaspberryPyArm(Component):
         self.wrist_servo.id = 'arm-wrist'
 
         self.pinch_servo = Servo(
-            driver=ServoDriverPCA9685PW(
+            driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
-                servo_channel=self.pinch_servo_channel,
-                min_degree=0.0,
-                min_degree_pulse_width_ms=0.5,
-                max_degree=180.0,
-                max_degree_pulse_width_ms=2.5
+                servo_channel=self.pinch_servo_channel
             ),
             degrees=0.0,
             min_degree=0.0,

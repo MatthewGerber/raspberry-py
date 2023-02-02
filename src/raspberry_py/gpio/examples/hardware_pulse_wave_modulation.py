@@ -4,7 +4,7 @@ from smbus2 import SMBus
 
 from raspberry_py.gpio import setup, cleanup
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
-from raspberry_py.gpio.motors import DcMotor, DcMotorDriverPCA9685PW, Servo, ServoDriverPCA9685PW
+from raspberry_py.gpio.motors import DcMotor, DcMotorDriverPCA9685PW, Servo, Sg90DriverPCA9685PW
 
 
 def main():
@@ -45,13 +45,9 @@ def main():
 
     # test servo
     servo = Servo(
-        driver=ServoDriverPCA9685PW(
+        driver=Sg90DriverPCA9685PW(
             pca9685pw=pca9685pw,
-            servo_channel=8,
-            min_degree=0.0,
-            min_degree_pulse_width_ms=0.5,
-            max_degree=180.0,
-            max_degree_pulse_width_ms=2.5
+            servo_channel=8
         ),
         degrees=0.0,
         min_degree=0.0,
