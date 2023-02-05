@@ -83,10 +83,19 @@ simpler than the previous approach.
 * [Remove CAP_SYS_RAWIO capability](https://unix.stackexchange.com/questions/303423/unset-setcap-additional-capabilities-on-excutable)
 * [Set /dev/mem permissions on boot](https://forums.developer.nvidia.com/t/dev-mem-changes-permissions-back-to-defaults-on-system-restart/65355/3)
 
-# Advanced: Robotic Arm (In Progress)
-See [here](robotic-arm.md).
+# Advanced: Robotic Arm
+Why not add a robotic arm to the Freenove car? See [here](robotic-arm.md) for the design of the arm, which is not 
+specific to the car but will be mounted and controlled by it. The arm is shown below:
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH35dfcQT936092f0e4344f64dd3dcf58a6f?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
+
+The car is able to control eight SG90 servo motors via hardware pulse-wave modulation (PWM). Only two PWM channels are 
+used in the standard car build (for the camera pan and tilt servos) leaving six channels open for other uses. The 
+robotic arm has five degrees of freedom, each controlled with an SG90 servo. But where to mount the arm for effective 
+remote control? Ideally, the arm would be within the camera's field of view to assist with control; however, the camera 
+that comes with the Freenove car is front-mounted. The following shows a rear-mount bracket for the camera module:
+
+<iframe src="https://gmail3021534.autodesk360.com/shares/public/SH35dfcQT936092f0e43a682340dfc199b2c?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
 # Advanced:  LTE Smart Car (In Progress)
 
