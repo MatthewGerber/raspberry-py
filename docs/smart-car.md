@@ -93,9 +93,12 @@ The car is able to control eight SG90 servo motors via hardware pulse-wave modul
 used in the standard car build (for the camera pan and tilt servos) leaving six channels open for other uses. The 
 robotic arm has five degrees of freedom, each controlled with an SG90 servo. But where to mount the arm for effective 
 remote control? Ideally, the arm would be within the camera's field of view to assist with control; however, the camera 
-that comes with the Freenove car is front-mounted. The following shows a rear-mount bracket for the camera module:
+that comes with the Freenove car is front-mounted. The following shows a custom bracket that includes rear-mount holes
+for the camera servos and a front-end platform for the robotic arm:
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH35dfcQT936092f0e43a682340dfc199b2c?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
+
+The bracket clips to the car chassis without the need for holes or screws.
 
 # Advanced:  LTE Smart Car (In Progress)
 
