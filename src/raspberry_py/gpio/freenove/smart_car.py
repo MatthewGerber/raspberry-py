@@ -29,13 +29,12 @@ class Wheel(IntEnum):
 
 class Car(Component):
     """
-    The Freenove 4WD Smart Car.
+    The Freenove 4WD Smart Car. See manuals/freenove-awd-smart-car.pdf for details.
 
     TODO:
       * Switch to mjpeg_streamer for video stream
       * WiFi connection/display via LCD and keypad
       * Potentiometer input for light tracking gain
-      * Battery (max 83.52941176470588, min 72.54902)
       * Connectivity via LTE:  Reverse tunneling
       * Image overlay:  Guide lines
       * RLAI
@@ -439,7 +438,18 @@ class Car(Component):
         :return: Battery percent in [0,100].
         """
 
-        return self.analog_to_digital.get_channel_value()[self.adc_battery_voltage_channel]
+        voltage_percent = self.analog_to_digital.get_channel_value()[self.adc_battery_voltage_channel]
+
+        if self.battery_min is not None and self.battery_max is not None:
+            voltage_percent = 100.0 * min(
+                1.0,
+                max(
+                    0.0,
+                    (voltage_percent - self.battery_min) / (self.battery_max - self.battery_min)
+                )
+            )
+
+        return voltage_percent
 
     def __init__(
             self,
@@ -456,7 +466,9 @@ class Car(Component):
             run_face_detection: bool = True,
             circle_detected_faces: bool = True,
             track_faces: bool = True,
-            track_light: bool = False
+            track_light: bool = False,
+            battery_min: Optional[float] = None,
+            battery_max: Optional[float] = None
     ):
         """
         Initialize the car.
@@ -485,7 +497,12 @@ class Car(Component):
         `run_face_detection` must be True for this to work.
         :param track_faces: Whether to track detected faces. `run_face_detection` must be true for this to work.
         :param track_light: Whether to track light.
+        :param battery_min: Battery rescaling minimum, or None to use raw voltage value.
+        :param battery_max: Battery rescaling maximum, or None to use raw voltage value.
         """
+
+        if (battery_min is None) != (battery_max is None):
+            raise ValueError('The values of battery_min and battery_max must both be None or non-None.')
 
         if reverse_wheels is None:
             reverse_wheels = []
@@ -497,6 +514,9 @@ class Car(Component):
         self.connection_blackout_tolerance_seconds = connection_blackout_tolerance_seconds
         self.track_faces = track_faces
         self.track_light = track_light
+        self.battery_min = battery_min
+        self.battery_max = battery_max
+
         self.light_difference_gain = 2.5
 
         self.on = False
