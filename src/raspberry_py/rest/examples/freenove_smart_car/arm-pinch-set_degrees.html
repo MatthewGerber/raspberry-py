@@ -1,13 +1,13 @@
 <div class="range">
   <label for="arm-pinch-set_degrees" class="form-label">Pinch</label>
-  <input type="range" class="form-range" min="0" max="90" step="3" value="0" id="arm-pinch-set_degrees" />
+  <input type="range" class="form-range" min="0" max="38" step="1" value="0" id="arm-pinch-set_degrees" />
 </div>
 <script type="module">
 import {rest_host, rest_port} from "./globals.js";
 const arm_pinch_set_degrees_element = $("#arm-pinch-set_degrees");
 const arm_pinch_set_degrees_range = arm_pinch_set_degrees_element[0];
 function arm_pinch_set_degrees (degrees, set_range) {
-  if (degrees < 0 || degrees > 90) {
+  if (degrees < 0 || degrees > 38) {
     return;
   }
   $.ajax({

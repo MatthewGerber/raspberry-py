@@ -1,0 +1,24 @@
+<div class="range">
+  <label for="arm-base-rotator-set_degrees" class="form-label">Base</label>
+  <input type="range" class="form-range" min="0" max="180" step="1" value="90" id="arm-base-rotator-set_degrees" />
+</div>
+<script type="module">
+import {rest_host, rest_port} from "./globals.js";
+const arm_base_rotator_set_degrees_element = $("#arm-base-rotator-set_degrees");
+const arm_base_rotator_set_degrees_range = arm_base_rotator_set_degrees_element[0];
+function arm_base_rotator_set_degrees (degrees, set_range) {
+  if (degrees < 0 || degrees > 180) {
+    return;
+  }
+  $.ajax({
+    url: "http://" + rest_host + ":" + rest_port + "/call/arm-base-rotator/set_degrees?degrees=int:" + degrees,
+    type: "GET"
+  });
+  if (set_range) {
+    arm_base_rotator_set_degrees_range.value = degrees;
+  }
+}
+arm_base_rotator_set_degrees_element.on("input", function () {
+  arm_base_rotator_set_degrees(arm_base_rotator_set_degrees_range.value, false);
+});
+</script>
