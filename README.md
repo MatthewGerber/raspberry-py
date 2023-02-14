@@ -22,10 +22,7 @@ pages for remote control of the circuit. The remote control screen for the
 ![freenove-smart-car](docs/smart-car.png)
 
 The smart car is built from the same components (sensors, motors, LEDs, etc.) listed above, making development quite 
-straightforward.
-
-As another example, consider [the 3D-printed robotic arm](docs/robotic-arm.md) that I designed for the car:
-
-<iframe src="https://gmail3021534.autodesk360.com/shares/public/SH35dfcQT936092f0e4344f64dd3dcf58a6f?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
+straightforward. As another example, consider [the 3D-printed robotic arm](docs/robotic-arm.md) that I designed for the 
+car.
 
 Please see the [project website](https://matthewgerber.github.io/raspberry-py/) for more information.
