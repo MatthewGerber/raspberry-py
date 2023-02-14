@@ -58,7 +58,7 @@ The current design has five degrees of freedom listed below.
 Due to the symmetry of the design, DoFs 1 and 2 comprise the same parts as 3 and 4. These two pairs provide rotation and 
 elevation at each end of the arm, leaving the pincher to sit on top. 
 
-# Parts:  Print Times and Photos 
+# Parts:  Print Times/Costs and Photos 
 
 * Base rotator
 * Arm base
@@ -74,4 +74,3 @@ elevation at each end of the arm, leaving the pincher to sit on top.
 # Assembly
 
 # Evaluation
-
