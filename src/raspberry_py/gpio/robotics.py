@@ -228,17 +228,27 @@ class RaspberryPyArm(Component):
             arm_elevator_channel: int,
             wrist_elevator_channel: int,
             wrist_rotator_channel: int,
-            pinch_servo_channel: int
+            pinch_servo_channel: int,
+            base_rotator_reversed: bool = False,
+            arm_elevator_reversed: bool = False,
+            wrist_elevator_reversed: bool = False,
+            wrist_rotator_reversed: bool = False,
+            pinch_reversed: bool = False
     ):
         """
         Initialize the arm.
 
         :param pwm: Pulse-wave modulator.
         :param base_rotator_channel: Base rotator servo channel.
+        :param base_rotator_reversed: Whether base rotator servo is reversed.
         :param arm_elevator_channel: Arm elevator servo channel.
+        :param arm_elevator_reversed: Whether arm elevator servo is reversed.
         :param wrist_elevator_channel: Wrist elevator servo channel.
+        :param wrist_elevator_reversed: Wrist elevator servo is reversed.
         :param wrist_rotator_channel: Wrist rotator servo channel.
+        :param wrist_rotator_reversed: Whether wrist rotator servo is reversed.
         :param pinch_servo_channel: Pinch servo channel.
+        :param pinch_reversed: Whether pinch servo is reversed.
         """
 
         super().__init__(RaspberryPyArm.State(0, 0, 0, 0, 0))
@@ -253,7 +263,8 @@ class RaspberryPyArm(Component):
         self.base_rotator_servo = Servo(
             driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
-                servo_channel=self.base_rotator_channel
+                servo_channel=self.base_rotator_channel,
+                reverse=base_rotator_reversed
             ),
             degrees=90.0,
             min_degree=0.0,
@@ -264,7 +275,8 @@ class RaspberryPyArm(Component):
         self.arm_elevator_servo = Servo(
             driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
-                servo_channel=self.arm_elevator_channel
+                servo_channel=self.arm_elevator_channel,
+                reverse=arm_elevator_reversed
             ),
             degrees=90.0,
             min_degree=0.0,
@@ -275,7 +287,8 @@ class RaspberryPyArm(Component):
         self.wrist_elevator_servo = Servo(
             driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
-                servo_channel=self.wrist_elevator_channel
+                servo_channel=self.wrist_elevator_channel,
+                reverse=wrist_elevator_reversed
             ),
             degrees=90.0,
             min_degree=0.0,
@@ -286,7 +299,8 @@ class RaspberryPyArm(Component):
         self.wrist_rotator_servo = Servo(
             driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
-                servo_channel=self.wrist_rotator_channel
+                servo_channel=self.wrist_rotator_channel,
+                reverse=wrist_rotator_reversed
             ),
             degrees=90.0,
             min_degree=0.0,
@@ -297,11 +311,12 @@ class RaspberryPyArm(Component):
         self.pinch_servo = Servo(
             driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
-                servo_channel=self.pinch_servo_channel
+                servo_channel=self.pinch_servo_channel,
+                reverse=pinch_reversed
             ),
             degrees=0.0,
             min_degree=0.0,
-            max_degree=90.0
+            max_degree=38.0
         )
         self.pinch_servo.id = 'arm-pinch'
 

@@ -22,7 +22,10 @@ arm = RaspberryPyArm(
     arm_elevator_channel=11,
     wrist_elevator_channel=12,
     wrist_rotator_channel=13,
-    pinch_servo_channel=14
+    pinch_servo_channel=14,
+    base_rotator_reversed=True,
+    wrist_elevator_reversed=True,
+    wrist_rotator_reversed=True
 )
 arm.id = 'arm-1'
 app.add_component(arm, True)
