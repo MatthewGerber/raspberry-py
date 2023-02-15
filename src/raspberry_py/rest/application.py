@@ -214,11 +214,11 @@ export async function is_checked(element) {
 
         elif isinstance(component, RaspberryPyArm):
             elements = [
-                RpyFlask.get_range(component.base_rotator_servo.id, int(component.base_rotator_servo.min_degree), int(component.base_rotator_servo.max_degree), 1, int(component.base_rotator_servo.get_degrees()), False, False, [], [], [], False, component.base_rotator_servo.set_degrees, 'Base', False),
-                RpyFlask.get_range(component.arm_elevator_servo.id, int(component.arm_elevator_servo.min_degree), int(component.arm_elevator_servo.max_degree), 1, int(component.arm_elevator_servo.get_degrees()), False, False, [], [], [], False, component.arm_elevator_servo.set_degrees, 'Arm Elevation', False),
-                RpyFlask.get_range(component.wrist_elevator_servo.id, int(component.wrist_elevator_servo.min_degree), int(component.wrist_elevator_servo.max_degree), 1, int(component.wrist_elevator_servo.get_degrees()), False, False, [], [], [], False, component.wrist_elevator_servo.set_degrees, 'Wrist Elevation', False),
-                RpyFlask.get_range(component.wrist_rotator_servo.id, int(component.wrist_rotator_servo.min_degree), int(component.wrist_rotator_servo.max_degree), 1, int(component.wrist_rotator_servo.get_degrees()), False, False, [], [], [], False, component.wrist_rotator_servo.set_degrees, 'Wrist Rotation', False),
-                RpyFlask.get_range(component.pinch_servo.id, int(component.pinch_servo.min_degree), int(component.pinch_servo.max_degree), 1, int(component.pinch_servo.get_degrees()), False, False, [], [], [], False, component.pinch_servo.set_degrees, 'Pinch', False)
+                RpyFlask.get_range(component.base_rotator_servo.id, int(component.base_rotator_servo.min_degree), int(component.base_rotator_servo.max_degree), 1, int(component.base_rotator_servo.get_degrees()), False, False, ['j'], ['l'], [], False, component.base_rotator_servo.set_degrees, 'Base', False),
+                RpyFlask.get_range(component.arm_elevator_servo.id, int(component.arm_elevator_servo.min_degree), int(component.arm_elevator_servo.max_degree), 1, int(component.arm_elevator_servo.get_degrees()), False, False, ['i'], ['k'], [], False, component.arm_elevator_servo.set_degrees, 'Arm Elevation', False),
+                RpyFlask.get_range(component.wrist_elevator_servo.id, int(component.wrist_elevator_servo.min_degree), int(component.wrist_elevator_servo.max_degree), 1, int(component.wrist_elevator_servo.get_degrees()), False, False, ['u'], ['m'], [], False, component.wrist_elevator_servo.set_degrees, 'Wrist Elevation', False),
+                RpyFlask.get_range(component.wrist_rotator_servo.id, int(component.wrist_rotator_servo.min_degree), int(component.wrist_rotator_servo.max_degree), 1, int(component.wrist_rotator_servo.get_degrees()), False, False, ['h'], [';'], [], False, component.wrist_rotator_servo.set_degrees, 'Wrist Rotation', False),
+                RpyFlask.get_range(component.pinch_servo.id, int(component.pinch_servo.min_degree), int(component.pinch_servo.max_degree), 1, int(component.pinch_servo.get_degrees()), False, False, ['o'], ['.'], [], False, component.pinch_servo.set_degrees, 'Pinch', False)
             ]
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')

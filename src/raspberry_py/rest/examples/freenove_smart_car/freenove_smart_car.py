@@ -25,7 +25,9 @@ arm = RaspberryPyArm(
     pinch_servo_channel=14,
     base_rotator_reversed=True,
     wrist_elevator_reversed=True,
-    wrist_rotator_reversed=True
+    wrist_elevator_correction_degrees=-5,
+    wrist_rotator_reversed=True,
+    wrist_rotator_correction_degrees=-5
 )
 arm.id = 'arm-1'
 app.add_component(arm, True)
