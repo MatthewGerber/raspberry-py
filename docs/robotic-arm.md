@@ -13,7 +13,8 @@ with CAD or---like me---returning to CAD after a _very_ long time (9th grade hig
 * Mobility:  A little practice goes a long way toward designing solid objects from 2D sketches (points, lines, circles,
 etc.) and 3D operations (extrusions, joins, cuts, holes, etc.). I found the learning curve to be quite gentle in this 
 regard, particularly with the right CAD system (more on this later). It was much more difficult to build constrained 
-movement into the design. Think hinges and keyed rotation shafts. These were tricky.
+movement into the design. Think hinges and keyed rotation shafts. These were tricky at first, but effective patterns 
+became evident after a few attempts.
 * Motor-part integration:  This is where the magic happens, where the design comes to life. In the case of the robotic
 arm it was a matter of connecting the rotating shaft of the SG90 servo with a mobile part of the arm design.
 * Build tolerance:  Parts must be in contact but not too tight. CAD provides exact precision, and although entry-level 
@@ -32,7 +33,8 @@ an operation. Ultimately, a bug surfaced in the FreeCAD software, and I was unab
 started looking elsewhere and found [Autodesk Fusion 360](https://www.autodesk.com/products/fusion-360/personal), which 
 can be obtained free of charge for personal use. I was, and still am, quite new to CAD; however, Fusion 360 is obviously 
 a top-notch product. Everything just works. The operations are stunningly intuitive and well-crafted. It is difficult to 
-imagine a reason for looking elsewhere. 
+imagine a reason for looking elsewhere except, of course, for the facts that the free version cannot be used 
+commercially and the commercial version is quite expensive.
 * Mesh slicer:  [UltiMaker Cura](https://ultimaker.com/software/ultimaker-cura) is a simple tool with a single purpose:
 slice the mesh outputs of CAD into horizontal layers that can be 3D printed. The settings are endlessly configurable, 
 but the defaults work quite well. Support structures are effective and efficient, and I haven't had a problem yet.
@@ -43,4 +45,32 @@ cranking out high-quality pieces since the start.
 * 3D printer web interface:  I use [OctoPrint](https://octoprint.org) with my Raspberry Pi as an efficient and easy way
 to manage print jobs.
 
-# Iteration 1
+# Degrees of Freedom
+
+The current design has five degrees of freedom listed below.
+
+1. Base rotation
+2. Arm elevation
+3. Wrist elevation 
+4. Wrist rotation
+5. Pinch
+
+Due to the symmetry of the design, DoFs 1 and 2 comprise the same parts as 3 and 4. These two pairs provide rotation and 
+elevation at each end of the arm, leaving the pincher to sit on top. 
+
+# Parts:  Print Times/Costs and Photos 
+
+* Base rotator
+* Arm base
+* Arm elevator wheel
+* Arm
+* Wrist elevator wheel
+* Wrist base
+* Wrist rotator
+* Pincher base with fixed finger
+* Pincher mobile finger
+* Pincher pin
+
+# Assembly
+
+# Evaluation
