@@ -21,4 +21,23 @@ function arm_elevator_set_degrees (degrees, set_range) {
 arm_elevator_set_degrees_element.on("input", function () {
   arm_elevator_set_degrees(arm_elevator_set_degrees_range.value, false);
 });
+window.addEventListener("keydown", (event) => {
+  let current_degrees = parseInt(arm_elevator_set_degrees_range.value);
+  let new_degrees = current_degrees;
+  switch (event.key) {
+    case "u":
+      new_degrees = current_degrees - 1;
+      break;
+    case "m":
+      new_degrees = current_degrees + 1;
+      break;
+    case "p":
+      new_degrees = 90;
+      break;
+  }
+  if (new_degrees !== current_degrees) {
+    arm_elevator_set_degrees(new_degrees, true);
+  }
+  event.preventDefault();
+}, true);
 </script>
