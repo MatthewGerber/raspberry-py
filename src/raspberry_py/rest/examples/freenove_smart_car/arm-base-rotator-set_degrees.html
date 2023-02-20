@@ -28,8 +28,11 @@ window.addEventListener("keydown", (event) => {
     case "j":
       new_degrees = current_degrees - 1;
       break;
-    case "l":
+    case "k":
       new_degrees = current_degrees + 1;
+      break;
+    case "p":
+      new_degrees = 90;
       break;
   }
   if (new_degrees !== current_degrees) {

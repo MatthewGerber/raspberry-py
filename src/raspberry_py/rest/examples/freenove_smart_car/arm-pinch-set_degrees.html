@@ -25,11 +25,14 @@ window.addEventListener("keydown", (event) => {
   let current_degrees = parseInt(arm_pinch_set_degrees_range.value);
   let new_degrees = current_degrees;
   switch (event.key) {
-    case "o":
+    case ".":
       new_degrees = current_degrees - 1;
       break;
-    case ".":
+    case "o":
       new_degrees = current_degrees + 1;
+      break;
+    case "p":
+      new_degrees = 0;
       break;
   }
   if (new_degrees !== current_degrees) {
