@@ -60,16 +60,22 @@ elevation at each end of the arm, leaving the pincher to sit on top.
 
 # Parts:  Print Times/Costs and Photos 
 
-* Base rotator
-* Arm base
-* Arm elevator wheel
-* Arm
-* Wrist elevator wheel
-* Wrist base
-* Wrist rotator
-* Pincher base with fixed finger
-* Pincher mobile finger
-* Pincher pin
+The table below shows the arm parts with estimated print times and materials from the Cura slicer and costs based on $20 
+per 1000 grams ($0.02 per gram) of filament
+(e.g., [here](https://www.amazon.com/Polymaker-PolyTerra-Bioplastic-Printing-Filament/dp/B08QN5FQX7/)).
+
+| Part                           | Print Time (HH:MM) | Print Cost  | Photo |
+|--------------------------------|--------------------|-------------|-------|
+| Base rotator                   | 3:45               | $0.45 (24g) |       |
+| Arm base                       |                    |             |       |
+| Arm elevator wheel             |                    |             |       |
+| Arm                            |                    |             |       |
+| Wrist elevator wheel           |                    |             |       | 
+| Wrist base                     |                    |             |       |
+| Wrist rotator                  |                    |             |       | 
+| Pincher base with fixed finger |                    |             |       |
+| Pincher mobile finger          |                    |             |       |
+| Pincher pin                    |                    |             |       | 
 
 # Assembly
 
