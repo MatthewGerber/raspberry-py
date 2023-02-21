@@ -98,7 +98,8 @@ for the camera servos and a front-end platform for the robotic arm:
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH35dfcQT936092f0e43a682340dfc199b2c?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
-The bracket clips to the car chassis without the need for holes or screws.
+The bracket clips to the car chassis without the need for holes or screws. The print takes about 9 hours using 60g of 
+filament (~$1.20).
 
 # Advanced:  LTE Smart Car (In Progress)
 
