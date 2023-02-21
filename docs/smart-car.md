@@ -101,6 +101,10 @@ for the camera servos and a front-end platform for the robotic arm:
 The bracket clips to the car chassis without the need for holes or screws. The print takes about 9 hours using 60g of 
 filament (~$1.20).
 
+The car with assembled arm is shown below:
+
+![car-arm-assembled](arm-parts/car-arm-assembled.png)
+
 # Advanced:  LTE Smart Car (In Progress)
 
 ## Cellular Antenna
