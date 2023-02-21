@@ -2,13 +2,14 @@ Home
 * Content
 {:toc}
 
-# Introduction
+# Python Interface for GPIO Circuits
 This package provides two related capabilities. [First](python-gpio.md), it provides a high-level, 
 event-driven Python interface for GPIO circuits running on the Raspberry Pi. Sensors, motors, LEDs, switches, and many 
 other components are covered.
 
 {% include youtubePlayer.html id="e6PrM2QVSA4" %}
 
+# Remote Control of GPIO Circuits via REST/HTML/JavaScript
 [Second](remote-gpio.md), this package enables remote control of GPIO circuits via REST APIs 
 invoked from HTML/JavaScript front-ends. Want to control your circuit remotely from your phone? Look no further. This 
 package auto-generates HTML/JavaScript for GPIO circuits based on 
@@ -18,9 +19,11 @@ pages for remote control of the circuit. The remote control screen for the
 
 ![freenove-smart-car](smart-car.png)
 
-Follow the links above (or below) for details:
-1. [Python interface for GPIO circuits](python-gpio.md)
-2. [Remote control of GPIO circuits via REST/HTML/JavaScript](remote-gpio.md)
+As another example, consider 
+[the 3D-printed robotic arm](https://matthewgerber.github.io/raspberry-py/smart-car.html#advanced-robotic-arm) that I 
+designed for the car:
+
+<iframe src="https://gmail3021534.autodesk360.com/shares/public/SH35dfcQT936092f0e4344f64dd3dcf58a6f?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
 # Installation
 The `raspberry-py` package can be consumed in two ways:
