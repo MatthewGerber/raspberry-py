@@ -25,7 +25,7 @@ designed for the car:
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH35dfcQT936092f0e4344f64dd3dcf58a6f?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
-# Installation
+# Using and Developing `raspberry-py` 
 The `raspberry-py` package can be consumed in two ways:
 
 1. Add `raspberry-py` to a project as a PyPI dependency. This is the best approach if you only want to use the 
@@ -43,11 +43,17 @@ virtualenv -p python3.9 venv
 pip install -U pip
 pip install -e .
 ```
+From here, you can push back to your fork and submit a pull request to the original if desired.
 
-# Ubuntu for Raspberry Pi with GPIO Configuration
-This package has been developed using the Ubuntu installation described 
-[here](https://matthewgerber.github.io/rlai/raspberry_pi.html#operating-system) (ignore the "Install RLAI" section). By 
-default, Ubuntu does not give the user permission to interact with the GPIO pins of the Raspberry Pi. To grant GPIO 
+# Operating System Configuration
+
+## Ubuntu
+The `raspberry-py` package should be compatible with the standard 
+[Raspberry Pi OS](https://www.raspberrypi.com/software/); however, I have been using the Ubuntu installation described 
+[here](https://matthewgerber.github.io/rlai/raspberry_pi.html#operating-system) (ignore the "Install RLAI" section).
+
+## GPIO
+By default, Ubuntu does not give the user permission to interact with the GPIO pins of the Raspberry Pi. To grant GPIO 
 permissions when the Raspberry Pi boots:
 1. Edit `/etc/udev/rules.d/99-gpiomem.rules` as follows to assign all `gpio*` device to the `dialout` group, which the 
 user is a member of by default:
@@ -56,8 +62,8 @@ KERNEL=="gpio*", OWNER="root", GROUP="dialout"
 ```
 2. Reboot for the new permissions to take effect.
 
-Use of I2C with the Raspberry Pi (e.g., page 111 of [the tutorial](../manuals/freenove-tutorial.pdf)) requires configuration 
-with the `raspi-config` utility, which is installed by default in the Raspberry Pi OS but not in Ubuntu. 
+Use of I2C with the Raspberry Pi (e.g., page 111 of [the tutorial](../manuals/freenove-tutorial.pdf)) requires 
+configuration with the `raspi-config` utility, which is installed by default in the Raspberry Pi OS but not in Ubuntu. 
 Install `raspi-config` for Ubuntu with the following commands:
 ```
 sudo apt install lua5.1
@@ -75,10 +81,9 @@ Enabling and testing the Raspberry Pi video camera:
 4. Restart:  `sudo shutdown -r now`
 5. Test:  `raspistill -o test.jpg`
 
-# Using [mjpg_streamer](https://github.com/jacksonliam/mjpg-streamer)
+## `mjpg_streamer`
 The `mjpg_streamer` utility is an efficient way to stream video from various input devices (e.g., Raspberry Pi camera 
 module or USB webcam) to various output devices (e.g., web browser). Install as follows:
-
 ```shell
 sudo apt install subversion libjpeg-turbo8-dev imagemagick ffmpeg libv4l-dev cmake libgphoto2-dev libopencv-dev libsdl-dev libprotobuf-c-dev v4l-utils
 git clone https://github.com/jacksonliam/mjpg-streamer.git
@@ -136,4 +141,4 @@ sudo kill 1418
 ```
 
 References:
-* https://community.octoprint.org/t/setting-up-octoprint-on-a-raspberry-pi-running-raspberry-pi-os-debian/2337#optional-webcam-9
+* [Setting up OctoPrint on a Raspberry Pi running Raspberry Pi OS (Debian)](https://community.octoprint.org/t/setting-up-octoprint-on-a-raspberry-pi-running-raspberry-pi-os-debian/2337#optional-webcam-9)
