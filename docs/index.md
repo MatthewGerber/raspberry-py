@@ -27,7 +27,7 @@ designed for the car:
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH35dfcQT936092f0e4344f64dd3dcf58a6f?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
-# Using and Developing `raspberry-py` 
+# Use and Development
 The `raspberry-py` package can be consumed in two ways:
 
 1. Add `raspberry-py` to a project as a PyPI dependency. This is the best approach if you only want to use the 
