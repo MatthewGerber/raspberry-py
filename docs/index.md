@@ -2,14 +2,16 @@ Home
 * Content
 {:toc}
 
-# Python Interface for GPIO Circuits
+# Features
+
+## Python Interface for GPIO Circuits
 This package provides two related capabilities. [First](python-gpio.md), it provides a high-level, 
 event-driven Python interface for GPIO circuits running on the Raspberry Pi. Sensors, motors, LEDs, switches, and many 
 other components are covered.
 
 {% include youtubePlayer.html id="e6PrM2QVSA4" %}
 
-# Remote Control of GPIO Circuits via REST/HTML/JavaScript
+## Remote Control of GPIO Circuits via REST/HTML/JavaScript
 [Second](remote-gpio.md), this package enables remote control of GPIO circuits via REST APIs 
 invoked from HTML/JavaScript front-ends. Want to control your circuit remotely from your phone? Look no further. This 
 package auto-generates HTML/JavaScript for GPIO circuits based on 
