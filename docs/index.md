@@ -83,7 +83,7 @@ Enabling and testing the Raspberry Pi video camera:
 4. Restart:  `sudo shutdown -r now`
 5. Test:  `raspistill -o test.jpg`
 
-## `mjpg_streamer`
+## mjpg_streamer
 The `mjpg_streamer` utility is an efficient way to stream video from various input devices (e.g., Raspberry Pi camera 
 module or USB webcam) to various output devices (e.g., web browser). Install as follows:
 ```shell
