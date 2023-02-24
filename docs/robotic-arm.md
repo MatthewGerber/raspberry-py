@@ -5,21 +5,21 @@
 # Introduction
 
 This page documents the development of a 3D-printed robotic arm for use with the remote-controlled 
-[Freenove Smart Car](smart-car.md). Beyond a few small test pieces, this was the first real design/build project that I
-pursued with 3D printing. The concept is basic, including a few degrees of freedom driven by the SG90 servo motors that 
-come with the car and are ubiquitous in the RC world. The design poses several good challenges for anyone starting out
-with CAD or---like me---returning to CAD after a _very_ long time (9th grade high school, if my memory serves):
+[Freenove Smart Car](smart-car.md). This was the first real project that I pursued with 3D printing. The concept is 
+basic, including a few degrees of freedom driven by the SG90 servo motors that come with the car. The design poses 
+several good challenges for anyone starting out with CAD or---like me---returning to CAD after a _very_ long time (9th 
+grade high school, if my memory serves):
 
-* Mobility:  A little practice goes a long way toward designing solid objects from 2D sketches (points, lines, circles,
-etc.) and 3D operations (extrusions, joins, cuts, holes, etc.). I found the learning curve to be quite gentle in this 
-regard, particularly with the right CAD system (more on this later). It was much more difficult to build constrained 
-movement into the design. Think hinges and keyed rotation shafts. These were tricky at first, but effective patterns 
-became evident after a few attempts.
+* Mobility:  A little practice goes a long way toward designing solid objects from 2D sketches (points, lines, circles, 
+planes, etc.) and 3D operations (extrusions, joins, cuts, holes, etc.). I found the learning curve to be quite gentle in 
+this regard, particularly with the right CAD system (more on this later). It was much more difficult to build 
+constrained movement into the design. Think hinges and keyed rotation shafts. These were tricky at first, but effective 
+patterns became evident after a few attempts.
 * Motor-part integration:  This is where the magic happens, where the design comes to life. In the case of the robotic
 arm it was a matter of connecting the rotating shaft of the SG90 servo with a mobile part of the arm design.
-* Build tolerance:  Parts must be in contact but not too tight. CAD provides exact precision, and although entry-level 
-3D printers provide surprising fidelity, they are not exact. However, the inexactness is systematic in my experience, 
-making it tolerable.
+* Build tolerance:  Mobility requires parts to be in contact but not be too tight. CAD provides exact precision, and 
+although entry-level 3D printers provide surprising fidelity, they are not exact. However, the inexactness is systematic 
+in my experience, and small tolerances seem to be quite achievable.
 
 All of this adds up to a good bit of time, failure, iteration, and fun.  
 
