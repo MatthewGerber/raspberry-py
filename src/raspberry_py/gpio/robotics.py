@@ -1,8 +1,10 @@
+import time
+from datetime import datetime, timedelta
 from typing import List
 
-from raspberry_py.gpio import Component
+from raspberry_py.gpio import Component, setup, CkPin, cleanup
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
-from raspberry_py.gpio.motors import Servo, Sg90DriverPCA9685PW
+from raspberry_py.gpio.motors import Servo, Sg90DriverPCA9685PW, Stepper
 
 
 class RaspberryPyArm(Component):
@@ -337,3 +339,39 @@ class RaspberryPyArm(Component):
             self.wrist_rotator_servo,
             self.pinch_servo
         ]
+
+
+class RaspberryPyElevator(Component):
+
+    @staticmethod
+    def test():
+
+        setup()
+
+        # create/start stepper
+        stepper = Stepper(
+            poles=32,
+            output_rotor_ratio=1 / 64.0,
+            driver_pin_1=CkPin.GPIO21,
+            driver_pin_2=CkPin.GPIO20,
+            driver_pin_3=CkPin.GPIO16,
+            driver_pin_4=CkPin.GPIO12
+        )
+
+        stepper.start()
+
+        # rotate 45 degrees in 1 second
+        start = datetime.now()
+        stepper.step(120, timedelta(seconds=10))
+        print(f'Rotated to {stepper.get_degrees():.1f} degrees in {(datetime.now() - start).total_seconds():.1f} seconds.')
+
+        time.sleep(1)
+
+        # rotate -190 degrees in 5 seconds
+        start = datetime.now()
+        stepper.step(-120, timedelta(seconds=20))
+        print(f'Rotated to {stepper.get_degrees():.1f} degrees in {(datetime.now() - start).total_seconds():.1f} seconds.')
+
+        # clean up
+        stepper.stop()
+        cleanup()
