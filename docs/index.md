@@ -5,19 +5,18 @@ Home
 # Features
 
 ## Python Interface for GPIO Circuits
-This package provides two related capabilities. [First](python-gpio.md), it provides a high-level, 
-event-driven Python interface for GPIO circuits running on the Raspberry Pi. Sensors, motors, LEDs, switches, and many 
-other components are covered.
+This package provides two related capabilities. [First](python-gpio.md), it provides a high-level, event-driven Python 
+interface for GPIO circuits running on the Raspberry Pi. Sensors, motors, LEDs, switches, and many other components are 
+covered.
 
 {% include youtubePlayer.html id="e6PrM2QVSA4" %}
 
 ## Remote Control of GPIO Circuits via REST/HTML/JavaScript
-[Second](remote-gpio.md), this package enables remote control of GPIO circuits via REST APIs 
-invoked from HTML/JavaScript front-ends. Want to control your circuit remotely from your phone? Look no further. This 
-package auto-generates HTML/JavaScript for GPIO circuits based on 
-[Material Design for Bootstrap](https://mdbootstrap.com). These HTML/JavaScript elements can be embedded in full web 
-pages for remote control of the circuit. The remote control screen for the 
-[Freenove Smart Car](smart-car.md) is shown below:
+[Second](remote-gpio.md), this package enables remote control of GPIO circuits via REST APIs invoked from 
+HTML/JavaScript front-ends. Want to control your circuit remotely from your phone? Look no further. This package 
+auto-generates HTML/JavaScript for GPIO circuits based on [Material Design for Bootstrap](https://mdbootstrap.com). 
+These HTML/JavaScript elements can be embedded in full web pages for remote control of the circuit. The remote control 
+screen for the [Freenove Smart Car](smart-car.md) is shown below:
 
 ![freenove-smart-car](smart-car.png)
 
@@ -26,6 +25,8 @@ As another example, consider
 designed for the car:
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH35dfcQT936092f0e4344f64dd3dcf58a6f?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
+
+Additional CAD parts that I have designed are listed [here](cad-parts.md). 
 
 # Use and Development
 The `raspberry-py` package can be consumed in two ways:
