@@ -61,6 +61,12 @@ and provide room for front-mounted parts like the robotic arm described above.
 
 # Elevator
 
-Gotta move things up and down, right? This is a work in progress.
+This is an elevator designed for the stepper motor found 
+[here](https://www.digikey.com/en/products/detail/adafruit-industries-llc/858/5629414).
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH35dfcQT936092f0e43161fdf97e4f7a1b0?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
+
+The small deboss labels on the components contain the Fusion 360 version numbers of the design file. This is a handy
+way to keep track of the design file version used to print each component, particularly when diagnosing issues, updating
+the design, and printing new versions. I use the [ParametricText](https://parametrictext.readthedocs.io/en/stable/)
+add-in to automatically update the version numbers when saving the design file.
