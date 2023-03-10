@@ -17,5 +17,4 @@ servo = Servo(
     max_degree=180.0
 )
 servo.id = 'servo-1'
-
 app.add_component(servo, True)

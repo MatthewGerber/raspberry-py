@@ -5,12 +5,26 @@
 ![smart-car](smart-car.png)
 
 # Overview
+The [Freenove 4WD Smart Car](https://www.amazon.com/Freenove-Raspberry-Tracking-Avoidance-Ultrasonic/dp/B07YD2LT9D) 
+comes with Python software, including a remote control interface. I have reimplemented most of the capabilities using 
+the present Python package. The screenshot above shows the control screen for the car based on the 
+[RpyFlask](remote-gpio.md) framework provided by this package. The page describes the RpyFlask application, the web
+components that provide remote controls, and the REST server that handles remote control requests. Later sections of 
+this page explore enhancements to the standard car hardware including a 3D-printed robotic arm and LTE connectivity.
 
 # RpyFlask Application
+The RpyFlask application for the car is similar those for other examples (see the 
+[LED](https://github.com/MatthewGerber/raspberry-py/blob/main/src/raspberry_py/rest/examples/led/led.py), 
+[servo](https://github.com/MatthewGerber/raspberry-py/blob/main/src/raspberry_py/rest/examples/servo/servo.py), 
+and 
+[DC motor](https://github.com/MatthewGerber/raspberry-py/blob/main/src/raspberry_py/rest/examples/dc_motor/dc_motor.py)). 
+The car has a few more options, but the concept is the same:  Configure the component (car), invoke the RpyFlask 
+framework to generate necessary HTML/JavaScript controls, embed the controls in a web page to provide remote 
+control, and start the RpyFlask REST server to handle remote control requests.
 
 # Web Components
 
-# Flask REST Server
+# RpyFlask REST Server
 
 # Enabling the WS281x LED Strip
 The WS281x series of LED strips is a popular solution for controllable LEDs, with the benefit that only a single 
@@ -76,14 +90,14 @@ sufficient to get this working via `sudo ./startup.sh`. As noted in the script, 
 This is much safer, as only a single process has elevated permissions for reading/writing `/dev/mem`. It is also much
 simpler than the previous approach.
 
-## Resources
+## References
 * [rpi-ws281x Python package for LED strip control](https://pypi.org/project/rpi-ws281x)
 * [Why rpi-ws281x requires sudo](https://github.com/jgarff/rpi_ws281x/issues/396)
 * [Add CAP_SYS_RAWIO capability](https://unix.stackexchange.com/questions/475800/non-root-read-access-to-dev-mem-by-kmem-group-members-fails)
 * [Remove CAP_SYS_RAWIO capability](https://unix.stackexchange.com/questions/303423/unset-setcap-additional-capabilities-on-excutable)
 * [Set /dev/mem permissions on boot](https://forums.developer.nvidia.com/t/dev-mem-changes-permissions-back-to-defaults-on-system-restart/65355/3)
 
-# Advanced: Robotic Arm
+# Enhancement: Robotic Arm
 Why not add a robotic arm to the Freenove car? See [here](robotic-arm.md) for the design of the arm, which is not 
 specific to the car but will be mounted and controlled by it. The arm is shown below:
 
@@ -105,7 +119,7 @@ The car with assembled arm is shown below:
 
 ![car-arm-assembled](arm-parts/car-arm-assembled.png)
 
-# Advanced:  LTE Smart Car (In Progress)
+# Enhancement:  LTE Smart Car
 
 ## Cellular Antenna
 * https://www.thinkpenguin.com/gnu-linux/usb-4g-lte-advanced-modem-gnulinux-tpe-usb4glte
@@ -149,7 +163,3 @@ write_component_files --app freenove_smart_car.freenove_smart_car --rest-host lo
 If all has gone well above, then you should be able to open a web browser on the controlling device and pull up 
 `http://localhost:8080`. Then browse to the car's control screen. All communication between the controlling device and
 the car will be secured via the SSH reverse tunnel.
-
-# Random
-1. MacOS runs AirPlay Receiver on port 5000. If you get unexpected errors when making REST calls to Flask, try disabling 
-AirPlay Receiver at System Preferences => Sharing => AirPlay Receiver.

@@ -18,21 +18,16 @@ app.add_component(car, True)
 
 arm = RaspberryPyArm(
     pwm=car.pwm,
-    
     base_rotator_channel=10,
     base_rotator_reversed=True,
-    
     arm_elevator_channel=11,
     arm_elevator_reversed=True,
     arm_elevator_correction_degrees=5,
-    
     wrist_elevator_channel=12,
     wrist_elevator_correction_degrees=5,
-    
     wrist_rotator_channel=13,
     wrist_rotator_reversed=True,
     wrist_rotator_correction_degrees=-5,
-    
     pinch_servo_channel=14
 )
 arm.id = 'arm-1'

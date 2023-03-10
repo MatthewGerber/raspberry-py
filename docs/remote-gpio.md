@@ -154,7 +154,9 @@ INFO:werkzeug:10.0.0.246 - - [02/Dec/2022 22:51:27] "GET /call/servo-1/set_degre
 10.0.0.246 - - [02/Dec/2022 22:51:27] "GET /call/servo-1/set_degrees?degrees=int:5 HTTP/1.1" 200 -
 INFO:werkzeug:10.0.0.246 - - [02/Dec/2022 22:51:27] "GET /call/servo-1/set_degrees?degrees=int:5 HTTP/1.1" 200 -
 ```
-If the circuit is properly built and powered on, the servo will activate and move accordingly.
+If the circuit is properly built and powered on, the servo will activate and move accordingly. MacOS runs AirPlay 
+Receiver on port 5000. If you get unexpected errors when making REST calls to Flask, try disabling AirPlay Receiver at 
+System Preferences => Sharing => AirPlay Receiver.
 
 # Example:  Freenove 4WD Smart Car
 The [Freenove 4WD Smart Car](https://www.amazon.com/Freenove-Raspberry-Tracking-Avoidance-Ultrasonic/dp/B07YD2LT9D) 
