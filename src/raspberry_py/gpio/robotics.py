@@ -8,7 +8,7 @@ from raspberry_py.gpio.motors import Servo, Sg90DriverPCA9685PW, Stepper
 
 class RaspberryPyArm(Component):
     """
-    A simple robotic arm. See https://matthewgerber.github.io/raspberry-py/raspberry-py/robotic-arm.html for details.
+    A robotic arm. See https://matthewgerber.github.io/raspberry-py/raspberry-py/robotic-arm.html for details.
     """
 
     class State(Component.State):
@@ -341,65 +341,126 @@ class RaspberryPyArm(Component):
 
 
 class RaspberryPyElevator(Component):
+    """
+    An elevator. See https://matthewgerber.github.io/raspberry-py/raspberry-py/elevator.html for details.
+    """
 
     class State(Component.State):
+        """
+        Elevator state.
+        """
+
+        def __init__(
+                self,
+                location_mm: float
+        ):
+            """
+            Initialize the state.
+
+            :param location_mm: Location (mm).
+            """
+
+            self.location_mm = location_mm
 
         def __eq__(self, other: object) -> bool:
-            return False
+            """
+            Check equality with another state.
+
+            :param other: State.
+            :return: True if equal and False otherwise.
+            """
+
+            if not isinstance(other, RaspberryPyElevator.State):
+                raise ValueError(f'Expected a {RaspberryPyElevator.State}')
+
+            return self.location_mm == other.location_mm
 
         def __str__(self) -> str:
-            return ''
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'{self.location_mm}'
 
     def move(
             self,
             mm: int,
             time_to_move: timedelta
     ):
-        steps = mm * self.steps_per_mm
-        self.stepper_right.step(steps, time_to_move)
+        """
+        Move the elevator.
+
+        :param mm: Signed number of millimeters to move (positive is up and negative is down).
+        :param time_to_move: Amount of time to take when moving.
+        """
+
+        steps = round(mm * self.steps_per_mm)
+        self.stepper_left.step(steps, time_to_move)
+        self.set_state(RaspberryPyElevator.State(self.state.location_mm + steps))
 
     def start(
             self
     ):
+        """
+        Start the elevator.
+        """
+
         self.stepper_left.start()
         self.stepper_right.start()
 
     def stop(
             self
     ):
+        """
+        Stop the elevator.
+        """
+
         self.stepper_left.stop()
         self.stepper_right.stop()
 
     def __init__(
-            self
+            self,
+            left_stepper_pins: Tuple[CkPin, CkPin, CkPin, CkPin],
+            right_stepper_pins: Tuple[CkPin, CkPin, CkPin, CkPin],
+            location_mm: float,
+            steps_per_mm: float
     ):
         """
         Initialize the elevator.
+
+        :param left_stepper_pins: Left stepper pins, a 4-tuple in which the first element is the GPIO pin connected to
+        the first input of the left stepper's driver, and so on.
+        :param right_stepper_pins: Right stepper pins, a 4-tuple in which the first element is the GPIO pin connected to
+        the first input of the right stepper's driver, and so on.
+        :param location_mm: Current location.
+        :param steps_per_mm: Number of steps per millimeter.
         """
 
-        super().__init__(RaspberryPyElevator.State())
+        super().__init__(RaspberryPyElevator.State(location_mm))
 
-        self.steps_per_mm = 1
+        self.steps_per_mm = steps_per_mm
 
         self.stepper_left = Stepper(
             poles=32,
             output_rotor_ratio=1 / 64.0,
-            driver_pin_1=CkPin.CE1,
-            driver_pin_2=CkPin.CE0,
-            driver_pin_3=CkPin.GPIO25,
-            driver_pin_4=CkPin.GPIO24
+            driver_pin_1=left_stepper_pins[0],
+            driver_pin_2=left_stepper_pins[1],
+            driver_pin_3=left_stepper_pins[2],
+            driver_pin_4=left_stepper_pins[3]
         )
 
         self.stepper_right = Stepper(
             poles=32,
             output_rotor_ratio=1 / 64.0,
-            driver_pin_1=CkPin.GPIO21,
-            driver_pin_2=CkPin.GPIO20,
-            driver_pin_3=CkPin.GPIO16,
-            driver_pin_4=CkPin.GPIO12
+            driver_pin_1=right_stepper_pins[0],
+            driver_pin_2=right_stepper_pins[1],
+            driver_pin_3=right_stepper_pins[2],
+            driver_pin_4=right_stepper_pins[3]
         )
 
-        # synchronize the motors
+        # synchronize the motors in reverse, as they are mounted opposite each other.
         self.stepper_left.event(lambda s: self.stepper_right.step(
             self.stepper_right.get_step() - s.step,
             timedelta(0)

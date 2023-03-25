@@ -773,17 +773,36 @@ class Stepper(Component):
         state: Stepper.State
         self.state: Stepper.State
 
+        initial_step = self.state.step
+        curr_time = datetime.now()
+
         # get number of steps to move and how long to take for each step
-        num_steps = state.step - self.state.step
+        num_steps = state.step - initial_step
+        if num_steps == 0:
+            print(f'Stepper is already at step {state.step}. Nothing to do.')
+            return
+
         delay_seconds_per_step = state.time_to_step.total_seconds() / abs(num_steps)
 
-        # execute steps
+        # execute steps in the direction indicated
         direction = np.sign(num_steps)
-        for step in range(1, abs(num_steps) + 1):
+        for next_step in range(initial_step + direction, state.step + direction, direction):
+
+            # drive to next step
             self.current_driver_pin_idx = (self.current_driver_pin_idx + direction) % len(self.driver_pins)
             self.drive()
-            super().set_state(Stepper.State(self.state.step + step, timedelta(seconds=delay_seconds_per_step)))
+
+            # update state. we do this here (rather than at the end of this function) so that event listeners can react
+            # in real time as the stepper moves.
+            new_time = datetime.now()
+            super().set_state(Stepper.State(next_step, new_time - curr_time))
+            curr_time = new_time
+
+            # sleep for a bit
             time.sleep(delay_seconds_per_step)
+
+        if self.state.step != state.step:
+            raise ValueError(f'Expected stepper state ({self.state.step}) to be {state.step}.')
 
     def step(
             self,
