@@ -779,21 +779,35 @@ class Stepper(Component):
 
         # execute steps
         direction = np.sign(num_steps)
-        for _ in range(abs(num_steps)):
+        for step in range(1, abs(num_steps) + 1):
             self.current_driver_pin_idx = (self.current_driver_pin_idx + direction) % len(self.driver_pins)
             self.drive()
+            super().set_state(Stepper.State(self.state.step + step, timedelta(seconds=delay_seconds_per_step)))
             time.sleep(delay_seconds_per_step)
 
-        # trigger events now that steps are complete
-        super().set_state(state)
-
     def step(
+            self,
+            steps: int,
+            time_to_step: timedelta
+    ):
+        """
+        Step the motor a number of steps.
+
+        :param steps:  Number of steps.
+        :param time_to_step: Amount of time to take.
+        """
+
+        self.state: Stepper.State
+
+        self.set_state(Stepper.State(self.state.step + steps, time_to_step))
+
+    def step_degrees(
             self,
             degrees: float,
             time_to_step: timedelta
     ):
         """
-        Step the motor.
+        Step the motor a number of degrees.
 
         :param degrees:  Number of degrees.
         :param time_to_step: Amount of time to take.
@@ -844,6 +858,19 @@ class Stepper(Component):
         self.state: Stepper.State
 
         return (self.state.step / self.steps_per_degree) % 360.0
+
+    def get_step(
+            self
+    ) -> int:
+        """
+        Get current step of the output shaft.
+
+        :return: Step.
+        """
+
+        self.state: Stepper.State
+
+        return self.state.step
 
     def __init__(
             self,

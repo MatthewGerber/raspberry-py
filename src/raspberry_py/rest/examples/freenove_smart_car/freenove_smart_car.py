@@ -3,7 +3,7 @@ from raspberry_py.gpio.robotics import RaspberryPyArm
 from raspberry_py.rest.application import app
 
 car = Car(
-    camera_pan_servo_correction_degrees=15.0,
+    camera_pan_servo_correction_degrees=20.0,
     camera_tilt_servo_correction_degrees=-10.0,
     reverse_wheels=[Wheel.REAR_LEFT],
     camera_width=160,
