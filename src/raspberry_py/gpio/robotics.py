@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import List
+from typing import List, Tuple
 
 from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
@@ -395,6 +395,8 @@ class RaspberryPyElevator(Component):
         :param mm: Signed number of millimeters to move (positive is up and negative is down).
         :param time_to_move: Amount of time to take when moving.
         """
+
+        self.state: RaspberryPyElevator.State
 
         steps = round(mm * self.steps_per_mm)
         self.stepper_left.step(steps, time_to_move)
