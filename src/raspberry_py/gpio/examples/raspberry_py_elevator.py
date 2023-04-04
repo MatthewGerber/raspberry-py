@@ -12,17 +12,17 @@ def main():
 
     setup()
 
-    # TODO:  Add reverse options. Add calibration conveniences.
     elevator = RaspberryPyElevator(
         left_stepper_pins=(CkPin.CE1, CkPin.CE0, CkPin.GPIO25, CkPin.GPIO24),
-        right_stepper_pins=(CkPin.GPIO12, CkPin.GPIO16, CkPin.GPIO20, CkPin.GPIO21),
+        right_stepper_pins=(CkPin.GPIO21, CkPin.GPIO20, CkPin.GPIO16, CkPin.GPIO12),
         location_mm=0.0,
-        steps_per_mm=1.0
+        steps_per_mm=500.0 / 13.0,
+        reverse_right_stepper=True
     )
     elevator.start()
 
-    elevator.move(500, timedelta(seconds=5))
-    elevator.move(-500, timedelta(seconds=5))
+    elevator.move(10, timedelta(seconds=2))
+    elevator.move(-10, timedelta(seconds=2))
     elevator.stop()
 
     cleanup()

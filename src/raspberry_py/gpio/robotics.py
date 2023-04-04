@@ -402,6 +402,38 @@ class RaspberryPyElevator(Component):
         self.stepper_left.step(steps, time_to_move)
         self.set_state(RaspberryPyElevator.State(self.state.location_mm + steps))
 
+    def step_left(
+            self,
+            steps: int,
+            time_to_step: timedelta
+    ):
+        """
+        Step the left motor.
+
+        :param steps: Number of steps.
+        :param time_to_step: Time to take.
+        """
+
+        self.asynchronize_steppers()
+        self.stepper_left.step(steps, time_to_step)
+        self.synchronize_steppers()
+
+    def step_right(
+            self,
+            steps: int,
+            time_to_step: timedelta
+    ):
+        """
+        Step the right motor.
+
+        :param steps: Number of steps.
+        :param time_to_step: Time to take.
+        """
+
+        self.asynchronize_steppers()
+        self.stepper_right.step(steps, time_to_step)
+        self.synchronize_steppers()
+
     def start(
             self
     ):
@@ -422,12 +454,39 @@ class RaspberryPyElevator(Component):
         self.stepper_left.stop()
         self.stepper_right.stop()
 
+    def synchronize_steppers(
+            self
+    ):
+        """
+        Synchronize the steppers such that their movements are identical in opposite directions as required by the
+        elevator's design.
+        """
+
+        self.asynchronize_steppers()
+
+        # synchronize the motors in reverse, as they are mounted opposite each other.
+        self.stepper_left.event(lambda s: self.stepper_right.step(
+            -s.step - self.stepper_right.get_step(),
+            timedelta(0)
+        ))
+
+    def asynchronize_steppers(
+            self
+    ):
+        """
+        Asynchronize the steppers such that they can move independently.
+        """
+
+        self.stepper_left.events.clear()
+
     def __init__(
             self,
             left_stepper_pins: Tuple[CkPin, CkPin, CkPin, CkPin],
             right_stepper_pins: Tuple[CkPin, CkPin, CkPin, CkPin],
             location_mm: float,
-            steps_per_mm: float
+            steps_per_mm: float,
+            reverse_left_stepper: bool = False,
+            reverse_right_stepper: bool = False
     ):
         """
         Initialize the elevator.
@@ -438,11 +497,16 @@ class RaspberryPyElevator(Component):
         the first input of the right stepper's driver, and so on.
         :param location_mm: Current location.
         :param steps_per_mm: Number of steps per millimeter.
+        :param reverse_left_stepper: Whether to reverse the left stepper.
+        :param reverse_right_stepper: Whether to reverse the right stepper.
         """
 
         super().__init__(RaspberryPyElevator.State(location_mm))
 
         self.steps_per_mm = steps_per_mm
+
+        if reverse_left_stepper:
+            left_stepper_pins = list(reversed(left_stepper_pins))
 
         self.stepper_left = Stepper(
             poles=32,
@@ -453,6 +517,9 @@ class RaspberryPyElevator(Component):
             driver_pin_4=left_stepper_pins[3]
         )
 
+        if reverse_right_stepper:
+            right_stepper_pins = list(reversed(right_stepper_pins))
+
         self.stepper_right = Stepper(
             poles=32,
             output_rotor_ratio=1 / 64.0,
@@ -462,8 +529,4 @@ class RaspberryPyElevator(Component):
             driver_pin_4=right_stepper_pins[3]
         )
 
-        # synchronize the motors in reverse, as they are mounted opposite each other.
-        self.stepper_left.event(lambda s: self.stepper_right.step(
-            -s.step - self.stepper_right.get_step(),
-            timedelta(0)
-        ))
+        self.synchronize_steppers()
