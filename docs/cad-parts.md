@@ -1,5 +1,4 @@
-
-# CAD Parts
+[Home](index.md) > CAD Parts
 
 This page documents parts I have designed for 3D printing.
 
