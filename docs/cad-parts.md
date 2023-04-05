@@ -1,7 +1,7 @@
 
 # CAD Parts
 
-This page documents some of the parts I have designed for 3D printing.
+This page documents parts I have designed for 3D printing.
 
 # Materials and Tech
 
@@ -30,8 +30,9 @@ to manage print jobs.
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH35dfcQT936092f0e4344f64dd3dcf58a6f?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
 This was the first real project that I pursued with 3D printing. The concept is basic, including five degrees of 
-freedom driven by the SG90 servo motors. The design poses several good challenges for anyone starting out with CAD 
-or---like me---returning to CAD after a _very_ long time (9th grade high school, if my memory serves):
+freedom driven by [SG90 servo motors](https://www.amazon.com/dp/B08KY49SFX). The design poses several good challenges 
+for anyone starting out with CAD or---like me---returning to CAD after a _very_ long time (9th grade high school, if my 
+memory serves):
 
 * Mobility:  A little practice goes a long way toward designing solid objects from 2D sketches (points, lines, circles, 
 planes, etc.) and 3D operations (extrusions, joins, cuts, holes, etc.). I found the learning curve to be quite gentle in 
@@ -44,7 +45,8 @@ arm it was a matter of connecting the rotating shaft of the SG90 servo with a mo
 although entry-level 3D printers provide surprising fidelity, they are not exact. However, the inexactness is systematic 
 in my experience, and small tolerances seem to be quite achievable.
 
-All of this adds up to a good bit of time, failure, iteration, and fun.
+All of this adds up to a good bit of time, failure, iteration, and fun. Full details can be found 
+[here](robotic-arm.md).
 
 Related projects:
 
@@ -57,16 +59,27 @@ and provide room for front-mounted parts like the robotic arm described above.
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH35dfcQT936092f0e43a682340dfc199b2c?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
+Related projects:
+
 * [Smart car](smart-car.md)
 
 # Elevator
 
-This is an elevator designed for the stepper motor found 
+This is an elevator designed for the stepper motors found 
 [here](https://www.digikey.com/en/products/detail/adafruit-industries-llc/858/5629414).
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH35dfcQT936092f0e43161fdf97e4f7a1b0?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
-The small deboss labels on the components contain the Fusion 360 version numbers of the design file. This is a handy
-way to keep track of the design file version used to print each component, particularly when diagnosing issues, updating
-the design, and printing new versions. I use the [ParametricText](https://parametrictext.readthedocs.io/en/stable/)
-add-in to automatically update the version numbers when saving the design file.
+Full details can be found [here](elevator.md).
+
+Related projects:
+
+* [Smart car](smart-car.md)
+
+# Tips and Tricks
+
+1. The small deboss labels on various components contain the Fusion 360 version numbers of the design file. This is a 
+handy way to keep track of the design file version used to print each component, particularly when diagnosing issues, 
+updating the design, and printing new versions. I use the 
+[ParametricText](https://parametrictext.readthedocs.io/en/stable/) add-in to automatically update the version numbers 
+when saving the design file.

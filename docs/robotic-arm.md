@@ -16,7 +16,7 @@ This page documents the development of a 3D-printed robotic arm for use with the
 Due to the symmetry of the design, DoFs 1 and 2 comprise the same parts as 3 and 4. These two pairs provide rotation and 
 elevation at each end of the arm, leaving the pincher to sit on top. 
 
-# Parts:  Print Times/Costs and Photos 
+# Parts:  Print Times/Costs and Images 
 
 The table below shows the arm parts with estimated print times and materials from the Cura slicer and costs based on $20 
 per 1000 grams ($0.02 per gram) of filament
@@ -39,6 +39,4 @@ per 1000 grams ($0.02 per gram) of filament
 The complete design image does not show the base rotator, arm base, and arm elevator wheel. The design is symmetric on
 each end of the arm, so it was not necessary to draw these components.
 
-# Assembly
-
-# Performance Evaluation
+Other parts can be found [here](cad-parts.md).
