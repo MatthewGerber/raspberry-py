@@ -1,0 +1,22 @@
+<button type="button" class="btn btn-primary" id="elevator-1-move_up_1_mm_1_sec">Move up</button>
+<script type="module">
+import {rest_host, rest_port} from "./globals.js";
+const elevator_1_move_up_1_mm_1_sec = $("#elevator-1-move_up_1_mm_1_sec");
+function move_up_1_mm_1_sec () {
+  $.ajax({
+    url: "http://" + rest_host + ":" + rest_port + "/call/elevator-1/move_up_1_mm_1_sec",
+    type: "GET"
+  });
+}
+elevator_1_move_up_1_mm_1_sec.on("mousedown touchstart", function () {
+  move_up_1_mm_1_sec();
+});
+window.addEventListener("keydown", (event) => {
+  switch (event.code) {
+    case "MetaRight":
+      move_up_1_mm_1_sec();
+      break;
+  }
+  event.preventDefault();
+}, true);
+</script>

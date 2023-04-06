@@ -1,5 +1,6 @@
+from raspberry_py.gpio import CkPin
 from raspberry_py.gpio.freenove.smart_car import Car, Wheel
-from raspberry_py.gpio.robotics import RaspberryPyArm
+from raspberry_py.gpio.robotics import RaspberryPyArm, RaspberryPyElevator
 from raspberry_py.rest.application import app
 
 car = Car(
@@ -33,3 +34,14 @@ arm = RaspberryPyArm(
 arm.id = 'arm-1'
 app.add_component(arm, True)
 car.event(lambda s: arm.start() if s.on else arm.stop())
+
+elevator = RaspberryPyElevator(
+    left_stepper_pins=(CkPin.CE1, CkPin.CE0, CkPin.GPIO25, CkPin.GPIO24),
+    right_stepper_pins=(CkPin.GPIO21, CkPin.GPIO20, CkPin.GPIO16, CkPin.GPIO12),
+    location_mm=0.0,
+    steps_per_mm=38.5,
+    reverse_right_stepper=True
+)
+elevator.id = 'elevator-1'
+app.add_component(elevator, True)
+car.event(lambda s: elevator.start() if s.on else elevator.stop())

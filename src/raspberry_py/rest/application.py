@@ -51,7 +51,10 @@ class RpyFlask(Flask):
 
         # add certain components recursively, but do not write the component files for them. the write_component_files
         # function handles the generation of html/javascript elements for these components in a particular way.
-        if isinstance(component, Car) or isinstance(component, RaspberryPyArm):
+        if (
+            isinstance(component, Car) or
+            isinstance(component, RaspberryPyArm)
+        ):
             for component in component.get_components():
                 self.add_component(component, False)
 
