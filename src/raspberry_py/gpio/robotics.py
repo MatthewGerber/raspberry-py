@@ -384,6 +384,24 @@ class RaspberryPyElevator(Component):
 
             return f'{self.location_mm}'
 
+    def move_up_1_mm_1_sec(
+            self
+    ):
+        """
+        Move up 1mm in 1s.
+        """
+
+        self.move(1, timedelta(seconds=1))
+
+    def move_down_1_mm_1_sec(
+            self
+    ):
+        """
+        Move down 1mm in 1s.
+        """
+
+        self.move(-1, timedelta(seconds=1))
+
     def move(
             self,
             mm: int,
