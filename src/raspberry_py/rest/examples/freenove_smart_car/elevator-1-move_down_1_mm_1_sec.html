@@ -1,0 +1,22 @@
+<button type="button" class="btn btn-primary" id="elevator-1-move_down_1_mm_1_sec">Move down</button>
+<script type="module">
+import {rest_host, rest_port} from "./globals.js";
+const elevator_1_move_down_1_mm_1_sec = $("#elevator-1-move_down_1_mm_1_sec");
+function on_press_move_down_1_mm_1_sec () {
+  $.ajax({
+    url: "http://" + rest_host + ":" + rest_port + "/call/elevator-1/move_down_1_mm_1_sec",
+    type: "GET"
+  });
+}
+elevator_1_move_down_1_mm_1_sec.on("mousedown touchstart", function () {
+  on_press_move_down_1_mm_1_sec();
+});
+window.addEventListener("keydown", (event) => {
+  switch (event.code) {
+    case "MetaLeft":
+      on_press_move_down_1_mm_1_sec();
+      break;
+  }
+  event.preventDefault();
+}, true);
+</script>

@@ -16,7 +16,7 @@ from raspberry_py.gpio import Component, setup
 from raspberry_py.gpio.freenove.smart_car import Car
 from raspberry_py.gpio.lights import LED
 from raspberry_py.gpio.motors import DcMotor, Servo, Stepper
-from raspberry_py.gpio.robotics import RaspberryPyArm
+from raspberry_py.gpio.robotics import RaspberryPyArm, RaspberryPyElevator
 from raspberry_py.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder, Camera
 from raspberry_py.gpio.sounds import ActiveBuzzer
 
@@ -226,8 +226,8 @@ export async function is_checked(element) {
 
         elif isinstance(component, RaspberryPyElevator):
             elements = [
-                RpyFlask.get_button(component.id, pressed_function=component.move_up_1_mm_1_sec, key='MetaRight', text='Move up'),
-                RpyFlask.get_button(component.id, pressed_function=component.move_down_1_mm_1_sec, key='MetaLeft', text='Move down')
+                RpyFlask.get_button(component.id, component.move_up_1_mm_1_sec, None, None, None, 'MetaRight', 'Move up'),
+                RpyFlask.get_button(component.id, component.move_down_1_mm_1_sec, None, None, None, 'MetaLeft', 'Move down')
             ]
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
@@ -734,9 +734,9 @@ export async function is_checked(element) {
         if text is None:
             text = component_id
 
-        pressed_function_name = '' if pressed_function is None else pressed_function.__name__
-        released_function_name = '' if released_function is None else released_function.__name__
-        element_id = '-'.join([component_id, pressed_function_name, released_function_name])
+        pressed_function_name = None if pressed_function is None else pressed_function.__name__
+        released_function_name = None if released_function is None else released_function.__name__
+        element_id = '-'.join(filter(None, [component_id, pressed_function_name, released_function_name]))
         element_var = element_id.replace('-', '_')
 
         pressed_function_js = ''
@@ -783,7 +783,7 @@ export async function is_checked(element) {
                 )
 
         released_function_js = ''
-        released_events = ''
+        released_events_js = ''
         if released_function is not None:
 
             if released_query is not None and len(released_query) > 0:
@@ -791,7 +791,39 @@ export async function is_checked(element) {
             else:
                 released_query = ''
 
-            raise ValueError('not implemented')
+            released_function_name_js = f'on_release_{released_function_name}'
+            released_function_js = (
+                f'function {released_function_name_js} () {{\n'
+                f'  $.ajax({{\n'
+                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{released_function_name}{released_query}",\n'
+                f'    type: "GET"\n'
+                f'  }});\n'
+                f'}}\n'
+            )
+
+            released_events_js = (
+                f'{element_var}.on("mouseup touchend", function () {{\n'
+                f'  {released_function_name_js}();\n'
+                f'}});\n'
+            )
+
+            if key is not None:
+
+                if 'Meta' in key:
+                    switch_value = 'event.code'
+                else:
+                    switch_value = 'event.key'
+
+                released_events_js += (
+                    f'window.addEventListener("keyup", (event) => {{\n'
+                    f'  switch ({switch_value}) {{\n'
+                    f'    case "{key}":\n'
+                    f'      {released_function_name_js}();\n'
+                    f'      break;\n'
+                    f'  }}\n'
+                    f'  event.preventDefault();\n'
+                    f'}}, true);\n'
+                )
 
         return (
             element_id,
@@ -803,7 +835,7 @@ export async function is_checked(element) {
                 f'{pressed_function_js}'
                 f'{pressed_events_js}'
                 f'{released_function_js}'                
-                f'{released_events}'
+                f'{released_events_js}'
                 f'</script>'
             )
         )
