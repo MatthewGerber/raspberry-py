@@ -182,7 +182,7 @@ export async function is_checked(element) {
             ]
         elif isinstance(component, ActiveBuzzer):
             elements = [
-                RpyFlask.get_button(component.id, component.buzz, None, component.stop, None, None)
+                RpyFlask.get_button(component.id, component.buzz, None, component.stop, None, None, None)
             ]
         elif isinstance(component, Camera):
             elements = [
@@ -202,7 +202,7 @@ export async function is_checked(element) {
                 RpyFlask.get_range(component.id, component.min_speed, component.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, component.set_speed, '', False),
                 RpyFlask.get_range(component.id, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, component.set_differential_speed, '', False),
                 RpyFlask.get_label(component.range_finder.id, component.range_finder.measure_distance_once, timedelta(seconds=1), 'Range (cm)', power_id, 1),
-                RpyFlask.get_button(component.buzzer.id, component.buzzer.buzz, None, component.buzzer.stop, None, 'Horn'),
+                RpyFlask.get_button(component.buzzer.id, component.buzzer.buzz, None, component.buzzer.stop, None, 'h', 'Horn'),
                 (power_id, power_element),
                 RpyFlask.get_switch(component.camera.id, component.camera.enable_face_detection, component.camera.disable_face_detection, 'Face Detection', component.camera.run_face_detection),
                 RpyFlask.get_switch(component.camera.id, component.camera.enable_face_circles, component.camera.disable_face_circles, 'Face Circles', component.camera.circle_detected_faces),
@@ -222,6 +222,12 @@ export async function is_checked(element) {
                 RpyFlask.get_range(component.wrist_elevator_servo.id, int(component.wrist_elevator_servo.min_degree), int(component.wrist_elevator_servo.max_degree), 1, int(component.wrist_elevator_servo.get_degrees()), False, False, ['i'], [','], ['p'], False, component.wrist_elevator_servo.set_degrees, 'Wrist Elevation', False),
                 RpyFlask.get_range(component.wrist_rotator_servo.id, int(component.wrist_rotator_servo.min_degree), int(component.wrist_rotator_servo.max_degree), 1, int(component.wrist_rotator_servo.get_degrees()), False, False, ['l'], [';'], ['p'], False, component.wrist_rotator_servo.set_degrees, 'Wrist Rotation', False),
                 RpyFlask.get_range(component.pinch_servo.id, int(component.pinch_servo.min_degree), int(component.pinch_servo.max_degree), 1, int(component.pinch_servo.get_degrees()), False, False, ['.'], ['o'], ['p'], False, component.pinch_servo.set_degrees, 'Pinch', False)
+            ]
+
+        elif isinstance(component, RaspberryPyElevator):
+            elements = [
+                RpyFlask.get_button(component.id, pressed_function=component.move_up_1_mm_1_sec, key='MetaRight', text='Move up'),
+                RpyFlask.get_button(component.id, pressed_function=component.move_down_1_mm_1_sec, key='MetaLeft', text='Move down')
             ]
         else:
             raise ValueError(f'Unknown component type:  {type(component)}')
@@ -706,6 +712,7 @@ export async function is_checked(element) {
             pressed_query: Optional[str],
             released_function: Optional[Callable[[], Any]],
             released_query: Optional[str],
+            key: Optional[str],
             text: Optional[str]
     ) -> Tuple[str, str]:
         """
@@ -716,50 +723,75 @@ export async function is_checked(element) {
         :param pressed_query: Query to submit with pressed_function call, or None for no query.
         :param released_function: Function to call when the button is released.
         :param released_query: Query to submit with released_function call, or None for no query.
+        :param key: Key that, when pressed/released, will trigger the associated functions.
         :param text: Readable text to display.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
+        if pressed_function is None and released_function is None:
+            raise ValueError('Either pressed or released function must be provided.')
+
         if text is None:
             text = component_id
 
-        element_id = component_id
+        pressed_function_name = '' if pressed_function is None else pressed_function.__name__
+        released_function_name = '' if released_function is None else released_function.__name__
+        element_id = '-'.join([component_id, pressed_function_name, released_function_name])
+        element_var = element_id.replace('-', '_')
 
-        pressed_event = ''
+        pressed_function_js = ''
+        pressed_events_js = ''
         if pressed_function is not None:
 
-            pressed_function_name = pressed_function.__name__
             if pressed_query is not None and len(pressed_query) > 0:
                 pressed_query = f'?{pressed_query}'
             else:
                 pressed_query = ''
 
-            pressed_event = (
-                f'{element_id}.on("mousedown touchstart", function () {{\n'
+            pressed_function_name_js = f'on_press_{pressed_function_name}'
+            pressed_function_js = (
+                f'function {pressed_function_name_js} () {{\n'
                 f'  $.ajax({{\n'
                 f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{pressed_function_name}{pressed_query}",\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
+                f'}}\n'
+            )
+
+            pressed_events_js = (
+                f'{element_var}.on("mousedown touchstart", function () {{\n'
+                f'  {pressed_function_name_js}();\n'
                 f'}});\n'
             )
 
-        released_event = ''
+            if key is not None:
+
+                if 'Meta' in key:
+                    switch_value = 'event.code'
+                else:
+                    switch_value = 'event.key'
+
+                pressed_events_js += (
+                    f'window.addEventListener("keydown", (event) => {{\n'
+                    f'  switch ({switch_value}) {{\n'
+                    f'    case "{key}":\n'
+                    f'      {pressed_function_name_js}();\n'
+                    f'      break;\n'
+                    f'  }}\n'
+                    f'  event.preventDefault();\n'
+                    f'}}, true);\n'
+                )
+
+        released_function_js = ''
+        released_events = ''
         if released_function is not None:
 
-            released_function_name = released_function.__name__
             if released_query is not None and len(released_query) > 0:
                 released_query = f'?{released_query}'
             else:
                 released_query = ''
 
-            released_event = (
-                f'{element_id}.on("mouseup touchend", function () {{\n'
-                f'  $.ajax({{\n'
-                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{released_function_name}{released_query}",\n'
-                f'    type: "GET"\n'
-                f'  }});\n'
-                f'}});\n'
-            )
+            raise ValueError('not implemented')
 
         return (
             element_id,
@@ -767,9 +799,11 @@ export async function is_checked(element) {
                 f'<button type="button" class="btn btn-primary" id="{element_id}">{text}</button>\n'
                 f'<script type="module">\n'
                 f'import {{rest_host, rest_port}} from "./globals.js";\n'
-                f'const {element_id} = $("#{element_id}");\n'
-                f'{pressed_event}'
-                f'{released_event}'
+                f'const {element_var} = $("#{element_id}");\n'
+                f'{pressed_function_js}'
+                f'{pressed_events_js}'
+                f'{released_function_js}'                
+                f'{released_events}'
                 f'</script>'
             )
         )
