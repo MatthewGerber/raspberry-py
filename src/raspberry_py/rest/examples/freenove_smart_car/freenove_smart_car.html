@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="../../mdbootstrap/css/mdb.min.css" />
     <link rel="stylesheet" href="../../styles.css" />
   </head>
-  <body>
+  <body onload="createImageLayer();">
     <div class="container">
 
       <div class="row">
@@ -34,7 +34,7 @@
                   <div id="div-car-1-set_speed"></div>
                 </div>
                 <div class="col-md-10">
-                  <div id="div-camera-capture_image"></div>
+                  <div id="div-mjpg_webcam"></div>
                 </div>
                 <div class="col-md">
                   <div id="div-car-1-set_differential_speed"></div>
@@ -170,7 +170,7 @@
     <script src="../../mdbootstrap/js/mdb.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.4.1.js"></script>
     <script>$("#div-car-1-set_speed").load("car-1-set_speed.html");</script>
-    <script>$("#div-camera-capture_image").load("camera-capture_image.html");</script>
+    <script>$("#div-mjpg_webcam").load("mjpg_webcam.html");</script>
     <script>$("#div-range_finder-measure_distance_once").load("range_finder-measure_distance_once.html");</script>
     <script>$("#div-camera-pan-set_degrees").load("camera-pan-set_degrees.html");</script>
     <script>$("#div-camera-tilt-set_degrees").load("camera-tilt-set_degrees.html");</script>
