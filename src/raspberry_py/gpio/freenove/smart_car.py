@@ -453,18 +453,13 @@ class Car(Component):
 
     def __init__(
             self,
+            camera: Union[Camera, MjgpStreamer],
             camera_pan_servo_correction_degrees: float = 0.0,
             camera_tilt_servo_correction_degrees: float = 0.0,
             reverse_wheels: Optional[List[Wheel]] = None,
-            camera_device: str = '/dev/video0',
-            camera_width: int = 640,
-            camera_height: int = 480,
-            camera_fps: int = 30,
             min_speed: int = -100,
             max_speed: int = 100,
             connection_blackout_tolerance_seconds: Optional[float] = None,
-            run_face_detection: bool = True,
-            circle_detected_faces: bool = True,
             track_faces: bool = True,
             track_light: bool = False,
             battery_min: Optional[float] = None,
@@ -473,6 +468,7 @@ class Car(Component):
         """
         Initialize the car.
 
+        :param camera: Camera component.
         :param camera_pan_servo_correction_degrees: Pan correction. This number of degrees is added to any request to
         position the camera pan servo, in order to correct servo assembly errors. For example, the servo mount threading
         might not permit assembly at precisely the desired angle. If the servo is a few degrees one way or the other,
@@ -483,18 +479,10 @@ class Car(Component):
         other, add or subtract a few degrees here to get the desired mounting angle.
         :param reverse_wheels: List of wheels to reverse direction of, or None to reverse no wheels. Pass values here
         so that all positive wheel speeds move the car forward and all negative wheel speeds move the car backward.
-        :param camera_device: Camera device.
-        :param camera_width: Camera image width.
-        :param camera_height: Camera image height.
-        :param camera_fps: Camera frames per second.
         :param min_speed: Minimum speed in [-100,+100].
         :param max_speed: Maximum speed in [-100,+100].
         :param connection_blackout_tolerance_seconds: Maximum amount of time (seconds) to tolerate connection blackout,
         beyond which the car will automatically shut down. Pass None to not use this feature.
-        :param run_face_detection: Whether to run face detection when capturing camera images. This must be True in
-        order to circle and/or track faces.
-        :param circle_detected_faces: Whether to circle detected faces in the captured camera images.
-        `run_face_detection` must be True for this to work.
         :param track_faces: Whether to track detected faces. `run_face_detection` must be true for this to work.
         :param track_light: Whether to track light.
         :param battery_min: Battery rescaling minimum, or None to use raw voltage value.
@@ -607,16 +595,12 @@ class Car(Component):
         ]
 
         # other components
-        self.camera = Camera(
-            device=camera_device,
-            width=camera_width,
-            height=camera_height,
-            fps=camera_fps,
-            run_face_detection=run_face_detection,
-            circle_detected_faces=circle_detected_faces,
-            face_detection_callback=self.track_detected_faces if track_faces else None
-        )
-        self.camera.id = 'camera'
+        self.camera = camera
+        if isinstance(self.camera, Camera):
+            self.camera.face_detection_callback = self.track_detected_faces if self.track_faces else None
+        elif not isinstance(self.camera, MjpgStreamer):
+            raise ValueError(f'Unknown camera type:  {self.camera}')
+
         self.buzzer = ActiveBuzzer(CkPin.GPIO17)
         self.buzzer.id = 'buzzer'
         self.range_finder = UltrasonicRangeFinder(

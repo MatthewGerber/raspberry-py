@@ -1,14 +1,14 @@
+import RPi.GPIO as gpio
 import base64
+import cv2
 import math
+import numpy as np
 import os
+import signal
 import time
 from enum import Enum, auto
 from threading import Thread, Lock
 from typing import Optional, List, Callable, Tuple
-
-import RPi.GPIO as gpio
-import cv2
-import numpy as np
 
 from raspberry_py.gpio import Component
 from raspberry_py.gpio.adc import AdcDevice
@@ -932,3 +932,120 @@ class Camera(Component):
         self.face_model = cv2.CascadeClassifier(f'{os.path.dirname(__file__)}/haarcascade_frontalface_default.xml')
 
         self.on = False
+
+
+class MjpgStreamer(Component):
+    """
+    A wrapper around the mjpg-streamer application found here:  https://github.com/jacksonliam/mjpg-streamer
+    """
+
+    class State(Component.State):
+        """
+        State.
+        """
+
+        def __init__(
+                self,
+                on: bool
+        ):
+            """
+            Initialize the state.
+
+            :param on: Whether the streamer is is.
+            """
+
+            self.on = on
+
+        def __eq__(self, other: object) -> bool:
+            """
+            Check equality.
+
+            :param other: Other.
+            :return: True if equal and False otherwise.
+            """
+
+            if not isinstance(other, MjpgStreamer.State):
+                raise ValueError(f'Expected a {MjpgStreamer.State}')
+
+            return self.on == other.on
+
+        def __str__(self) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'{self.on}'
+
+    def turn_on(
+            self
+    ):
+        """
+        Start the stream.
+        """
+
+        self.set_state(MjpgStreamer.State(on=True))
+
+    def turn_off(
+            self
+    ):
+        """
+        Stop the stream.
+        """
+
+        self.set_state(MjpgStreamer.State(on=False))
+
+    def set_state(
+            self,
+            state: 'Component.State'
+    ):
+        """
+        Set the state and trigger events.
+
+        :param state: State.
+        """
+
+        state: MjpgStreamer.State
+        self.state: MjpgStreamer.State
+
+        if state.on and not self.state.on:
+            args = shlex.split(f'mjpg_streamer -i "input_uvc.so -d {self.device} -fps {self.fps} -r {self.width}x{self.height} -q {self.quality}" -o "output_http.so -p {self.port} -w ./www')
+            self.process = subprocess.Popen(args, cwd=os.getenv('MJPG_STREAMER_HOME'))
+        elif not state.on and self.state.on:
+            os.kill(self.process.pid, signal.SIGTERM)
+            while self.process.poll() is None:
+                time.sleep(1)
+
+        super().set_state(state)
+
+    def __init__(
+            self,
+            device: str,
+            width: int,
+            height: int,
+            fps: int,
+            quality: int,
+            port: int
+    ):
+        """
+        Initialize the stream.
+
+        :param device: Device (e.g., '/dev/video0').
+        :param width: Width.
+        :param height: Height.
+        :param fps: Frames per second.
+        :param quality: Quality (0-100).
+        :param port: Port to serve stream on.
+        """
+
+        super().__init__(MjpgStreamer.State(on=False))
+
+        self.device = device
+        self.width = width
+        self.height = height
+        self.fps = fps
+        self.quality = quality
+        self.port = port
+
+        self.process = None

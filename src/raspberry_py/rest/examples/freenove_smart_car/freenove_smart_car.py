@@ -3,14 +3,23 @@ from raspberry_py.gpio.freenove.smart_car import Car, Wheel
 from raspberry_py.gpio.robotics import RaspberryPyArm, RaspberryPyElevator
 from raspberry_py.rest.application import app
 
+camera = Camera(
+    device='/dev/video0',
+    width=160,
+    height=120,
+    fps=30,
+    run_face_detection=run_face_detection,
+    circle_detected_faces=circle_detected_faces,
+    face_detection_callback=None
+)
+camera.id = 'camera-1'
+
 car = Car(
+    camera=camera,
     camera_pan_servo_correction_degrees=20.0,
     camera_tilt_servo_correction_degrees=-10.0,
     reverse_wheels=[Wheel.REAR_LEFT],
-    camera_width=160,
-    camera_height=120,
     connection_blackout_tolerance_seconds=2,
-    run_face_detection=False,
     battery_min=72.54902,
     battery_max=83.52941
 )
