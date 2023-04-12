@@ -23,7 +23,7 @@ pages for remote control of the circuit. The remote control screen for the
 
 The smart car is built from the same components (sensors, motors, LEDs, etc.) listed above, making development quite 
 straightforward. As another example, consider 
-[the 3D-printed robotic arm](https://matthewgerber.github.io/raspberry-py/smart-car.html#advanced-robotic-arm) that I 
+[the 3D-printed robotic arm](https://matthewgerber.github.io/raspberry-py/smart-car.html#enhancement-robotic-arm) that I 
 designed for the car.
 
 Please see the [project website](https://matthewgerber.github.io/raspberry-py/) for more information.
