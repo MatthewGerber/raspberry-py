@@ -1,0 +1,24 @@
+<div class="range">
+  <label for="camera-1-multiply_resolution" class="form-label">Display Resolution</label>
+  <input type="range" class="form-range" min="1" max="5" step="1" value="1" id="camera-1-multiply_resolution" />
+</div>
+<script type="module">
+import {rest_host, rest_port} from "./globals.js";
+const camera_1_multiply_resolution_element = $("#camera-1-multiply_resolution");
+const camera_1_multiply_resolution_range = camera_1_multiply_resolution_element[0];
+function camera_1_multiply_resolution (factor, set_range) {
+  if (factor < 1 || factor > 5) {
+    return;
+  }
+  $.ajax({
+    url: "http://" + rest_host + ":" + rest_port + "/call/camera-1/multiply_resolution?factor=int:" + factor,
+    type: "GET"
+  });
+  if (set_range) {
+    camera_1_multiply_resolution_range.value = factor;
+  }
+}
+camera_1_multiply_resolution_element.on("input", function () {
+  camera_1_multiply_resolution(camera_1_multiply_resolution_range.value, false);
+});
+</script>

@@ -1,6 +1,7 @@
 from raspberry_py.gpio import CkPin
 from raspberry_py.gpio.freenove.smart_car import Car, Wheel
 from raspberry_py.gpio.robotics import RaspberryPyArm, RaspberryPyElevator
+from raspberry_py.gpio.sensors import Camera
 from raspberry_py.rest.application import app
 
 camera = Camera(
@@ -8,8 +9,8 @@ camera = Camera(
     width=160,
     height=120,
     fps=30,
-    run_face_detection=run_face_detection,
-    circle_detected_faces=circle_detected_faces,
+    run_face_detection=True,
+    circle_detected_faces=True,
     face_detection_callback=None
 )
 camera.id = 'camera-1'

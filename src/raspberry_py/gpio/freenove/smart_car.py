@@ -1,7 +1,7 @@
 import time
 from enum import IntEnum
 from threading import RLock, Thread, Lock
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from rpi_ws281x import Color
 from smbus2 import SMBus
@@ -12,7 +12,7 @@ from raspberry_py.gpio.adc import ADS7830
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
 from raspberry_py.gpio.lights import LedStrip
 from raspberry_py.gpio.motors import DcMotor, DcMotorDriverPCA9685PW, Servo, Sg90DriverPCA9685PW
-from raspberry_py.gpio.sensors import Camera, UltrasonicRangeFinder
+from raspberry_py.gpio.sensors import Camera, UltrasonicRangeFinder, MjpgStreamer
 from raspberry_py.gpio.sounds import ActiveBuzzer
 
 
@@ -453,7 +453,7 @@ class Car(Component):
 
     def __init__(
             self,
-            camera: Union[Camera, MjgpStreamer],
+            camera: Union[Camera, MjpgStreamer],
             camera_pan_servo_correction_degrees: float = 0.0,
             camera_tilt_servo_correction_degrees: float = 0.0,
             reverse_wheels: Optional[List[Wheel]] = None,

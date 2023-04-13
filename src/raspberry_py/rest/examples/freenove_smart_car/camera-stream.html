@@ -1,8 +1,11 @@
 <div style="height:480px;display:flex;justify-content:center" id="camera-stream"></div>
-<script type="text/javascript">
+<script type="module">
+import {is_checked} from "./utils.js";
+const car_1_start_stop = $("#car-1-start-stop");
 let image_id = 0;
 let loaded_images = [];
-function insert_new_image() {
+async function insert_new_image() {
+  await is_checked(car_1_start_stop);
   let img = new Image();
   img.style.position = "absolute";
   img.style.zIndex = "-1";
@@ -11,14 +14,14 @@ function insert_new_image() {
   let camera_stream = document.getElementById("camera-stream");
   camera_stream.insertBefore(img, camera_stream.firstChild);
 }
-function image_loaded() {
+async function image_loaded() {
   this.style.zIndex = image_id; // Image loaded_images, bring to front!
   while (1 < loaded_images.length) {
     let image_to_remove = loaded_images.shift();
     image_to_remove.parentNode.removeChild(image_to_remove);
   }
   loaded_images.push(this);
-  insert_new_image();
+  await insert_new_image();
 }
 insert_new_image();
 </script>

@@ -1,0 +1,31 @@
+<div style="text-align: center">
+  <img alt="camera-1-capture-image" id="camera-1-capture_image" width="160" src="" />
+  <label id="camera-1-latency">Latency (ms):  None</label>
+</div>
+<script type="module">
+import {rest_host, rest_port} from "./globals.js";
+import {is_checked} from "./utils.js";
+import {init_latency, set_call_time, update_latency} from "./utils.js";
+const camera_1_latency = $("#camera-1-latency")[0];
+init_latency("camera-1-latency", 0.99);
+const camera_1_capture_image = $("#camera-1-capture_image")[0];
+const car_1_start_stop = $("#car-1-start-stop");
+async function capture_camera_1_capture_image() {
+  await is_checked(car_1_start_stop);
+  set_call_time("camera-1-latency");
+  $.ajax({
+    url: "http://" + rest_host + ":" + rest_port + "/call/camera-1/capture_image",
+    type: "GET",
+    success: async function (return_value) {
+      camera_1_capture_image.src = "data:image/jpg;base64," + return_value;
+      camera_1_latency.innerHTML = "Latency (ms):  " + update_latency("camera-1-latency").toFixed(0);
+      await capture_camera_1_capture_image();
+    },
+    error: async function(xhr, error){
+      console.log(error);
+      await capture_camera_1_capture_image();
+    }
+  });
+}
+capture_camera_1_capture_image();
+</script>
