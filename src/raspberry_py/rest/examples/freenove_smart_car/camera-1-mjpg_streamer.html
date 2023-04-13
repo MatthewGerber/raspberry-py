@@ -1,0 +1,33 @@
+<div style="height:480px;display:flex;justify-content:center" id="camera-1-mjpg_streamer"></div>
+<script type="module">
+import {rest_host} from "./globals.js";
+import {is_checked} from "./utils.js";
+const car_1_start_stop = $("#car-1-start-stop");
+let image_id = 0;
+let loaded_images = [];
+async function insert_new_image_camera_1_mjpg_streamer() {
+  await is_checked(car_1_start_stop);
+  let img = new Image();
+  img.style.position = "absolute";
+  img.style.zIndex = "-1";
+  img.onload = image_loaded;
+  img.onerror = image_error;
+  img.src = "http://" + rest_host + ":8081/?action=snapshot&n=" + (++image_id);
+  let camera_1_mjpg_streamer = document.getElementById("camera-1-mjpg_streamer");
+  camera_1_mjpg_streamer.insertBefore(img, camera_1_mjpg_streamer.firstChild);
+}
+async function image_loaded() {
+  this.style.zIndex = image_id;
+  while (1 < loaded_images.length) {
+    let image_to_remove = loaded_images.shift();
+    image_to_remove.parentNode.removeChild(image_to_remove);
+  }
+  loaded_images.push(this);
+  await insert_new_image_camera_1_mjpg_streamer();
+}
+async function image_error() {
+  await new Promise(r => setTimeout(r, 500.0));
+  await insert_new_image_camera_1_mjpg_streamer();
+}
+insert_new_image_camera_1_mjpg_streamer();
+</script>

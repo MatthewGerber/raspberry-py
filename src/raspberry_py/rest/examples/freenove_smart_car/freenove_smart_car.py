@@ -1,17 +1,16 @@
 from raspberry_py.gpio import CkPin
 from raspberry_py.gpio.freenove.smart_car import Car, Wheel
 from raspberry_py.gpio.robotics import RaspberryPyArm, RaspberryPyElevator
-from raspberry_py.gpio.sensors import Camera
+from raspberry_py.gpio.sensors import MjpgStreamer
 from raspberry_py.rest.application import app
 
-camera = Camera(
+camera = MjpgStreamer(
     device='/dev/video0',
-    width=160,
-    height=120,
+    width=640,
+    height=480,
     fps=30,
-    run_face_detection=True,
-    circle_detected_faces=True,
-    face_detection_callback=None
+    quality=100,
+    port=8081
 )
 camera.id = 'camera-1'
 

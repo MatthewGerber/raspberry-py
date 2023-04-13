@@ -1013,12 +1013,14 @@ class MjpgStreamer(Component):
         self.state: MjpgStreamer.State
 
         if state.on and not self.state.on:
-            args = shlex.split(f'mjpg_streamer -i "input_uvc.so -d {self.device} -fps {self.fps} -r {self.width}x{self.height} -q {self.quality}" -o "output_http.so -p {self.port} -w ./www')
+            args = shlex.split(f'./mjpg_streamer -i "input_uvc.so -d {self.device} -fps {self.fps} -r {self.width}x{self.height} -q {self.quality}" -o "output_http.so -p {self.port} -w ./www"')
             self.process = subprocess.Popen(args, cwd=os.getenv('MJPG_STREAMER_HOME'))
         elif not state.on and self.state.on:
             os.kill(self.process.pid, signal.SIGTERM)
             while self.process.poll() is None:
                 time.sleep(1)
+
+            self.process = None
 
         super().set_state(state)
 
