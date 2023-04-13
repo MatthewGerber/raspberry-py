@@ -17,7 +17,7 @@ from raspberry_py.gpio.freenove.smart_car import Car
 from raspberry_py.gpio.lights import LED
 from raspberry_py.gpio.motors import DcMotor, Servo, Stepper
 from raspberry_py.gpio.robotics import RaspberryPyArm, RaspberryPyElevator
-from raspberry_py.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder, Camera
+from raspberry_py.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder, Camera, MjpgStreamer
 from raspberry_py.gpio.sounds import ActiveBuzzer
 
 LEFT_ARROW_KEYS = ['Left', 'ArrowLeft']
@@ -191,25 +191,34 @@ export async function is_checked(element) {
         elif isinstance(component, Car):
 
             power_id, power_element = RpyFlask.get_switch(component.id, component.start, component.stop, 'Power', component.on)
-            camera_id, camera_element = RpyFlask.get_image(component.camera.id, component.camera.width, component.camera.capture_image, None, power_id)
 
             elements = [
-                (camera_id, camera_element),
                 RpyFlask.get_range(component.camera_pan_servo.id, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 3, int(component.camera_pan_servo.get_degrees()), False, False, ['s'], ['f'], ['r'], False, component.camera_pan_servo.set_degrees, 'Pan', True),
                 RpyFlask.get_range(component.camera_tilt_servo.id, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 3, int(component.camera_tilt_servo.get_degrees()), False, False, ['d'], ['e'], ['r'], False, component.camera_tilt_servo.set_degrees, 'Tilt', True),
-                RpyFlask.get_range_html_attribute(camera_id, 'width', 100, 800, 10, component.camera.width, 'Display Size '),
-                RpyFlask.get_range(component.camera.id, 1, 5, 1, 1, False, False, [], [], [], False, component.camera.multiply_resolution, 'Display Resolution', False),
                 RpyFlask.get_range(component.id, component.min_speed, component.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, component.set_speed, '', False),
                 RpyFlask.get_range(component.id, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, component.set_differential_speed, '', False),
                 RpyFlask.get_label(component.range_finder.id, component.range_finder.measure_distance_once, timedelta(seconds=1), 'Range (cm)', power_id, 1),
                 RpyFlask.get_button(component.buzzer.id, component.buzzer.buzz, None, component.buzzer.stop, None, 'h', 'Horn'),
                 (power_id, power_element),
-                RpyFlask.get_switch(component.camera.id, component.camera.enable_face_detection, component.camera.disable_face_detection, 'Face Detection', component.camera.run_face_detection),
-                RpyFlask.get_switch(component.camera.id, component.camera.enable_face_circles, component.camera.disable_face_circles, 'Face Circles', component.camera.circle_detected_faces),
                 RpyFlask.get_switch(component.id, component.enable_face_tracking, component.disable_face_tracking, 'Face Tracking', component.track_faces),
                 RpyFlask.get_switch(component.id, component.enable_light_tracking, component.disable_light_tracking, 'Light Tracking', component.track_light),
                 RpyFlask.get_label(component.id, component.get_battery_percent, timedelta(seconds=10), 'Battery (%)', power_id, 1)
             ]
+
+            if isinstance(component.camera, Camera):
+                camera_id, camera_element = RpyFlask.get_image(component.camera.id, component.camera.width, component.camera.capture_image, None, power_id)
+                camera_elements = [
+                    (camera_id, camera_element),
+                    RpyFlask.get_range_html_attribute(camera_id, 'width', 100, 800, 10, component.camera.width, 'Display Size '),
+                    RpyFlask.get_range(component.camera.id, 1, 5, 1, 1, False, False, [], [], [], False, component.camera.multiply_resolution, 'Display Resolution', False),
+                    RpyFlask.get_switch(component.camera.id, component.camera.enable_face_detection, component.camera.disable_face_detection, 'Face Detection', component.camera.run_face_detection),
+                    RpyFlask.get_switch(component.camera.id, component.camera.enable_face_circles, component.camera.disable_face_circles, 'Face Circles', component.camera.circle_detected_faces)
+                ]
+                elements.extend(camera_elements)
+            elif isinstance(component.camera, MjpgStreamer):
+                elements.append(RpyFlask.get_mjpg_streamer(component.camera.id, component.camera.height, None, power_id, component.camera.port))
+            else:
+                raise ValueError(f'Unknown camera:  {component.camera}')
 
             if component.connection_blackout_tolerance_seconds is not None:
                 blackout_id, blackout_element = RpyFlask.get_repeater(component.id, component.connection_heartbeat, timedelta(seconds=component.connection_blackout_tolerance_seconds / 4.0))
@@ -879,6 +888,77 @@ export async function is_checked(element) {
                 f'  }});\n'
                 f'}}\n'
                 f'{js_function_name}();'
+            )
+        )
+
+    @staticmethod
+    def get_mjpg_streamer(
+            component_id: str,
+            height: int,
+            refresh_interval: Optional[timedelta],
+            pause_for_checkbox_id: Optional[str],
+            port: int
+    ):
+        """
+        Get connection to the mjpg_streamer application.
+
+        :param component_id: Component id.
+        :param height: Height of image.
+        :param refresh_interval: How long to wait between refresh calls, or None for no interval.
+        :param pause_for_checkbox_id: HTML identifier of checkbox to pause for before capturing image.
+        :param port: Port that mjpg_streamer runs on.
+        :return: 2-tuple of (1) element id and (2) UI element.
+        """
+
+        element_id = f'{component_id}-mjpg_streamer'
+        image_element = element_id.replace('-', '_')
+        insert_new_image_function_name = f'insert_new_image_{image_element}'
+
+        refresh_interval_javascript = ''
+        if refresh_interval is not None:
+            refresh_interval_javascript = f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
+
+        pause_import_javascript = ''
+        pause_element_javascript = ''
+        pause_await_javascript = ''
+        if pause_for_checkbox_id is not None:
+            pause_import_javascript = 'import {is_checked} from "./utils.js";\n'
+            pause_var_javascript = pause_for_checkbox_id.replace('-', '_')
+            pause_element_javascript = f'const {pause_var_javascript} = $("#{pause_for_checkbox_id}");\n'
+            pause_await_javascript = f'  await is_checked({pause_var_javascript});\n'
+
+        return (
+            element_id,
+            (
+                f'<div style="height:{height}px;display:flex;justify-content:center" id="{element_id}"></div>\n'
+                f'<script type="module">\n'
+                f'import {{rest_host}} from "./globals.js";\n'
+                f'{pause_import_javascript}'
+                f'let image_id = 0;\n'
+                f'let loaded_images = [];\n'
+                f'{pause_element_javascript}'
+                f'async function {insert_new_image_function_name}() {{\n'
+                f'{pause_await_javascript}'
+                f'  let img = new Image();\n'
+                f'  img.style.position = "absolute";\n'
+                f'  img.style.zIndex = "-1";\n'
+                f'  img.onload = image_loaded;\n'
+                f'  img.src = "http://" + rest_host + ":{port}/?action=snapshot&n=" + (++image_id);\n'
+                f'  let {image_element} = document.getElementById("{element_id}");\n'
+                f'  {image_element}.insertBefore(img, {image_element}.firstChild);\n'
+                f'{refresh_interval_javascript}'
+                f'}}\n'
+                f'async function image_loaded() {{\n'
+                f'  this.style.zIndex = image_id;\n'
+                f'  while (1 < loaded_images.length) {{\n'
+                f'    let image_to_remove = loaded_images.shift();\n'
+                f'    image_to_remove.parentNode.removeChild(image_to_remove);\n'
+                f'  }}\n'
+                f'  loaded_images.push(this);\n'
+                f'  await {insert_new_image_function_name}();\n'
+                f'}}\n'
+                f'{insert_new_image_function_name}();\n'
+                f'</script>'
             )
         )
 
