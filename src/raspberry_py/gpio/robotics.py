@@ -2,6 +2,7 @@ from datetime import timedelta
 from typing import List, Tuple
 
 from raspberry_py.gpio import Component, CkPin
+from raspberry_py.gpio.controls import LimitSwitch
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
 from raspberry_py.gpio.motors import Servo, Sg90DriverPCA9685PW, Stepper
 
@@ -497,10 +498,25 @@ class RaspberryPyElevator(Component):
 
         self.stepper_left.events.clear()
 
+    def left_stepper_has_reached_limit(
+            self,
+            current_state: Stepper.State,
+            next_state: Stepper.State
+    ) -> bool:
+        """
+        Check whether the left stepper has reached its limit.
+
+        :return: True if limit has been reached.
+        """
+
+        return self.bottom_limit_switch.is_pressed() and next_state.step < current_state.step
+
     def __init__(
             self,
             left_stepper_pins: Tuple[CkPin, CkPin, CkPin, CkPin],
             right_stepper_pins: Tuple[CkPin, CkPin, CkPin, CkPin],
+            bottom_limit_switch_input_pin: CkPin,
+            top_limit_switch_input_pin: CkPin,
             location_mm: float,
             steps_per_mm: float,
             reverse_left_stepper: bool = False,
@@ -513,6 +529,8 @@ class RaspberryPyElevator(Component):
         the first input of the left stepper's driver, and so on.
         :param right_stepper_pins: Right stepper pins, a 4-tuple in which the first element is the GPIO pin connected to
         the first input of the right stepper's driver, and so on.
+        :param bottom_limit_switch_input_pin: Input (reading) pin of the bottom-limit switch.
+        :param top_limit_switch_input_pin: Input (reading) pin of the top-limit switch.
         :param location_mm: Current location.
         :param steps_per_mm: Number of steps per millimeter.
         :param reverse_left_stepper: Whether to reverse the left stepper.
@@ -532,7 +550,8 @@ class RaspberryPyElevator(Component):
             driver_pin_1=left_stepper_pins[0],
             driver_pin_2=left_stepper_pins[1],
             driver_pin_3=left_stepper_pins[2],
-            driver_pin_4=left_stepper_pins[3]
+            driver_pin_4=left_stepper_pins[3],
+            limiter=self.left_stepper_has_reached_limit
         )
 
         if reverse_right_stepper:
@@ -548,3 +567,6 @@ class RaspberryPyElevator(Component):
         )
 
         self.synchronize_steppers()
+
+        self.bottom_limit_switch = LimitSwitch(input_pin=bottom_limit_switch_input_pin, bounce_time_ms=5)
+        self.top_limit_switch = LimitSwitch(input_pin=top_limit_switch_input_pin, bounce_time_ms=5)
