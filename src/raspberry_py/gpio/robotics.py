@@ -498,18 +498,21 @@ class RaspberryPyElevator(Component):
 
         self.stepper_left.events.clear()
 
-    def left_stepper_has_reached_limit(
+    def platform_has_reached_limit(
             self,
             current_state: Stepper.State,
             next_state: Stepper.State
     ) -> bool:
         """
-        Check whether the left stepper has reached its limit.
+        Check whether the platform has reached a limit.
 
-        :return: True if limit has been reached.
+        :return: True if the platform has reached a limit.
         """
 
-        return self.bottom_limit_switch.is_pressed() and next_state.step < current_state.step
+        return (
+            (self.bottom_limit_switch.is_pressed() and next_state.step < current_state.step) or
+            (self.top_limit_switch.is_pressed() and next_state.step > current_state.step)
+        )
 
     def __init__(
             self,
@@ -541,9 +544,13 @@ class RaspberryPyElevator(Component):
 
         self.steps_per_mm = steps_per_mm
 
+        self.bottom_limit_switch = LimitSwitch(input_pin=bottom_limit_switch_input_pin, bounce_time_ms=5)
+        self.top_limit_switch = LimitSwitch(input_pin=top_limit_switch_input_pin, bounce_time_ms=5)
+
         if reverse_left_stepper:
             left_stepper_pins = list(reversed(left_stepper_pins))
 
+        # we synchronize from the left stepper to the right, so we only need to put the limiter on the left.
         self.stepper_left = Stepper(
             poles=32,
             output_rotor_ratio=1 / 64.0,
@@ -551,7 +558,7 @@ class RaspberryPyElevator(Component):
             driver_pin_2=left_stepper_pins[1],
             driver_pin_3=left_stepper_pins[2],
             driver_pin_4=left_stepper_pins[3],
-            limiter=self.left_stepper_has_reached_limit
+            limiter=self.platform_has_reached_limit
         )
 
         if reverse_right_stepper:
@@ -567,6 +574,3 @@ class RaspberryPyElevator(Component):
         )
 
         self.synchronize_steppers()
-
-        self.bottom_limit_switch = LimitSwitch(input_pin=bottom_limit_switch_input_pin, bounce_time_ms=5)
-        self.top_limit_switch = LimitSwitch(input_pin=top_limit_switch_input_pin, bounce_time_ms=5)

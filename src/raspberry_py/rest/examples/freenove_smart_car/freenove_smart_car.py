@@ -47,6 +47,8 @@ car.event(lambda s: arm.start() if s.on else arm.stop())
 elevator = RaspberryPyElevator(
     left_stepper_pins=(CkPin.CE1, CkPin.CE0, CkPin.GPIO25, CkPin.GPIO24),
     right_stepper_pins=(CkPin.GPIO21, CkPin.GPIO20, CkPin.GPIO16, CkPin.GPIO12),
+    bottom_limit_switch_input_pin=CkPin.MOSI,
+    top_limit_switch_input_pin=CkPin.MISO,
     location_mm=0.0,
     steps_per_mm=38.5,
     reverse_right_stepper=True

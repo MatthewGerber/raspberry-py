@@ -791,9 +791,9 @@ class Stepper(Component):
 
             # check for limiting. provide the anticipated next state.
             next_state = Stepper.State(next_step, timedelta(seconds=delay_seconds_per_step))
-            if self.limiter is not None and not self.limiter(self.state, next_state):
+            if self.limiter is not None and self.limiter(self.state, next_state):
                 print(f'Stepper has been limited. Refusing to set state to {next_state} or proceed beyond.')
-                limited = False
+                limited = True
                 break
 
             # drive to next step
