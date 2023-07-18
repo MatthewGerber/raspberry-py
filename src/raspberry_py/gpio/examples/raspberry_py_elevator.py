@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 from raspberry_py.gpio import CkPin, setup, cleanup
 from raspberry_py.gpio.robotics import RaspberryPyElevator
 
@@ -15,15 +13,16 @@ def main():
     elevator = RaspberryPyElevator(
         left_stepper_pins=(CkPin.CE1, CkPin.CE0, CkPin.GPIO25, CkPin.GPIO24),
         right_stepper_pins=(CkPin.GPIO21, CkPin.GPIO20, CkPin.GPIO16, CkPin.GPIO12),
+        bottom_limit_switch_input_pin=CkPin.MOSI,
+        top_limit_switch_input_pin=CkPin.MISO,
         location_mm=0.0,
         steps_per_mm=38.5,
+        reverse_left_stepper=False,
         reverse_right_stepper=True
     )
     elevator.start()
 
-    elevator.move(20, timedelta(seconds=5))
-    elevator.move(-20, timedelta(seconds=5))
-    elevator.stop()
+    elevator.align_gears_and_mount()
 
     cleanup()
 

@@ -1,3 +1,4 @@
+import time
 from datetime import timedelta
 from typing import List, Tuple
 
@@ -513,6 +514,53 @@ class RaspberryPyElevator(Component):
             (self.bottom_limit_switch.is_pressed() and next_state.step < current_state.step) or
             (self.top_limit_switch.is_pressed() and next_state.step > current_state.step)
         )
+
+    def align_gears_and_mount(
+            self
+    ):
+        """
+        Align gears and mount the elevator. The following steps are executed in sequence:
+
+          1. The left stepper runs until CTRL+C is pressed.
+          2. The right stepper runs until CTRL+C is pressed. At this point, the gears are aligned.
+          3. Wait for CTRL+C. This gives the builder time to move the platform to the elevator posts and prepare for
+          lowering.
+          4. The steppers will rotate until CTRL+C is pressed, such that the platform will be lowered onto the mount.
+
+        This function must be called from the shell in order for CTRL+C to be handled correctly.
+        """
+
+        self.asynchronize_steppers()
+
+        print('Wait until the left stepper is aligned, then press CTRL+C...')
+        try:
+            while True:
+                self.stepper_left.step(300, timedelta(seconds=5))
+        except KeyboardInterrupt:
+            pass
+
+        print('Wait until the right stepper is aligned, then press CTRL+C...')
+        try:
+            while True:
+                self.stepper_right.step(300, timedelta(seconds=5))
+        except KeyboardInterrupt:
+            pass
+
+        print('Wait until the platform is ready to be lowered, then press CTRL+C...')
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            pass
+
+        self.synchronize_steppers()
+
+        print('Wait until the platform is lowered, then press CTRL+C...')
+        try:
+            while True:
+                self.move(-20, timedelta(seconds=5))
+        except KeyboardInterrupt:
+            pass
 
     def __init__(
             self,
