@@ -4,7 +4,9 @@ from raspberry_py.gpio.robotics import RaspberryPyElevator
 
 def main():
     """
-    This example moves an elevator up and down. See
+    This example demonstrates assembly of the elevator platform upon the mounting posts. In order to align the gears and
+    mount the platform, read the docstring for `align_gears_and_mount` to understand the sequence of operations and what
+    needs to be done when. This script must be run from the shell (e.g., `python assemble.py`). See
     https://matthewgerber.github.io/raspberry-py/raspberry-py/elevator.html for details.
     """
 

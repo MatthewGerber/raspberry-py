@@ -522,9 +522,9 @@ class RaspberryPyElevator(Component):
         Align gears and mount the elevator. The following steps are executed in sequence:
 
           1. The left stepper runs until CTRL+C is pressed.
-          2. The right stepper runs until CTRL+C is pressed. At this point, the gears are aligned.
-          3. Wait for CTRL+C. This gives the builder time to move the platform to the elevator posts and prepare for
-          lowering.
+          2. The right stepper runs until CTRL+C is pressed. At this point, the gears must be oriented identically.
+          3. Wait for CTRL+C. This gives you time to move the platform to the elevator posts and prepare for
+          lowering. Press CTRL+C when ready for lowering.
           4. The steppers will rotate until CTRL+C is pressed, such that the platform will be lowered onto the mount.
 
         This function must be called from the shell in order for CTRL+C to be handled correctly.
