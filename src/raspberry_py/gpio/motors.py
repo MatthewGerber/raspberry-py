@@ -2,7 +2,7 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from datetime import timedelta, datetime
-from typing import Optional
+from typing import Optional, Callable
 
 import RPi.GPIO as gpio
 import numpy as np
@@ -786,22 +786,31 @@ class Stepper(Component):
 
         # execute steps in the direction indicated
         direction = np.sign(num_steps)
+        limited = False
         for next_step in range(initial_step + direction, state.step + direction, direction):
+
+            # check for limiting. provide the anticipated next state.
+            next_state = Stepper.State(next_step, timedelta(seconds=delay_seconds_per_step))
+            if self.limiter is not None and self.limiter(self.state, next_state):
+                print(f'Stepper has been limited. Refusing to set state to {next_state} or proceed beyond.')
+                limited = True
+                break
 
             # drive to next step
             self.current_driver_pin_idx = (self.current_driver_pin_idx + direction) % len(self.driver_pins)
             self.drive()
 
             # update state. we do this here (rather than at the end of this function) so that event listeners can react
-            # in real time as the stepper moves.
+            # in real time as the stepper moves. update the anticipated time to step with the actual.
             new_time = datetime.now()
-            super().set_state(Stepper.State(next_step, new_time - curr_time))
+            next_state.time_to_step = new_time - curr_time
+            super().set_state(next_state)
             curr_time = new_time
 
             # sleep for a bit
             time.sleep(delay_seconds_per_step)
 
-        if self.state.step != state.step:
+        if not limited and self.state.step != state.step:
             raise ValueError(f'Expected stepper state ({self.state.step}) to be {state.step}.')
 
     def step(
@@ -898,7 +907,8 @@ class Stepper(Component):
             driver_pin_1: int,
             driver_pin_2: int,
             driver_pin_3: int,
-            driver_pin_4: int
+            driver_pin_4: int,
+            limiter: Optional[Callable[['Stepper.State', 'Stepper.State'], bool]] = None
     ):
         """
         Initialize the motor.
@@ -910,6 +920,8 @@ class Stepper(Component):
         :param driver_pin_2: Driver GPIO pin 2.
         :param driver_pin_3: Driver GPIO pin 3.
         :param driver_pin_4: Driver GPIO pin 4.
+        :param limiter: Limiter function, which takes the current stepper state and the next stepper state and returns a
+        bool indicating whether the stepper has reached its limit and should stop.
         """
 
         super().__init__(Stepper.State(0, timedelta(seconds=0)))
@@ -920,6 +932,7 @@ class Stepper(Component):
         self.driver_pin_2 = driver_pin_2
         self.driver_pin_3 = driver_pin_3
         self.driver_pin_4 = driver_pin_4
+        self.limiter = limiter
 
         self.steps_per_degree = (poles / output_rotor_ratio) / 360.0
 

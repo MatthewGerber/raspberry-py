@@ -88,16 +88,131 @@ class TwoPoleButton(Component):
 
         self.input_pin = input_pin
 
-        gpio.setup(input_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
+        gpio.setup(self.input_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
 
-        gpio.add_event_detect(
-            self.input_pin,
-            gpio.BOTH,
-            callback=lambda channel: self.set_state(
+        def read_after_delay(seconds: float):
+            """
+            Read the input pin after a delay.
+
+            :param seconds: Delay (s).
+            """
+
+            time.sleep(seconds)
+            self.set_state(
                 TwoPoleButton.State(
                     pressed=gpio.input(self.input_pin) == gpio.LOW
                 )
-            ),
+            )
+
+        # read after slight delay to let signal stabilize
+        gpio.add_event_detect(
+            self.input_pin,
+            gpio.BOTH,
+            callback=lambda channel: read_after_delay(0.05),
+            bouncetime=bounce_time_ms
+        )
+
+
+class LimitSwitch(Component):
+    """
+    Contact-based limit switch.
+    """
+
+    class State(Component.State):
+        """
+        State.
+        """
+
+        def __init__(
+                self,
+                pressed: bool
+        ):
+            """
+            Initialize the state.
+
+            :param pressed: Whether the switch is pressed.
+            """
+
+            self.pressed = pressed
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
+            """
+            Check equality.
+
+            :param other: Other object.
+            """
+
+            if not isinstance(other, LimitSwitch.State):
+                raise ValueError(f'Expected a {LimitSwitch.State}')
+
+            return self.pressed == other.pressed
+
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'Pressed:  {self.pressed}'
+
+    def is_pressed(
+            self
+    ) -> bool:
+        """
+        Check whether the switch is currently pressed.
+
+        :return: True if pressed and False otherwise.
+        """
+
+        self.state: LimitSwitch.State
+
+        return self.state.pressed
+
+    def __init__(
+            self,
+            input_pin: int,
+            bounce_time_ms: int
+    ):
+        """
+        Initialize the switch.
+
+        :param input_pin: Input pin for switch.
+        :param bounce_time_ms: Debounce interval (milliseconds).
+        """
+
+        super().__init__(
+            state=LimitSwitch.State(pressed=False)
+        )
+
+        self.input_pin = input_pin
+
+        gpio.setup(self.input_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
+
+        def read_after_delay(seconds: float):
+            """
+            Read the input pin after a delay.
+
+            :param seconds: Delay (s).
+            """
+
+            time.sleep(seconds)
+            self.set_state(
+                LimitSwitch.State(
+                    pressed=gpio.input(self.input_pin) == gpio.LOW
+                )
+            )
+
+        # read after slight delay to let signal stabilize
+        gpio.add_event_detect(
+            self.input_pin,
+            gpio.BOTH,
+            callback=lambda channel: read_after_delay(0.05),
             bouncetime=bounce_time_ms
         )
 

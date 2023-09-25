@@ -1,7 +1,9 @@
+import time
 from datetime import timedelta
 from typing import List, Tuple
 
 from raspberry_py.gpio import Component, CkPin
+from raspberry_py.gpio.controls import LimitSwitch
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
 from raspberry_py.gpio.motors import Servo, Sg90DriverPCA9685PW, Stepper
 
@@ -497,10 +499,75 @@ class RaspberryPyElevator(Component):
 
         self.stepper_left.events.clear()
 
+    def platform_has_reached_limit(
+            self,
+            current_state: Stepper.State,
+            next_state: Stepper.State
+    ) -> bool:
+        """
+        Check whether the platform has reached a limit.
+
+        :return: True if the platform has reached a limit.
+        """
+
+        return (
+            (self.bottom_limit_switch.is_pressed() and next_state.step < current_state.step) or
+            (self.top_limit_switch.is_pressed() and next_state.step > current_state.step)
+        )
+
+    def align_gears_and_mount(
+            self
+    ):
+        """
+        Align gears and mount the elevator. The following steps are executed in sequence:
+
+          1. The left stepper runs until CTRL+C is pressed.
+          2. The right stepper runs until CTRL+C is pressed. At this point, the gears must be oriented identically.
+          3. Wait for CTRL+C. This gives you time to move the platform to the elevator posts and prepare for
+          lowering. Press CTRL+C when ready for lowering.
+          4. The steppers will rotate until CTRL+C is pressed, such that the platform will be lowered onto the mount.
+
+        This function must be called from the shell in order for CTRL+C to be handled correctly.
+        """
+
+        self.asynchronize_steppers()
+
+        print('Wait until the left stepper is aligned, then press CTRL+C...')
+        try:
+            while True:
+                self.stepper_left.step(300, timedelta(seconds=5))
+        except KeyboardInterrupt:
+            pass
+
+        print('Wait until the right stepper is aligned, then press CTRL+C...')
+        try:
+            while True:
+                self.stepper_right.step(300, timedelta(seconds=5))
+        except KeyboardInterrupt:
+            pass
+
+        print('Wait until the platform is ready to be lowered, then press CTRL+C...')
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            pass
+
+        self.synchronize_steppers()
+
+        print('Wait until the platform is lowered, then press CTRL+C...')
+        try:
+            while True:
+                self.move(-20, timedelta(seconds=5))
+        except KeyboardInterrupt:
+            pass
+
     def __init__(
             self,
             left_stepper_pins: Tuple[CkPin, CkPin, CkPin, CkPin],
             right_stepper_pins: Tuple[CkPin, CkPin, CkPin, CkPin],
+            bottom_limit_switch_input_pin: CkPin,
+            top_limit_switch_input_pin: CkPin,
             location_mm: float,
             steps_per_mm: float,
             reverse_left_stepper: bool = False,
@@ -513,6 +580,8 @@ class RaspberryPyElevator(Component):
         the first input of the left stepper's driver, and so on.
         :param right_stepper_pins: Right stepper pins, a 4-tuple in which the first element is the GPIO pin connected to
         the first input of the right stepper's driver, and so on.
+        :param bottom_limit_switch_input_pin: Input (reading) pin of the bottom-limit switch.
+        :param top_limit_switch_input_pin: Input (reading) pin of the top-limit switch.
         :param location_mm: Current location.
         :param steps_per_mm: Number of steps per millimeter.
         :param reverse_left_stepper: Whether to reverse the left stepper.
@@ -523,16 +592,21 @@ class RaspberryPyElevator(Component):
 
         self.steps_per_mm = steps_per_mm
 
+        self.bottom_limit_switch = LimitSwitch(input_pin=bottom_limit_switch_input_pin, bounce_time_ms=5)
+        self.top_limit_switch = LimitSwitch(input_pin=top_limit_switch_input_pin, bounce_time_ms=5)
+
         if reverse_left_stepper:
             left_stepper_pins = list(reversed(left_stepper_pins))
 
+        # we synchronize from the left stepper to the right, so we only need to put the limiter on the left.
         self.stepper_left = Stepper(
             poles=32,
             output_rotor_ratio=1 / 64.0,
             driver_pin_1=left_stepper_pins[0],
             driver_pin_2=left_stepper_pins[1],
             driver_pin_3=left_stepper_pins[2],
-            driver_pin_4=left_stepper_pins[3]
+            driver_pin_4=left_stepper_pins[3],
+            limiter=self.platform_has_reached_limit
         )
 
         if reverse_right_stepper:
