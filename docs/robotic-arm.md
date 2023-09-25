@@ -37,6 +37,7 @@ per 1000 grams ($0.02 per gram) of filament
 | Total                          | 15:50              | $1.90 (95g) | ![semi-complete](arm-parts/semi-complete.png)  |                 
 
 The complete design image does not show the base rotator, arm base, and arm elevator wheel. The design is symmetric on
-each end of the arm, so it was not necessary to draw these components.
+each end of the arm, so it was not necessary to draw these components. The files for
+this design can be downloaded from Thingiverse [here](https://www.thingiverse.com/thing:6153130).
 
 Other parts can be found [here](cad-parts.md).

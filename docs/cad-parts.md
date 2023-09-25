@@ -58,6 +58,8 @@ and provide room for front-mounted parts like the robotic arm described above.
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH35dfcQT936092f0e43a682340dfc199b2c?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
+The files for this design can be downloaded from Thingiverse [here](https://www.thingiverse.com/thing:6153142).
+
 Related projects:
 
 * [Smart car](smart-car.md)
@@ -74,6 +76,15 @@ Full details can be found [here](elevator.md).
 Related projects:
 
 * [Smart car](smart-car.md)
+
+# DC Motors
+
+The following is a four-coil brushed direct-current (DC) motor:
+
+<iframe src="https://gmail3021534.autodesk360.com/shares/public/SH512d4QTec90decfa6ee884568e9083a6b5?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
+
+Full details can be found [here](brushed-dc-motor.md).
+
 
 # Tips and Tricks
 
