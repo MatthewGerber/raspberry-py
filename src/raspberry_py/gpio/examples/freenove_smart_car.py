@@ -9,7 +9,19 @@ def main():
 
     setup()
 
+    camera = Camera(
+        device='/dev/video0',
+        width=160,
+        height=120,
+        fps=30,
+        run_face_detection=True,
+        circle_detected_faces=True,
+        face_detection_callback=None
+    )
+    camera.id = 'camera-1'
+
     car = Car(
+        camera=camera,
         camera_pan_servo_correction_degrees=5.0,
         camera_tilt_servo_correction_degrees=-15.0,
         reverse_wheels=[Wheel.REAR_LEFT]
