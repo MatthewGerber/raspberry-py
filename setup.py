@@ -26,12 +26,12 @@ setup(
     package_dir={'': 'src'},
     python_requires='~=3.9',
     install_requires=[
-        'numpy==1.21.5',
+        'numpy==1.26.0',
         'RPi.GPIO==0.7.1',
         'smbus2==0.4.1 ',
-        'Flask==2.2.2',
+        'Flask==2.3.3',
         'Flask-Cors==3.0.10',
-        'opencv-python==4.6.0.66',
+        'opencv-python==4.8.0.76',
         'rpi-ws281x==4.3.4'
     ],
     tests_require=TEST_REQUIREMENTS,
