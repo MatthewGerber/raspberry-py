@@ -27,10 +27,30 @@ Optional but useful
 * [Soldering station](https://www.amazon.com/dp/B0BHHVP467?ref=ppx_yo2ov_dt_b_product_details&th=1):  The connections, particularly to the commutator, are challenging without this handy tool.
 * [Autoranging multimeter](https://www.amazon.com/s?k=autoranging+multimeter&crid=2RJH49VDBDN9Y&sprefix=autoranging%2Caps%2C68&ref=nb_sb_ss_ts-doa-p_1_11):  Very helpful in checking winding resistance and circuit integrity.
 
-# Two-Coil Version
+# General Steps
+
+## Printing the Parts
+
+## Winding Electromagnetic Coils
+
+## Building the Commutator
+
+## Power
+
+# Two-Coil Assembly
 
 The files for this design can be downloaded from Thingiverse [here](https://www.thingiverse.com/thing:6153166).
 
-# Four-Coil Version
+(work in progress)
+
+# Four-Coil Assembly
+
+(work in progress)
+
+# References
+
+1. [Voltage, Current, and Resistance (a basic overview)](https://learn.sparkfun.com/tutorials/voltage-current-resistance-and-ohms-law/all)
+2. [Electromagnets](http://www.coolmagnetman.com/magelect.htm):  In particular, the author's [coildata.xls](../manuals/coildata.xls) spreadsheet is a fantastic way to learn about the ingredients of an electromagnet (coil gauge, winding count, current input, gauss output, etc.)
+3. [Brushed DC electric motor (Wikipedia)](https://en.wikipedia.org/wiki/Brushed_DC_electric_motor).
 
 Other parts can be found [here](cad-parts.md).
