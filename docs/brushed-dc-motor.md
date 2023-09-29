@@ -21,7 +21,7 @@ Required
 * Solder:  Wire connections.
 * [DC power supply](https://www.amazon.com/gp/product/B087LY94T6/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&th=1):  This is usable depending on the total resistance of the windings. If the resistance is too low because the windings are too small, then this power supply will short and self-disable.
 * [DC power jack](https://www.amazon.com/dp/B00QJAW9F4?ref=ppx_yo2ov_dt_b_product_details&th=1):  To connect power from the supply to the carbon motor brushes.
-* Lots of patience:  I did not keep track of how long this took to complete, but it was many design iterations. Given all of the parts freshly printed, it likely takes several hours to build and assemble.
+* Lots of patience:  Given all of the parts freshly printed, it likely takes several hours to build and assemble.
 
 Optional but useful
 * [Soldering station](https://www.amazon.com/dp/B0BHHVP467?ref=ppx_yo2ov_dt_b_product_details&th=1):  The connections, particularly to the commutator, are challenging without this handy tool.
