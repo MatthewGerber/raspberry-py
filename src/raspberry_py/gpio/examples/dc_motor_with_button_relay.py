@@ -1,22 +1,23 @@
 import time
 
-import RPi.GPIO as gpio
-
 from raspberry_py.gpio import CkPin, setup, cleanup
 from raspberry_py.gpio.controls import TwoPoleButton
+from raspberry_py.gpio.power import Relay
 
 
 def main():
     """
-    This example drives a DC motor as shown on page 176 of the tutorial.
+    This example drives a DC motor as shown on page 176 of the tutorial. It uses a two-pole button to signal a relay
+    that provides power to the motor.
     """
 
     setup()
 
-    transistor_base_pin = CkPin.GPIO17
-    gpio.setup(transistor_base_pin, gpio.OUT)
+    relay = Relay(
+        transistor_base_pin=CkPin.GPIO17
+    )
     button = TwoPoleButton(CkPin.GPIO18, 300)
-    button.event(lambda s: gpio.output(transistor_base_pin, gpio.HIGH if s.pressed else gpio.LOW))
+    button.event(lambda s: relay.close() if s.pressed else relay.open())
 
     print('You have 20 seconds to press the button...')
     time.sleep(20)

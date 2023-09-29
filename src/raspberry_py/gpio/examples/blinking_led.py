@@ -6,7 +6,7 @@ from raspberry_py.gpio.lights import LED
 
 def main():
     """
-    This example switches an LED on for 1 second then off. It runs with the circuit described on page 53 of the
+    This example switches an LED on for 1 second then off. It runs with the circuit described on page 40 of the
     tutorial.
     """
 

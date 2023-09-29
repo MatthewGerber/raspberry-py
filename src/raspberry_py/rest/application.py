@@ -16,6 +16,7 @@ from raspberry_py.gpio import Component, setup
 from raspberry_py.gpio.freenove.smart_car import Car
 from raspberry_py.gpio.lights import LED
 from raspberry_py.gpio.motors import DcMotor, Servo, Stepper
+from raspberry_py.gpio.power import Relay
 from raspberry_py.gpio.robotics import RaspberryPyArm, RaspberryPyElevator
 from raspberry_py.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder, Camera, MjpgStreamer
 from raspberry_py.gpio.sounds import ActiveBuzzer
@@ -151,6 +152,10 @@ export async function is_checked(element) {
         if isinstance(component, LED):
             elements = [
                 RpyFlask.get_switch(component.id, component.turn_on, component.turn_off, None, component.is_on())
+            ]
+        elif isinstance(component, Relay):
+            elements = [
+                RpyFlask.get_switch(component.id, component.close, component.open, None, False)
             ]
         elif isinstance(component, DcMotor):
             curr_state: DcMotor.State = component.state
