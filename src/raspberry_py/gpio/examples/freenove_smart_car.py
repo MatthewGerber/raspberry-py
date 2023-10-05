@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from raspberry_py.gpio import setup
 from raspberry_py.gpio.freenove.smart_car import Car, Wheel
+from raspberry_py.gpio.sensors import Camera
 
 
 def main():

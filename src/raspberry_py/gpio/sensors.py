@@ -5,6 +5,7 @@ import shlex
 import signal
 import subprocess
 import time
+from datetime import datetime
 from enum import Enum, auto
 from threading import Thread, Lock
 from typing import Optional, List, Callable, Tuple
@@ -745,7 +746,7 @@ class Camera(Component):
 
     def get_frame_resolution(
             self
-    ) -> Tuple[int, int]:
+    ) -> Tuple[float, float]:
         """
         Get current frame resolution.
 
@@ -1054,3 +1055,68 @@ class MjpgStreamer(Component):
         self.port = port
 
         self.process = None
+
+
+class Tachometer(Component):
+    """
+    Tachometer driven by signals (e.g., GPIO high/low) indicating the rotational speed of a motor's output.
+    """
+
+    class State(Component.State):
+        """
+        State.
+        """
+
+        def __init__(
+                self,
+                rotations_per_second: float
+        ):
+            """
+            Initialize the state.
+
+            :param rotations_per_second: Rotations per second.
+            """
+
+            self.rotations_per_second = rotations_per_second
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
+            """
+            Check equality with another state.
+
+            :param other: Other state.
+            :return: True if equal and False otherwise.
+            """
+
+            if not isinstance(other, Tachometer.State):
+                raise ValueError(f'Expected a {Tachometer.State}')
+
+            return self.rotations_per_second == other.rotations_per_second
+
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'RPS:  {self.rotations_per_second}'
+
+    def set(
+            self,
+            value: bool,
+            timestamp: datetime
+    ):
+        """
+        Set the value of the tachometer.
+
+        :param value: Value.
+        :param timestamp: Timestamp associated with value.
+        """
+
+
+
