@@ -14,7 +14,7 @@ import RPi.GPIO as gpio
 import cv2
 import numpy as np
 
-from raspberry_py.gpio import Component
+from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.adc import AdcDevice
 
 
@@ -1118,5 +1118,20 @@ class Tachometer(Component):
         :param timestamp: Timestamp associated with value.
         """
 
+        print(f'{value} @ {timestamp}')
 
+    def __init__(
+            self,
+            reading_pin: CkPin
+    ):
+        """
+        Initialize the tachometer.
 
+        :param reading_pin: Reading pin.
+        """
+
+        super().__init__(Tachometer.State(np.nan))
+
+        self.reading_pin = reading_pin
+
+        gpio.setup(self.reading_pin, gpio.IN)
