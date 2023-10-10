@@ -1,7 +1,5 @@
 import time
 
-import RPi.GPIO as gpio
-
 from raspberry_py.gpio import setup, cleanup, CkPin
 from raspberry_py.gpio.sensors import Tachometer
 
@@ -15,11 +13,10 @@ def main():
 
     # create a tachometer
     tachometer = Tachometer(CkPin.GPIO23)
-
+    tachometer.event(lambda s: print(f'{s.rotations_per_second}'))
     try:
         while True:
-            print(f'{gpio.input(tachometer.reading_pin)}')
-            time.sleep(0.1)
+            time.sleep(1.0)
     except KeyboardInterrupt:
         pass
 

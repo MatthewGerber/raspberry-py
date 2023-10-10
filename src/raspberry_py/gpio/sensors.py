@@ -5,7 +5,6 @@ import shlex
 import signal
 import subprocess
 import time
-from datetime import datetime
 from enum import Enum, auto
 from threading import Thread, Lock
 from typing import Optional, List, Callable, Tuple
@@ -16,6 +15,7 @@ import numpy as np
 
 from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.adc import AdcDevice
+from raspberry_py.gpio.controls import TwoPoleButton
 
 
 class Photoresistor(Component):
@@ -1108,17 +1108,43 @@ class Tachometer(Component):
 
     def set(
             self,
-            value: bool,
-            timestamp: datetime
+            value: bool
     ):
         """
         Set the value of the tachometer.
 
         :param value: Value.
-        :param timestamp: Timestamp associated with value.
         """
 
-        print(f'{value} @ {timestamp}')
+        self.state: Tachometer.State
+
+        if value:
+            self.low_count = self.low_count + 1
+            if self.low_count % 4 == 0:
+                current_timestamp = time.time()
+                print(f'Tach value {value} @ {current_timestamp:.2f}')
+                if self.previous_rotation_timestamp is None:
+                    self.previous_rotation_timestamp = current_timestamp
+                else:
+                    rotations_per_second = 1.0 / (current_timestamp - self.previous_rotation_timestamp)
+                    self.previous_rotation_timestamp = current_timestamp
+                    if np.isnan(self.state.rotations_per_second):
+                        smoothed_rotations_per_second = rotations_per_second
+                    else:
+                        smoothed_rotations_per_second = 0.5 * self.state.rotations_per_second + 0.5 * rotations_per_second
+                    self.set_state(Tachometer.State(smoothed_rotations_per_second))
+
+    def read_values(
+            self
+    ):
+        value = False
+        gpio.setup(self.reading_pin, gpio.IN)
+        while True:
+            new_value = gpio.input(self.reading_pin) == gpio.LOW
+            if new_value != value and new_value:
+                self.set(new_value)
+            value = new_value
+            time.sleep(0.0001)
 
     def __init__(
             self,
@@ -1134,4 +1160,13 @@ class Tachometer(Component):
 
         self.reading_pin = reading_pin
 
-        gpio.setup(self.reading_pin, gpio.IN)
+        self.previous_rotation_timestamp: Optional[float] = None
+        self.low_count = 0
+        # self.button = TwoPoleButton(
+        #     input_pin=reading_pin,
+        #     bounce_time_ms=100
+        # )
+        # self.button.event(lambda s: self.set(s.pressed))
+
+        self.read_thread = Thread(target=self.read_values)
+        self.read_thread.start()
