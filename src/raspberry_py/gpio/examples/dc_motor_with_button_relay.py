@@ -16,7 +16,7 @@ def main():
     relay = Relay(
         transistor_base_pin=CkPin.GPIO17
     )
-    button = TwoPoleButton(CkPin.GPIO18, 300)
+    button = TwoPoleButton(CkPin.GPIO18, 300, 50)
     button.event(lambda s: relay.close() if s.pressed else relay.open())
 
     print('You have 20 seconds to press the button...')

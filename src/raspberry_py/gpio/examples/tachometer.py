@@ -12,8 +12,14 @@ def main():
     setup()
 
     # create a tachometer
-    tachometer = Tachometer(CkPin.GPIO23)
-    tachometer.event(lambda s: print(f'{s.rotations_per_second}'))
+    tachometer = Tachometer(
+        reading_pin=CkPin.GPIO23,
+        bounce_time_ms=1,
+        read_delay_ms=0.1,
+        low_readings_per_rotation=4,
+        smoothing_factor=0.9
+    )
+    tachometer.event(lambda s: print(f'{s.rotations_per_second:.1f} RPS'))
     try:
         while True:
             time.sleep(1.0)

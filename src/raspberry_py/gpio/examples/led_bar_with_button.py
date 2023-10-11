@@ -30,7 +30,7 @@ def main():
         reverse=True
     )
 
-    button = TwoPoleButton(input_pin=CkPin.GPIO12, bounce_time_ms=50)
+    button = TwoPoleButton(input_pin=CkPin.GPIO12, bounce_time_ms=50, read_delay_ms=50)
 
     button.event(lambda s: led_bar.flow(0.03) if s.pressed else None)
 

@@ -1106,67 +1106,69 @@ class Tachometer(Component):
 
             return f'RPS:  {self.rotations_per_second}'
 
-    def set(
-            self,
-            value: bool
+    def record_low_reading(
+            self
     ):
         """
-        Set the value of the tachometer.
-
-        :param value: Value.
+        Record a low reading in the tachometer.
         """
 
         self.state: Tachometer.State
 
-        if value:
-            self.low_count = self.low_count + 1
-            if self.low_count % 4 == 0:
-                current_timestamp = time.time()
-                print(f'Tach value {value} @ {current_timestamp:.2f}')
-                if self.previous_rotation_timestamp is None:
-                    self.previous_rotation_timestamp = current_timestamp
-                else:
-                    rotations_per_second = 1.0 / (current_timestamp - self.previous_rotation_timestamp)
-                    self.previous_rotation_timestamp = current_timestamp
-                    if np.isnan(self.state.rotations_per_second):
-                        smoothed_rotations_per_second = rotations_per_second
-                    else:
-                        smoothed_rotations_per_second = 0.5 * self.state.rotations_per_second + 0.5 * rotations_per_second
-                    self.set_state(Tachometer.State(smoothed_rotations_per_second))
+        current_timestamp = time.time()
 
-    def read_values(
-            self
-    ):
-        value = False
-        gpio.setup(self.reading_pin, gpio.IN)
-        while True:
-            new_value = gpio.input(self.reading_pin) == gpio.LOW
-            if new_value != value and new_value:
-                self.set(new_value)
-            value = new_value
-            time.sleep(0.0001)
+        if self.previous_rotation_timestamp is None:
+            self.previous_rotation_timestamp = current_timestamp
+
+        self.reading_low_count = self.reading_low_count + 1
+        if self.reading_low_count % self.low_readings_per_rotation == 0:
+
+            rotations_per_second = 1.0 / (current_timestamp - self.previous_rotation_timestamp)
+
+            if np.isnan(self.state.rotations_per_second):
+                smoothed_rotations_per_second = (1.0 - self.smoothing_factor) * rotations_per_second
+            else:
+                smoothed_rotations_per_second = (
+                    self.smoothing_factor * self.state.rotations_per_second +
+                    (1.0 - self.smoothing_factor) * rotations_per_second
+                )
+
+            self.previous_rotation_timestamp = current_timestamp
+            self.set_state(Tachometer.State(smoothed_rotations_per_second))
 
     def __init__(
             self,
-            reading_pin: CkPin
+            reading_pin: CkPin,
+            bounce_time_ms: int,
+            read_delay_ms: float,
+            low_readings_per_rotation: int,
+            smoothing_factor: float
     ):
         """
         Initialize the tachometer.
 
         :param reading_pin: Reading pin.
+        :param bounce_time_ms: Debounce interval (milliseconds). Minimum time between event callbacks.
+        :param read_delay_ms: Delay (milliseconds) between event callback and reading the GPIO value of the switch.
+        :param low_readings_per_rotation: Number of low readings per rotation.
+        :param smoothing_factor: Smoothing factor [0.0, 1.0) to apply to estimated rotations per second. The larger the
+        value, the smoother the estimates will be, the larger the bias, the smaller the variance, etc. The smaller the
+        value, the rougher the estimates will be, the smaller the bias, the larger the variance, etc.
         """
 
         super().__init__(Tachometer.State(np.nan))
 
         self.reading_pin = reading_pin
+        self.bounce_time_ms = bounce_time_ms
+        self.read_delay_ms = read_delay_ms
+        self.low_readings_per_rotation = low_readings_per_rotation
+        self.smoothing_factor = smoothing_factor
 
         self.previous_rotation_timestamp: Optional[float] = None
-        self.low_count = 0
-        # self.button = TwoPoleButton(
-        #     input_pin=reading_pin,
-        #     bounce_time_ms=100
-        # )
-        # self.button.event(lambda s: self.set(s.pressed))
-
-        self.read_thread = Thread(target=self.read_values)
-        self.read_thread.start()
+        self.reading_low_count = 0
+        self.reading_pseudo_button = TwoPoleButton(
+            input_pin=reading_pin,
+            bounce_time_ms=self.bounce_time_ms,
+            read_delay_ms=self.read_delay_ms
+        )
+        self.reading_pseudo_button.event(lambda s: self.record_low_reading() if s.pressed else None)

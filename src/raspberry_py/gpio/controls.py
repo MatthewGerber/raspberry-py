@@ -73,13 +73,15 @@ class TwoPoleButton(Component):
     def __init__(
             self,
             input_pin: int,
-            bounce_time_ms: int
+            bounce_time_ms: int,
+            read_delay_ms: float
     ):
         """
         Initialize the button.
 
         :param input_pin: Input pin for button.
-        :param bounce_time_ms: Debounce interval (milliseconds).
+        :param bounce_time_ms: Debounce interval (milliseconds). Minimum time between event callbacks.
+        :param read_delay_ms: Delay (milliseconds) between event callback and reading the GPIO value of the switch.
         """
 
         super().__init__(
@@ -90,14 +92,18 @@ class TwoPoleButton(Component):
 
         gpio.setup(self.input_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
 
-        def read_after_delay(seconds: float):
+        def read_after_delay(
+                seconds: float
+        ):
             """
             Read the input pin after a delay.
 
             :param seconds: Delay (s).
             """
 
-            time.sleep(seconds)
+            if seconds > 0.0:
+                time.sleep(seconds)
+
             self.set_state(
                 TwoPoleButton.State(
                     pressed=gpio.input(self.input_pin) == gpio.LOW
@@ -108,7 +114,7 @@ class TwoPoleButton(Component):
         gpio.add_event_detect(
             self.input_pin,
             gpio.BOTH,
-            callback=lambda channel: read_after_delay(0.05),
+            callback=lambda channel: read_after_delay(read_delay_ms / 1000.0),
             bouncetime=bounce_time_ms
         )
 
@@ -354,7 +360,8 @@ class Joystick(Component):
         # create button on z pin and update joystick state when it gets pressed
         self.button = TwoPoleButton(
             input_pin=self.z_pin,
-            bounce_time_ms=10
+            bounce_time_ms=10,
+            read_delay_ms=50
         )
 
         self.button.event(

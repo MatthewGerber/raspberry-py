@@ -17,7 +17,7 @@ def main():
     led = LED(output_pin=CkPin.GPIO17)
 
     # create a button
-    button = TwoPoleButton(input_pin=CkPin.GPIO18, bounce_time_ms=50)
+    button = TwoPoleButton(input_pin=CkPin.GPIO18, bounce_time_ms=50, read_delay_ms=50)
 
     # turn the led on when the button is pressed
     button.event(lambda s: led.turn_on() if s.pressed else led.turn_off())

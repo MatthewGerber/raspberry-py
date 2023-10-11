@@ -15,7 +15,7 @@ def main():
 
     buzzer = ActiveBuzzer(output_pin=CkPin.GPIO17)
 
-    button = TwoPoleButton(input_pin=CkPin.GPIO18, bounce_time_ms=200)
+    button = TwoPoleButton(input_pin=CkPin.GPIO18, bounce_time_ms=200, read_delay_ms=50)
 
     button.event(lambda s: buzzer.buzz() if s.pressed else buzzer.stop())
 

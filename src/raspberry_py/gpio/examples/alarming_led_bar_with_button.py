@@ -16,7 +16,7 @@ def main():
     setup()
 
     # create button
-    button = TwoPoleButton(input_pin=CkPin.GPIO18, bounce_time_ms=200)
+    button = TwoPoleButton(input_pin=CkPin.GPIO18, bounce_time_ms=200, read_delay_ms=50)
 
     # create led bar
     led_bar = LedBar(
