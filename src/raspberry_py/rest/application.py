@@ -18,7 +18,7 @@ from raspberry_py.gpio.lights import LED
 from raspberry_py.gpio.motors import DcMotor, Servo, Stepper
 from raspberry_py.gpio.power import Relay
 from raspberry_py.gpio.robotics import RaspberryPyArm, RaspberryPyElevator
-from raspberry_py.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder, Camera, MjpgStreamer
+from raspberry_py.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder, Camera, MjpgStreamer, Tachometer
 from raspberry_py.gpio.sounds import ActiveBuzzer
 
 LEFT_ARROW_KEYS = ['Left', 'ArrowLeft']
@@ -176,6 +176,10 @@ export async function is_checked(element) {
         elif isinstance(component, Photoresistor):
             elements = [
                 RpyFlask.get_label(component.id, component.get_light_level, timedelta(seconds=1), None, None, None)
+            ]
+        elif isinstance(component, Tachometer):
+            elements = [
+                RpyFlask.get_label(component.id, component.get_rps, timedelta(seconds=1), None, None, None)
             ]
         elif isinstance(component, Thermistor):
             elements = [

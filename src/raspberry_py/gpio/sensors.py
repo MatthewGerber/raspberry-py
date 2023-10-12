@@ -1136,6 +1136,19 @@ class Tachometer(Component):
             self.previous_rotation_timestamp = current_timestamp
             self.set_state(Tachometer.State(smoothed_rotations_per_second))
 
+    def get_rps(
+            self
+    ) -> float:
+        """
+        Get current rotations per second (RPS) estimate.
+
+        :return: RPS.
+        """
+
+        self.state: Tachometer.State
+
+        return self.state.rotations_per_second
+
     def __init__(
             self,
             reading_pin: CkPin,

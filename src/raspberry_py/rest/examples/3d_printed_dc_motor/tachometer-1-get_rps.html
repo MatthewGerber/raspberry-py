@@ -1,0 +1,28 @@
+<div>
+  <label id="tachometer-1-get_rps">get_rps:  None</label>
+</div>
+<script type="module">
+import {rest_host, rest_port} from "./globals.js";
+const tachometer_1_get_rps = $("#tachometer-1-get_rps")[0];
+async function read_value_tachometer_1_get_rps() {
+  $.ajax({
+    url: "http://" + rest_host + ":" + rest_port + "/call/tachometer-1/get_rps",
+    type: "GET",
+    success: async function (return_value) {
+      if (return_value === null) {
+        return_value = "None";
+      }
+      tachometer_1_get_rps.innerHTML = "get_rps:  " + return_value;
+      await new Promise(r => setTimeout(r, 1000.0));
+      await read_value_tachometer_1_get_rps();
+    },
+    error: async function(xhr, error){
+      console.log(error);
+      tachometer_1_get_rps.innerHTML = "get_rps:  None";
+      await new Promise(r => setTimeout(r, 1000.0));
+      await read_value_tachometer_1_get_rps();
+    }
+  });
+}
+read_value_tachometer_1_get_rps();
+</script>

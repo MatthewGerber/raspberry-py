@@ -17,7 +17,7 @@ def main():
         bounce_time_ms=1,
         read_delay_ms=0.1,
         low_readings_per_rotation=4,
-        smoothing_factor=0.9
+        smoothing_factor=0.98
     )
     tachometer.event(lambda s: print(f'{s.rotations_per_second:.1f} RPS'))
     try:
