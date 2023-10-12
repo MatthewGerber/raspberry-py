@@ -90,7 +90,7 @@ class Relay(Component):
         """
         Initialize the relay.
 
-        :param transistor_base_pin: GPIO port connected to the base bin of the transitor to which the relay is
+        :param transistor_base_pin: GPIO port connected to the base bin of the transistor to which the relay is
         connected.
         """
 

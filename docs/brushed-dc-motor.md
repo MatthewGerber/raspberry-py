@@ -27,23 +27,41 @@ Optional but useful
 * [Soldering station](https://www.amazon.com/dp/B0BHHVP467?ref=ppx_yo2ov_dt_b_product_details&th=1):  The connections, particularly to the commutator, are challenging without this handy tool.
 * [Autoranging multimeter](https://www.amazon.com/s?k=autoranging+multimeter&crid=2RJH49VDBDN9Y&sprefix=autoranging%2Caps%2C68&ref=nb_sb_ss_ts-doa-p_1_11):  Very helpful in checking winding resistance and circuit integrity.
 
-# General Steps
+# General Assembly
 
-## Printing the Parts
+## Print the Parts
 
-## Winding Electromagnetic Coils
+See [here](cad-parts.md) for the 3d-printing tech that I use. Links to part files for particular designs can be found 
+below.
 
-## Building the Commutator
+## Assemble the Windings
 
-## Power
+1. The soft iron winding cores need to leave 10mm exposed after insertion into the holder, as shown below:
 
-# Two-Coil Assembly
+   ![winding-core](brushed-dc-motor/winding-core.png)
+ 
+   Insert the rod full into the holder, mark off 10mm exposed, and cut to length. It is important to leave no more than
+   10mm exposed so that the windings clear the stators when rotating. Add a drop of superglue in the core holder to keep
+   the core in place.
+2. Glue the winding washers in place, leaving 2mm exposed for clamping in a drill for winding:
+
+   ![winding-washer](brushed-dc-motor/winding-washer.png)
+
+## Wind the Electromagnetic Coils
+
+## Build the Commutator
+
+## Build the Power Circuit
+
+# Two-Stator Two-Coil Design
 
 The files for this design can be downloaded from Thingiverse [here](https://www.thingiverse.com/thing:6153166).
 
 (work in progress)
 
-# Four-Coil Assembly
+# Two-Stator Four-Coil Design
+
+# Four-Stator Four-Coil Design
 
 (work in progress)
 
