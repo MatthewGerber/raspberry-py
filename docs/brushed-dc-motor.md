@@ -40,9 +40,9 @@ below.
 
    ![winding-core](brushed-dc-motor/winding-core.png)
  
-   Insert the rod full into the holder, mark off 10mm exposed, and cut to length. It is important to leave no more than
-   10mm exposed so that the windings clear the stators when rotating. Add a drop of superglue in the core holder to keep
-   the core in place.
+   Insert the iron rod fully into the holder, mark off 10mm exposed, and cut to length. It is important to leave no more 
+   than 10mm exposed so that the windings clear the stators when rotating. Add a drop of superglue in the core holder to 
+   keep the iron core in place.
 2. Glue the winding washers in place, leaving 2mm exposed for clamping in a drill for winding:
 
    ![winding-washer](brushed-dc-motor/winding-washer.png)
