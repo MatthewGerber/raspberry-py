@@ -41,11 +41,20 @@ below.
    ![winding-core](brushed-dc-motor/winding-core.png)
  
    Insert the iron rod fully into the holder, mark off 10mm exposed, and cut to length. It is important to leave no more 
-   than 10mm exposed so that the windings clear the stators when rotating. Add a drop of superglue in the core holder to 
-   keep the iron core in place.
-2. Glue the winding washers in place, leaving 2mm exposed for clamping in a drill for winding:
+   than 10mm exposed so that the windings clear the stators when rotating. Attach the winding washer to the end of the
+   core leaving 2mm exposed:
 
    ![winding-washer](brushed-dc-motor/winding-washer.png)
+
+   This bit on the end will be clamped in a drill when winding the electromagnets. Repeat for all windings. Depending on 
+   the design (see below), there will be either two or four windings.
+
+2. Before gluing the winding cores and washers in place, assemble the winding holder on the rotor and ensure that it 
+   spins freely:
+
+   {% include youtubePlayer.html id="DvroBsg1bpU" %}
+
+3. Add a drop of superglue in the core holder to keep each iron core in place. Also glue the winding washers in place.
 
 ## Wind the Electromagnetic Coils
 
