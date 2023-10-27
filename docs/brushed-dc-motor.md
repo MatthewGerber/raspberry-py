@@ -51,9 +51,7 @@ below.
 
 2. Before gluing the winding cores and washers in place, assemble the winding holder on the rotor and ensure that it 
    spins freely:
-
-   {% include youtubePlayer.html id="DvroBsg1bpU" %}
-
+{% include youtubePlayer.html id="DvroBsg1bpU" %}
 3. Add a drop of superglue in the core holder to keep each iron core in place. Once these dry, position the winding 
    washers on the ends of their cores. Do not glue them yet, just get them in place as follows:
 
