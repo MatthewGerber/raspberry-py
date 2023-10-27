@@ -36,43 +36,45 @@ below.
 
 ## Assemble the Windings
 
-1. The soft iron winding cores need to leave 10mm exposed after insertion into the holder, as shown below:
+The soft iron winding cores need to leave 10mm exposed after insertion into the holder, as shown below:
 
-   ![winding-core](brushed-dc-motor/winding-core.png)
+![winding-core](brushed-dc-motor/winding-core.png)
  
-   Insert the iron rod fully into the holder, mark off 10mm exposed, and cut to length. It is important to leave no more 
-   than 10mm exposed so that the windings clear the stators when rotating. Attach the winding washer to the end of the
-   core leaving 2mm exposed:
+Insert the iron rod fully into the holder, mark off 10mm exposed, and cut to length. It is important to leave no more 
+than 10mm exposed so that the windings clear the stators when rotating. Attach the winding washer to the end of the
+core leaving 2mm exposed:
 
-   ![winding-washer](brushed-dc-motor/winding-washer.png)
+![winding-washer](brushed-dc-motor/winding-washer.png)
 
-   This bit on the end will be clamped in a drill when winding the electromagnetic coils. Repeat for all windings. 
-   Depending on the design (see below), there will be either two or four windings.
+This bit on the end will be clamped in a drill when winding the electromagnetic coils. Repeat for all windings. 
+Depending on the design (see below), there will be either two or four windings.
 
-2. Before gluing the winding cores and washers in place, assemble the winding holder on the rotor and ensure that it 
-   spins freely:
+Before gluing the winding cores and washers in place, assemble the winding holder on the rotor and ensure that it 
+spins freely:
+
 {% include youtubePlayer.html id="DvroBsg1bpU" %}
-3. Add a drop of superglue in the core holder to keep each iron core in place. Once these dry, position the winding 
-   washers on the ends of their cores. Do not glue them yet, just get them in place as follows:
 
-   ![washer-starts](brushed-dc-motor/washer-starts.png)
+Add a drop of superglue in the core holder to keep each iron core in place. Once these dry, position the winding 
+washers on the ends of their cores. Do not glue them yet, just get them in place as follows:
 
-   Note that the collar of each washer is facing the inside and not the outside. This is important. Next, for each 
-   washer in turn, place a small drop of superglue on the inside surface as circled in green below:
+![washer-starts](brushed-dc-motor/washer-starts.png)
 
-   ![washer-glue](brushed-dc-motor/washer-glue.png)
+Note that the collar of each washer is facing the inside and not the outside. This is important. Next, for each washer 
+in turn, place a small drop of superglue on the inside surface as circled in green below:
 
-   Move the washer inward while rotating it on the core, such that the glue enters between the core and the washer. 
-   When done, the washer should leave exactly 2mm of exposed core on the end. To make this easy, print the small spacer
-   part and use it to push the washers inward. The spacer has a collar with depth 2mm.
+![washer-glue](brushed-dc-motor/washer-glue.png)
 
-   ![washer-spacer](brushed-dc-motor/washer-spacer.png)
+Move the washer inward while rotating it on the core, such that the glue enters between the core and the washer. When 
+done, the washer should leave exactly 2mm of exposed core on the end. To make this easy, print the small spacer part and 
+use it to push the washers inward. The spacer has a collar with depth 2mm.
 
-   The assembly should look as follows after the washers are placed and glued:
+![washer-spacer](brushed-dc-motor/washer-spacer.png)
 
-   ![washers-complete](brushed-dc-motor/washers-complete.png)
+The assembly should look as follows after the washers are placed and glued:
 
-   Let everything dry.
+![washers-complete](brushed-dc-motor/washers-complete.png)
+
+Let everything dry.
 
 ## Wind the Electromagnetic Coils
 
