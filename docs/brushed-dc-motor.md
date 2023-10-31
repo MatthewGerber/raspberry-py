@@ -99,10 +99,36 @@ visual:
 ![rhr](brushed-dc-motor/2ndRHR.png)
 
 The specific winding direction to use at this point depends on the design you are building. See the three designs below
-for winding polarities to use for your design. When you're ready, _slowly_ start the drill and begin winding the coil.
-Try to get the layers as even as possible. Fill in the valleys that develop and don't worry about making them perfect.
-Stop the drill when the first coil is wound. See the design-specific winding polarities below for how to proceed with 
-the coil on the other end.
+for winding polarities to use for your design.
+
+### Two-Stator Two-Coil Polarities
+
+This is just like the two-stator four-coil design except that the magnets run along one axis instead of two. The red
+Xs in the figure below show parts that are not actually present in this design. The green arrows show the directions 
+that the washers should turn when winding each coil. As shown, the washers on either end turn in the same direction. 
+This means that the drill direction will remain the same throughout the entire winding procedure.
+
+![two-stator-two-coil](brushed-dc-motor/washers-complete-2-stator-2-coil.png)
+
+### Two-Stator Four-Coil Polarities
+
+This is just like the two-stator two-coil design except that the magnets run along both axes.
+
+![two-stator-four-coil](brushed-dc-motor/washers-complete-2-stator-4-coil.png)
+
+### Four-Stator Four-Coil Polarities
+
+![four-stator-four-coil](brushed-dc-motor/washers-complete-4-stator-4-coil.png)
+
+### Winding
+When you're ready, _slowly_ start the drill and begin winding the coil. Try to get the layers as even as possible. Fill 
+in the valleys that develop and don't worry about making them perfect. Stop the drill when the first coil is wound. 
+Guide the feed-end of the wire across the winding holder using the notches as guides and then continue winding the other 
+end in the direction shown according to your design above. Once the other end is complete, secure the wire, leave a good 
+length exposed for later wiring, and then cut the wire. Wrap the coils in electrical tape. The final result should look
+as follows:
+
+Use a multimeter to test each pair of coils for integrity and roughly similar resistance:
 
 ## Build the Commutator
 
@@ -112,33 +138,9 @@ the coil on the other end.
 
 The files for this design can be downloaded from Thingiverse [here](https://www.thingiverse.com/thing:6153166).
 
-## Winding Polarities
-
-Guide the feed-end of the wire across the winding holder using the notches as guides and then continue winding the other 
-end. Do not change the drill direction. Once the other end is complete, secure the wire, leave a good length exposed for 
-wiring, and then cut the wire.
-
-(work in progress)
-
 # Two-Stator Four-Coil Design
 
-## Winding Polarities
-
-Guide the feed-end of the wire across the winding holder using the notches as guides and then continue winding the other
-end. Do not change the drill direction. Once the other end is complete, secure the wire, leave a good length exposed for 
-wiring, and then cut the wire.
-
-(work in progress)
-
 # Four-Stator Four-Coil Design
-
-## Winding Polarities
-
-You will need to reverse the drill before winding the other end. Once the other end is complete, secure the wire, leave 
-a good length exposed for wiring, and then cut the wire. Be sure to flip the drill direction before commencing winding 
-the other pair of coils.
-
-(work in progress)
 
 # References
 
