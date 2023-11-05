@@ -78,23 +78,24 @@ Let everything dry.
 
 ## Wind the Electromagnetic Coils
 
-A good strategy here is to clamp the exposed ends of the cores into a drill, and clamp the drill in a vise:
-
-![in-drill](brushed-dc-motor/in-drill.png)
-
-Each washer has a 1mm hole near the central hole as circled in green below:
+Each washer has a 1mm hole near the central hole as circled in green below. The purpose of this hole is to provide the 
+magnet wire an exit from the coil and to get the winding started. 
 
 ![washer-hole](brushed-dc-motor/washer-hole.png)
 
 If your 3d printer is sufficiently accurate, then this hole will be present and will accept the 30 AWG enameled magnet
-wire. If the hole is not preserved, then you might need to open it up with a pin. The purpose of this hole is to provide 
-the magnet wire an exit from the coil and to get the winding started. The coil should look as follows just prior to 
-engaging the drill:
+wire. If the hole is not preserved, then you might need to open it up with a pin. The coil should look as follows just 
+prior to engaging the drill:
 
-Note that a good length of wire has been pulled through the small hole. Now for the tricky part:  the winding direction.
-Study up on the "right-hand rule" of electromagnetism. There are many good articles.
-[This](https://www.aplusphysics.com/courses/honors/magnets/electromagnetism.html) one is helpful, particularly the 
-visual:
+![in-drill](brushed-dc-motor/winding-in-drill.png)
+
+Note that a good length of wire has been pulled through the small hole exiting to the right (the wire spool lies below
+the drill in the image). A good strategy is to clamp the drill in a vise, guide the feed wire with one hand, and operate
+the drill with the other hand.
+
+Now for the tricky part, the winding direction. Study up on the 
+"right-hand rule" of electromagnetism. There are many good articles. [This](https://www.aplusphysics.com/courses/honors/magnets/electromagnetism.html) one is helpful, particularly the 
+following visual:
 
 ![rhr](brushed-dc-motor/2ndRHR.png)
 
@@ -103,10 +104,9 @@ for winding polarities to use for your design.
 
 ### Two-Stator Two-Coil Polarities
 
-This is just like the two-stator four-coil design except that the magnets run along one axis instead of two. The red
-Xs in the figure below show parts that are not actually present in this design. The green arrows show the directions 
-that the washers should turn when winding each coil. As shown, the washers on either end turn in the same direction. 
-This means that the drill direction will remain the same throughout the entire winding procedure.
+The red Xs in the figure below show parts that are not actually present in this design. The green arrows show the 
+directions that the washers should turn when winding each coil. As shown, the washers on either end turn in the same 
+direction. This means that the drill direction will remain the same throughout the entire winding procedure.
 
 ![two-stator-two-coil](brushed-dc-motor/washers-complete-2-stator-2-coil.png)
 
@@ -125,12 +125,79 @@ When you're ready, _slowly_ start the drill and begin winding the coil. Try to g
 in the valleys that develop and don't worry about making them perfect. Stop the drill when the first coil is wound. 
 Guide the feed-end of the wire across the winding holder using the notches as guides and then continue winding the other 
 end in the direction shown according to your design above. Once the other end is complete, secure the wire, leave a good 
-length exposed for later wiring, and then cut the wire. Wrap the coils in electrical tape. The final result should look
-as follows:
+length exposed for later wiring, and then cut the wire:
 
-Use a multimeter to test each pair of coils for integrity and roughly similar resistance:
+![winding-one-axis-complete](brushed-dc-motor/winding-one-axis-complete.png)
+
+Wrap the coils in electrical tape. If your design involves coils along the other axis, then repeat the procedure to 
+obtain the required polarities:
+
+![winding-second-axis](brushed-dc-motor/winding-second-axis.png)
+
+A final four-coil design should look as follows:
+
+![winding-complete-taped](brushed-dc-motor/winding-complete-taped.png)
+
+Use a multimeter to test all coils for integrity and roughly similar resistance. A few tips at this point:
+1. The wire is enameled, meaning its coated in a thin layer of clear plastic to prevent shorts within the coil. The 
+   enamel must be removed from the wire ends prior to testing or soldering. Simply burn it off with a flame.
+2. Having built and wound several cores like these, I have found that each axis (two coils) typically has about 15 
+   ohms of resistance. With a 12-volt power supply, this would result in 12.0 / 15.0 = 0.8 amps of current running 
+   through the wire, which is acceptable. The final assembly including the commutator and brushes will have more 
+   resistance, which will further decrease the current. The final current needs to be within the operating range of 
+   the wire. [This](../manuals/coildata.xls) workbook suggests the fusing current of 30 AWG wire is 10 amps, so the 
+   final current running through the coils must be substantially below this. 
 
 ## Build the Commutator
+
+Cut a width of copper sheet that will fit within the recessed sections of the rotor:
+
+![commutator-width](brushed-dc-motor/commutator-width.png)
+
+Place the section in the bender:
+
+![commutator-in-bender](brushed-dc-motor/commutator-in-bender.png)
+
+The outside diameter of bender is the same as the recessed sections of the rotor. Thus, wrapping the copper around 
+the bender provides a curvature that will match the recesses of the rotor:
+
+![commutator-bent](brushed-dc-motor/commutator-bent.png)
+
+Cut sections of the bent copper that will lie in the recesses:
+
+![commutator-in-place](brushed-dc-motor/commutator-in-place.png)
+
+The commutator segments need to lie entirely within the recesses and not have rough edges that will catch on the 
+brushes. Do not glue the segments to the rotator yet. They still need to be soldered to winding coils, and if you 
+attempt to solder commutator segments while they are glued to the rotor, you will melt the plastic rotor.
+
+Position the winding cores on the rotor and trim the wires to remove excessive wire:
+
+![winding-in-place-trimmer](brushed-dc-motor/windings-in-place-trimmed.png)
+
+Next, solder the winding coils to the commutator:
+
+![commutators-soldered](brushed-dc-motor/commutators-soldered.png)
+
+A few tips on this step:
+1. The smooth copper sheet might not adhere well with the solder.File or sand the surface end of the commutator 
+   segments that you will solder to the wires.
+2. If you value your fingers, then use a soldering station as listed at the top of this page.
+3. Do not allow the solder to go very far up the commutator segment. The brushes need room to run unimpeded across 
+   the commutator surfaces.
+
+Next position the winding holder precisely on the rotor and begin gluing them into their recesses:
+
+![commutators-glued](brushed-dc-motor/commutators-glued.png)
+
+Very important notes:
+1. The winding cores must be oriented such that the iron cores are exactly aligned with the gaps between the 
+   commutator segments. Think of it this way:  When the iron cores are pointing directly and their stator magnets, 
+   the electromagnets need to be in a neutral or unpowered position between one polarity and the other.
+2. The commutator segments need to be placed in the correct sequence of recesses that depends on your design: 
+   1. Two-stator two-coil
+   2. Two-stator four-coil
+   3. Four-coil four-stator
 
 ## Build the Power Circuit
 
