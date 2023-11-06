@@ -27,14 +27,12 @@ Optional but useful
 * [Soldering station](https://www.amazon.com/dp/B0BHHVP467?ref=ppx_yo2ov_dt_b_product_details&th=1):  The connections, particularly to the commutator, are challenging without this handy tool.
 * [Autoranging multimeter](https://www.amazon.com/s?k=autoranging+multimeter&crid=2RJH49VDBDN9Y&sprefix=autoranging%2Caps%2C68&ref=nb_sb_ss_ts-doa-p_1_11):  Very helpful in checking winding resistance and circuit integrity.
 
-# General Assembly
-
-## Print the Parts
+# Print the Parts
 
 See [here](cad-parts.md) for the 3d-printing tech that I use. Links to part files for particular designs can be found 
 below.
 
-## Assemble the Windings
+# Assemble the Windings
 
 The soft iron winding cores need to leave 10mm exposed after insertion into the holder, as shown below:
 
@@ -76,7 +74,7 @@ The assembly should look as follows after the washers are placed and glued:
 
 Let everything dry.
 
-## Wind the Electromagnetic Coils
+# Wind the Electromagnetic Coils
 
 Each washer has a 1mm hole near the central hole as circled in green below. The purpose of this hole is to provide the 
 magnet wire an exit from the coil and to get the winding started. 
@@ -102,7 +100,7 @@ following visual:
 The specific winding direction to use at this point depends on the design you are building. See the three designs below
 for winding polarities to use for your design.
 
-### Two-Stator Two-Coil Polarities
+## Two-Stator Two-Coil Polarities
 
 The red Xs in the figure below show parts that are not actually present in this design. The green arrows show the 
 directions that the washers should turn when winding each coil. As shown, the washers on either end turn in the same 
@@ -110,17 +108,22 @@ direction. This means that the drill direction will remain the same throughout t
 
 ![two-stator-two-coil](brushed-dc-motor/washers-complete-2-stator-2-coil.png)
 
-### Two-Stator Four-Coil Polarities
+## Two-Stator Four-Coil Polarities
 
 This is just like the two-stator two-coil design except that the magnets run along both axes.
 
 ![two-stator-four-coil](brushed-dc-motor/washers-complete-2-stator-4-coil.png)
 
-### Four-Stator Four-Coil Polarities
+## Four-Stator Four-Coil Polarities
+
+The polarities in this design must be such that each end is north. To achieve this, wind one end in the direction 
+indicated in the image below. Once the first coil is wound, reverse the drill and wind the other coil in the 
+opposite direction. Then wind the coils along the other axis in the same way.
 
 ![four-stator-four-coil](brushed-dc-motor/washers-complete-4-stator-4-coil.png)
 
-### Winding
+## Winding
+
 When you're ready, _slowly_ start the drill and begin winding the coil. Try to get the layers as even as possible. Fill 
 in the valleys that develop and don't worry about making them perfect. Stop the drill when the first coil is wound. 
 Guide the feed-end of the wire across the winding holder using the notches as guides and then continue winding the other 
@@ -148,7 +151,7 @@ Use a multimeter to test all coils for integrity and roughly similar resistance.
    the wire. [This](../manuals/coildata.xls) workbook suggests the fusing current of 30 AWG wire is 10 amps, so the 
    final current running through the coils must be substantially below this. 
 
-## Build the Commutator
+# Build the Commutator
 
 Cut a width of copper sheet that will fit within the recessed sections of the rotor:
 
@@ -180,7 +183,7 @@ Next, solder the winding coils to the commutator:
 ![commutators-soldered](brushed-dc-motor/commutators-soldered.png)
 
 A few tips on this step:
-1. The smooth copper sheet might not adhere well with the solder.File or sand the surface end of the commutator 
+1. The smooth copper sheet might not adhere well with the solder. File or sand the surface end of the commutator 
    segments that you will solder to the wires.
 2. If you value your fingers, then use a soldering station as listed at the top of this page.
 3. Do not allow the solder to go very far up the commutator segment. The brushes need room to run unimpeded across 
@@ -195,19 +198,33 @@ Very important notes:
    commutator segments. Think of it this way:  When the iron cores are pointing directly and their stator magnets, 
    the electromagnets need to be in a neutral or unpowered position between one polarity and the other.
 2. The commutator segments need to be placed in the correct sequence of recesses that depends on your design: 
-   1. Two-stator two-coil
-   2. Two-stator four-coil
-   3. Four-coil four-stator
+   1. __Two-stator two-coil__:  The two commutator segments may be placed in either of the rotor recesses. The only 
+      impact of the order is the direction that the motor will rotate when powered. Motor direction is also 
+      controlled on the positive and negative power leads, so the commutator placement really does not matter here. 
+   2. __Two-stator four-coil__:  Need a figure here.
+   3. __Four-coil four-stator__:  Need a figure here.
 
-## Build the Power Circuit
+# Build the Power Circuit
 
-# Two-Stator Two-Coil Design
+Solder the carbon brushes to jumper wires. You'll need a number equal to the number of stator magnets in your design:
 
-The files for this design can be downloaded from Thingiverse [here](https://www.thingiverse.com/thing:6153166).
+![brush-wires](brushed-dc-motor/brush-wires.png)
 
-# Two-Stator Four-Coil Design
+Insert the brush wires into the motor base. The following image shows the brushes in a two-stator design:
 
-# Four-Stator Four-Coil Design
+![brushes-assembled](brushed-dc-motor/brushes-assembled.png)
+
+The brushes should move freely when the wires are pulled, with the springs returning them to their extended 
+positions. If the brushes catch when pulled or do not spring back, then remove the brushes and file the insides of 
+the brush housings.
+
+# STL File Downloads
+
+The files for the three designs can be downloaded from Thingiverse below.
+
+1. [Two-stator two-coil](https://www.thingiverse.com/thing:6153166)
+2. [Two-stator four-coil](xxxx)
+3. [Four-stator four-coil](xxxx)
 
 # References
 
