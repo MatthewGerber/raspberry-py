@@ -72,7 +72,9 @@ The assembly should look as follows after the washers are placed and glued:
 
 ![washers-complete](brushed-dc-motor/washers-complete.png)
 
-Let everything dry.
+Let everything dry and then assemble the motor to ensure that it will rotate freely:
+
+{% include youtubePlayer.html id="DvroBsg1bpU" %}
 
 # Wind the Electromagnetic Coils
 
@@ -149,7 +151,7 @@ Use a multimeter to test all coils for integrity and roughly similar resistance.
    through the wire, which is acceptable. The final assembly including the commutator and brushes will have more 
    resistance, which will further decrease the current. The final current needs to be within the operating range of 
    the wire. [This](../manuals/coildata.xls) workbook suggests the fusing current of 30 AWG wire is 10 amps, so the 
-   final current running through the coils must be substantially below this. 
+   final current running through the coils must be substantially below this.
 
 # Build the Commutator
 
@@ -204,6 +206,12 @@ Very important notes:
    2. __Two-stator four-coil__:  Need a figure here.
    3. __Four-coil four-stator__:  Need a figure here.
 
+![commutators-final](brushed-dc-motor/commutators-final.png)
+
+Assemble the motor to ensure that it will rotate freely:
+
+{% include youtubePlayer.html id="mWvMgNQ2Bnw" %}
+
 # Build the Power Circuit
 
 Solder the carbon brushes to jumper wires. You'll need a number equal to the number of stator magnets in your design:
@@ -216,7 +224,42 @@ Insert the brush wires into the motor base. The following image shows the brushe
 
 The brushes should move freely when the wires are pulled, with the springs returning them to their extended 
 positions. If the brushes catch when pulled or do not spring back, then remove the brushes and file the insides of 
-the brush housings.
+the brush housings. You can wire the DC power source directly to the brush wires, or you can patch it together with a 
+breadboard as shown below. The breadboard provides flexibility for building circuitry around the motor (see Other 
+Fun Stuff below):
+
+![wiring-complete](brushed-dc-motor/wiring-complete.png)
+
+# Install the Stator Magnets
+
+The stator magnets must be arranged such that the internal surfaces -- those facing the coils as they rotate -- 
+alternate between north and south. In the two-stator designs, one side should be north and the other south. In the 
+four-stator design, the inside-facing stator magnets should alternate north, south, north, and south. Only this 
+relative alternation matters. It does not matter which of the two axes holds the north stators and which holds the 
+south stators. In all of the photos and videos on this page, there are two disc magnets at each stator location.
+
+# Test and Fix
+
+With a bit of luck, you can power the motor circuit, give the rotor a twist, and it will run:
+
+{% include youtubePlayer.html id="bXlxgaOimZ8" %}
+
+Common problems:
+* Bad power circuit:  You should be able to connect a multimeter to the brush wires that exit the base and measure 
+  resistance (ohms) of each coil axis. All axes should be roughly similar (e.g., within 1 ohm) for the 4-coil 
+  designs, which have two axes.
+* Stuck brushes:  The internal surfaces of the brush houses might be rough. If a rough bit catches a brush as the 
+  motor rotates, this might prevent the brush from coming back into contact with the commutator, thus breaking the 
+  power circuit. If the brushes do not move smoothly in and out of their houses, then remove them, file the insides 
+  of the brush houses, and reassemble.
+* Power short:  If the brushes contact multiple commutators simultaneously, the power might short-circuit. The DC 
+  power source linked at the top will automatically cut off on shorts. Revisit the commutator assembly if this 
+  happens. 
+* Weak stator magnets:  The motor base has recesses for single magnets, which might not be strong enough on their 
+  own. Adding magnets to the outside increases the field strength substantially. This also conveniently holds the 
+  inner magnets in place without adhesive.
+
+# Other Fun Stuff:  Tachometer and Web-Controlled Relay
 
 # STL File Downloads
 
