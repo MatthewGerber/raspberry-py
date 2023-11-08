@@ -45,15 +45,9 @@ core leaving 2mm exposed:
 ![winding-washer](brushed-dc-motor/winding-washer.png)
 
 This bit on the end will be clamped in a drill when winding the electromagnetic coils. Repeat for all windings. 
-Depending on the design (see below), there will be either two or four windings.
-
-Before gluing the winding cores and washers in place, assemble the winding holder on the rotor and ensure that it 
-spins freely:
-
-{% include youtubePlayer.html id="DvroBsg1bpU" %}
-
-Add a drop of superglue in the core holder to keep each iron core in place. Once these dry, position the winding 
-washers on the ends of their cores. Do not glue them yet, just get them in place as follows:
+Depending on the design (see below), there will be either two or four windings. Add a drop of superglue in the core  
+holder to keep each iron core in place. Once these dry, position the winding washers on the ends of their cores. Do 
+not glue them yet, just get them in place as follows:
 
 ![washer-starts](brushed-dc-motor/washer-starts.png)
 
@@ -98,6 +92,12 @@ Now for the tricky part, the winding direction. Study up on the
 following visual:
 
 ![rhr](brushed-dc-motor/2ndRHR.png)
+
+Another view of the right-hand rule is shown below, taken from one of the motor designs:
+
+![coil-direction](brushed-dc-motor/coil-direction.png)
+
+In the above, the outward-facing (right) end of the iron core would have north polarity.
 
 The specific winding direction to use at this point depends on the design you are building. See the three designs below
 for winding polarities to use for your design.
