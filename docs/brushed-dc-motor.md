@@ -206,11 +206,9 @@ Very important notes:
    2. __Two-stator four-coil__:  Need a figure here.
    3. __Four-coil four-stator__:  Need a figure here.
 
+The final assembled commutators should look as follows:
+
 ![commutators-final](brushed-dc-motor/commutators-final.png)
-
-Assemble the motor to ensure that it will rotate freely:
-
-{% include youtubePlayer.html id="mWvMgNQ2Bnw" %}
 
 # Build the Power Circuit
 
@@ -237,6 +235,10 @@ alternate between north and south. In the two-stator designs, one side should be
 four-stator design, the inside-facing stator magnets should alternate north, south, north, and south. Only this 
 relative alternation matters. It does not matter which of the two axes holds the north stators and which holds the 
 south stators. In all of the photos and videos on this page, there are two disc magnets at each stator location.
+
+Assemble the motor to ensure that it will rotate freely:
+
+{% include youtubePlayer.html id="mWvMgNQ2Bnw" %}
 
 # Test and Fix
 
