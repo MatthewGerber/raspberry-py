@@ -48,6 +48,10 @@ pip install -e .
 ```
 From here, you can push back to your fork and submit a pull request to the original if desired.
 
+# CAD Parts
+
+I have designed a range of parts for integration with the Raspberry Pi. See [here](cad-parts.md). 
+
 # Operating System Configuration
 
 ## Ubuntu
