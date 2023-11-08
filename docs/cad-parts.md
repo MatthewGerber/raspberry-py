@@ -1,4 +1,6 @@
 [Home](index.md) > CAD Parts
+* Content
+{:toc}
 
 This page documents parts I have designed for 3D printing.
 

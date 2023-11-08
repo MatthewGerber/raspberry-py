@@ -1,5 +1,4 @@
 [Home](index.md) > [CAD Parts](cad-parts.md) > Brushed DC Motor
-
 * Content
 {:toc}
 
