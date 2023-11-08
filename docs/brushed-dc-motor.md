@@ -47,7 +47,7 @@ core leaving 2mm exposed:
 ![winding-washer](brushed-dc-motor/winding-washer.png)
 
 This bit on the end will be clamped in a drill when winding the electromagnetic coils. Repeat for all windings. 
-Depending on the design (see below), there will be either two or four windings. Add a drop of superglue in the core  
+Depending on the design (see below), there will be either two or four windings. Add a drop of superglue in the core 
 holder to keep each iron core in place. Once these dry, position the winding washers on the ends of their cores. Do 
 not glue them yet, just get them in place as follows:
 
