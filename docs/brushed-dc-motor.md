@@ -271,7 +271,7 @@ The design viewers and STL file downloads are provided below for the three desig
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH512d4QTec90decfa6efb2dab18e0c3200b?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
-{% include youtubePlayer.html id="5srIUrAuiNM" %}
+NEED TO ADD VIDEO
 
 ## Two-Stator Four-Coil ([Download](https://www.thingiverse.com/thing:6305321))
 
@@ -283,7 +283,7 @@ The design viewers and STL file downloads are provided below for the three desig
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH512d4QTec90decfa6ee884568e9083a6b5?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
-NEED TO ADD VIDEO
+{% include youtubePlayer.html id="5srIUrAuiNM" %}
 
 # Other Fun Stuff:  Tachometer and Web-Controlled Relay
 
