@@ -263,8 +263,6 @@ Common problems:
   own. Adding magnets to the outside increases the field strength substantially. This also conveniently holds the 
   inner magnets in place without adhesive.
 
-# Other Fun Stuff:  Tachometer and Web-Controlled Relay
-
 # Designs, Videos, and STL Files
 
 The design viewers and STL file downloads are provided below for the three designs.
@@ -286,6 +284,8 @@ The design viewers and STL file downloads are provided below for the three desig
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH512d4QTec90decfa6ee884568e9083a6b5?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
 NEED TO ADD VIDEO
+
+# Other Fun Stuff:  Tachometer and Web-Controlled Relay
 
 # References
 
