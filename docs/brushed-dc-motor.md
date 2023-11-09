@@ -265,13 +265,27 @@ Common problems:
 
 # Other Fun Stuff:  Tachometer and Web-Controlled Relay
 
-# STL File Downloads
+# Designs, Videos, and STL Files
 
-The files for the three designs can be downloaded from Thingiverse below.
+The design viewers and STL file downloads are provided below for the three designs.
 
-1. [Two-stator two-coil](https://www.thingiverse.com/thing:6153166)
-2. [Two-stator four-coil](xxxx)
-3. [Four-stator four-coil](xxxx)
+## Two-Stator Two-Coil ([Download](https://www.thingiverse.com/thing:6153166))
+
+<iframe src="https://gmail3021534.autodesk360.com/shares/public/SH512d4QTec90decfa6efb2dab18e0c3200b?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
+
+{% include youtubePlayer.html id="5srIUrAuiNM" %}
+
+## Two-Stator Four-Coil ([Download](https://www.thingiverse.com/thing:6305321))
+
+<iframe src="https://gmail3021534.autodesk360.com/shares/public/SH512d4QTec90decfa6ea160e797dbaa221f?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
+
+{% include youtubePlayer.html id="bXlxgaOimZ8" %}
+
+## Four-Stator Four-Coil ([Download](https://www.thingiverse.com/thing:6305329))
+
+<iframe src="https://gmail3021534.autodesk360.com/shares/public/SH512d4QTec90decfa6ee884568e9083a6b5?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
+
+NEED TO ADD VIDEO
 
 # References
 
