@@ -8,7 +8,7 @@
 
 # Parts and Materials
 
-Required
+Required:
 * [Copper sheet](https://www.amazon.com/dp/B0C1ZZLR97?th=1):  Used to build commutator plates.
 * [30 AWG enameled magnet wire](https://www.amazon.com/dp/B00UWCXRK6?th=1):  Used to create electromagnetic windings.
 * [Soft iron rod](https://www.amazon.com/dp/B0BNNCZ4ZR):  Enhances the field strength of electromagnetic windings.
@@ -17,22 +17,48 @@ Required
 * [Bearings](https://www.amazon.com/dp/B07B8VZJGD):  Holds the rotor.
 * [Carbon motor brushes](https://www.amazon.com/dp/B07CVT2TG8):  Conducts current from a source to the commutator by physical contact.
 * [Superglue](https://www.amazon.com/dp/B00ELV2D0Y):  Used in a couple spots to hold parts together (e.g., commutator plates to the rotor).
-* [Shrink tubing](https://www.amazon.com/dp/B01MFA3OFA?ref=ppx_yo2ov_dt_b_product_details&th=1):  For soldered connections.
 * Thin-gauge wire (e.g., 22 AWG jumper cables as provided in kits like [this](https://www.amazon.com/gp/product/B06W54L7B5/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1)):  For providing current to the carbon motor brushes.
 * Soldering iron:  Wire connections.
-* Solder:  Wire connections.
-* [DC power supply](https://www.amazon.com/gp/product/B087LY94T6/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&th=1):  This is usable depending on the total resistance of the windings. If the resistance is too low because the windings are too small, then this power supply will short and self-disable.
+* Solder:  Wire connections. 
+* [DC power supply](https://www.amazon.com/gp/product/B087LY94T6/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&th=1):  This is usable depending on the total resistance of the windings. If the resistance is too low because the windings are too small, then this power supply will short and self-disable.  
 * [DC power jack](https://www.amazon.com/dp/B00QJAW9F4?ref=ppx_yo2ov_dt_b_product_details&th=1):  To connect power from the supply to the carbon motor brushes.
-* Lots of patience:  Given all of the parts freshly printed, it likely takes several hours to build and assemble.
+* Lots of patience:  Given all of the parts freshly printed, it takes several hours to build and assemble any of the 
+  motor designs described on this page.
 
-Optional but useful
+Optional but useful:
+* [Electrical tape](https://www.amazon.com/Duck-299004-Professional-Electrical-0-75-Inch/dp/B007JSGNWU/):  To wrap the coils.
 * [Soldering station](https://www.amazon.com/dp/B0BHHVP467?ref=ppx_yo2ov_dt_b_product_details&th=1):  The connections, particularly to the commutator, are challenging without this handy tool.
+* [Shrink tubing](https://www.amazon.com/dp/B01MFA3OFA?ref=ppx_yo2ov_dt_b_product_details&th=1):  For soldered connections.
 * [Autoranging multimeter](https://www.amazon.com/s?k=autoranging+multimeter&crid=2RJH49VDBDN9Y&sprefix=autoranging%2Caps%2C68&ref=nb_sb_ss_ts-doa-p_1_11):  Very helpful in checking winding resistance and circuit integrity.
+* [Alligator clips](https://www.amazon.com/gp/product/B09RZQFGGH/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1):  Useful when checking circuits and changing wiring.
+* [Files](https://www.amazon.com/Hardened-Strength-Barrette-Crossing-Equaling/dp/B07PPYWSCY/):  Removing extraneous 
+  plastic when assembling parts.
 
 # Print the Parts
 
-See [here](cad-parts.md) for the 3d-printing tech that I use. Links to part files for particular designs can be found 
-below.
+See [here](cad-parts.md) for the 3d-printing tech that I use. Links to part files for particular designs can be 
+found at the bottom of this page. A few printing tips:
+* It's possible to lay out all parts for a single print, as long as your printer's build volume is sufficiently large.
+* The winding holder prints best when it is lying flat with the central rotor hole vertical. To assist with this, I 
+  have added a small planar surface that is tangent to the circular holder. This surface is highlighted in green 
+  below:
+
+  ![winding-holder-square](brushed-dc-motor/winding-holder-square.png)
+
+  The Cura slicer software allows the user to click any planar surface to lie flat on the build plate. Simply click 
+  the highlighted surface, and the winding holder will lie perfectly flat as intended. All of the other surfaces on 
+  the holder are curved, so it is difficult to lie the piece flat without this planar surface.
+* The print takes around 8-10 hours on my Ender 3.
+* The most difficult supports to remove from the print are the ones that reside within the carbon brush houses as 
+  shown in blue below:
+
+  ![brush-house-supports](brushed-dc-motor/brush-house-supports.png)
+
+  Using a small flat-edge screwdriver, gradually press through the exterior hole and shove the internal supports 
+  out the other end. This can be quite challenging, but the supports will eventually come out. The other supports in 
+  the print are easier to remove.
+* The rotor (shaft) might not fit easily within the bearings at first. File or sand the the rotor so that it fits in 
+  the bearings snugly. You don't want it to be loose within the bearings.
 
 # Assemble the Windings
 
