@@ -6,33 +6,45 @@
 
 {% include youtubePlayer.html id="5srIUrAuiNM" %}
 
-# Parts and Materials
+# Materials and Equipment
 
 Required:
 * [Copper sheet](https://www.amazon.com/dp/B0C1ZZLR97?th=1):  Used to build commutator plates.
 * [30 AWG enameled magnet wire](https://www.amazon.com/dp/B00UWCXRK6?th=1):  Used to create electromagnetic windings.
 * [Soft iron rod](https://www.amazon.com/dp/B0BNNCZ4ZR):  Enhances the field strength of electromagnetic windings.
 * Hacksaw:  Or some other way to cut lengths of the soft iron rod.
-* [Ceramic magnets](https://www.amazon.com/dp/B07S75MD7X?th=1):  Forms the fixed stator fields of the motor.
+* [Ceramic magnets](https://www.amazon.com/dp/B07S75MD7X?th=1):  Form the fixed stator fields of the motor.
 * [Bearings](https://www.amazon.com/dp/B07B8VZJGD):  Holds the rotor.
 * [Carbon motor brushes](https://www.amazon.com/dp/B07CVT2TG8):  Conducts current from a source to the commutator by physical contact.
 * [Superglue](https://www.amazon.com/dp/B00ELV2D0Y):  Used in a couple spots to hold parts together (e.g., commutator plates to the rotor).
 * Thin-gauge wire (e.g., 22 AWG jumper cables as provided in kits like [this](https://www.amazon.com/gp/product/B06W54L7B5/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1)):  For providing current to the carbon motor brushes.
 * Soldering iron:  Wire connections.
-* Solder:  Wire connections. 
-* [DC power supply](https://www.amazon.com/gp/product/B087LY94T6/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&th=1):  This is usable depending on the total resistance of the windings. If the resistance is too low because the windings are too small, then this power supply will short and self-disable.  
-* [DC power jack](https://www.amazon.com/dp/B00QJAW9F4?ref=ppx_yo2ov_dt_b_product_details&th=1):  To connect power from the supply to the carbon motor brushes.
-* Lots of patience:  Given all of the parts freshly printed, it takes several hours to build and assemble any of the 
-  motor designs described on this page.
+* Solder:  Wire connections.
+* [DC power supply](https://www.amazon.com/gp/product/B087LY94T6/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&th=1):
+  This is usable depending on the total resistance of the windings. If the resistance is too low because the 
+  windings are too small, then this power supply will short and self-disable. However, this supply works fine in all 
+  builds of the motors described on this page. If you go with this power supply, then also get a 
+  [DC power jack](https://www.amazon.com/dp/B00QJAW9F4?ref=ppx_yo2ov_dt_b_product_details&th=1) to connect the 
+  supply to the carbon motor brushes. It should be possible to wire several batteries together for power, but I do 
+  not provide instructions for this. I can only say that a single 9-volt battery is insufficient. I tried it, and it 
+  was not strong enough. 
+* Lots of patience:  It takes several hours to print the plastic parts and then several more hours to build and 
+  assemble, assuming you get it right the first time, which is not assured!
 
 Optional but useful:
 * [Electrical tape](https://www.amazon.com/Duck-299004-Professional-Electrical-0-75-Inch/dp/B007JSGNWU/):  To wrap the coils.
-* [Soldering station](https://www.amazon.com/dp/B0BHHVP467?ref=ppx_yo2ov_dt_b_product_details&th=1):  The connections, particularly to the commutator, are challenging without this handy tool.
+* [Soldering station](https://www.amazon.com/dp/B0BHHVP467?ref=ppx_yo2ov_dt_b_product_details&th=1):  The 
+  connections, particularly to the commutator, are difficult to solder without this handy tool. 
 * [Shrink tubing](https://www.amazon.com/dp/B01MFA3OFA?ref=ppx_yo2ov_dt_b_product_details&th=1):  For soldered connections.
-* [Autoranging multimeter](https://www.amazon.com/s?k=autoranging+multimeter&crid=2RJH49VDBDN9Y&sprefix=autoranging%2Caps%2C68&ref=nb_sb_ss_ts-doa-p_1_11):  Very helpful in checking winding resistance and circuit integrity.
+* [Autoranging multimeter](https://www.amazon.com/s?k=autoranging+multimeter&crid=2RJH49VDBDN9Y&sprefix=autoranging%2Caps%2C68&ref=nb_sb_ss_ts-doa-p_1_11):  Very 
+  helpful when checking winding resistance and circuit integrity.
 * [Alligator clips](https://www.amazon.com/gp/product/B09RZQFGGH/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1):  Useful when checking circuits and changing wiring.
 * [Files](https://www.amazon.com/Hardened-Strength-Barrette-Crossing-Equaling/dp/B07PPYWSCY/):  Removing extraneous 
   plastic when assembling parts.
+* [Vise](https://www.amazon.com/GOXAWEE-Bench-Clamp-Workbench-Woodworking/dp/B09N6Y2C29/):  Useful when cutting 
+  segments of the iron rod and winding the electromagnetic coils.   
+* [Circuit breadboard](https://www.amazon.com/gp/product/B07LFD4LT6/):  Useful when building circuitry around the 
+  motor such as on/off switches and relays, LED indicators, and tachometers.
 
 # Print the Parts
 
