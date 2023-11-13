@@ -10,7 +10,7 @@ power.id = 'power-1'
 app.add_component(power, True)
 
 tachometer = Tachometer(
-    reading_pin=CkPin.GPIO23,
+    reading_pin=CkPin.GPIO24,
     bounce_time_ms=1,
     read_delay_ms=0.1,
     low_readings_per_rotation=4,
