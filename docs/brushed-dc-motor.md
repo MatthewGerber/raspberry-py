@@ -296,7 +296,11 @@ Common problems:
   of the brush houses, and reassemble.
 * Power short:  If the brushes contact multiple commutators simultaneously, the power might short-circuit. The DC 
   power source linked at the top will automatically cut off on shorts. Revisit the commutator assembly if this 
-  happens. 
+  happens. The four-coil, four-stator and two-coil, two-stator designs have the highest risk of such a short, since 
+  the positive and negative brushes contact adjacent commutator segments. When the commutator is in a neutral power 
+  position and begins to transition to the next, a positive and negative brush may both contact the same segment. 
+  The DC power supply well self-protect; however, if you have other circuitry built around the motor as shown 
+  farther down, a short can damage other components including a connected Raspberry Pi.
 * Weak stator magnets:  The motor base has recesses for single magnets, which might not be strong enough on their 
   own. Adding magnets to the outside increases the field strength substantially. This also conveniently holds the 
   inner magnets in place without adhesive.
@@ -337,6 +341,16 @@ the orange relay in the middle of the breadboard seen in the video. This switch 
 the red LED. I've also added a digital tachometer circuit to estimate rotational speed. The speed is displayed in 
 the browser as revolutions per second (RPS). This motor -- the 4-coil 4-stator design -- runs at about 30 RPS (1,800 
 RPM).
+
+As noted above in the Test and Fix section, building circuitry around the motor and its high-voltage power supply 
+can be hazardous to your electrical components. A short circuit can easily damage your Raspberry Pi. I did exactly this 
+when attempting to run the two-coil two-stator design on the circuit shown above. The power shorted across a 
+commutator segment, blew up a transistor, and damaged a GPIO port on the Raspberry Pi. Builder beware!
+
+# Things to Improve
+
+* Winding washers do not always stay put.
+* The risk of shorts across commutator segments is increased when the segments are not sufficiently recessed.
 
 # References
 
