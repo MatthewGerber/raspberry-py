@@ -59,8 +59,8 @@ found at the bottom of this page. A few printing tips:
 
   The Cura slicer software allows the user to click any planar surface to lie flat on the build plate. Simply click 
   the highlighted surface, and the winding holder will lie perfectly flat as intended. All of the other surfaces on 
-  the holder are curved, so it is difficult to lie the piece flat without this planar surface.
-* The print takes around 8-10 hours on my Ender 3.
+  the holder are curved, so it is difficult to lay the piece flat without this planar surface.
+* The print takes around 8-10 hours on my Ender 3 with standard settings.
 * The most difficult supports to remove from the print are the ones that reside within the carbon brush houses as 
   shown in blue below:
 
@@ -69,8 +69,8 @@ found at the bottom of this page. A few printing tips:
   Using a small flat-edge screwdriver, gradually press through the exterior hole and shove the internal supports 
   out the other end. This can be quite challenging, but the supports will eventually come out. The other supports in 
   the print are easier to remove.
-* The rotor (shaft) might not fit easily within the bearings at first. File or sand the the rotor so that it fits in 
-  the bearings snugly. You don't want it to be loose within the bearings.
+* The rotor (shaft) might not fit easily within the bearings at first. File or sand the rotor so that it fits in the 
+  bearings snugly. You don't want it to be loose within the bearings. 
 
 # Assemble the Windings
 
@@ -323,7 +323,20 @@ NEED TO ADD VIDEO
 
 {% include youtubePlayer.html id="5srIUrAuiNM" %}
 
-# Other Fun Stuff:  Tachometer and Web-Controlled Relay
+# Other Fun Stuff:  Web-Browser Control with a Digital Tachometer Circuit
+
+This is similar to the videos above, except that this version integrates the motor with a web-browser on/off control 
+accessible from any device on the network (e.g., a smartphone):
+
+{% include youtubePlayer.html id="8snLsCfUKy0" %}
+
+The web-browser control is implemented using my 
+[raspberry-py](https://matthewgerber.github.io/raspberry-py/remote-gpio.html) package for REST-based control of 
+circuits running on a Raspberry Pi. The web-browser toggle calls a REST endpoint running on the Pi, which switches 
+the orange relay in the middle of the breadboard seen in the video. This switch is also indicated by illumination of 
+the red LED. I've also added a digital tachometer circuit to estimate rotational speed. The speed is displayed in 
+the browser as revolutions per second (RPS). This motor -- the 4-coil 4-stator design -- runs at about 30 RPS (1,800 
+RPM).
 
 # References
 
