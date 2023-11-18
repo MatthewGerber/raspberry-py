@@ -307,13 +307,23 @@ Common problems:
 
 # Designs, Videos, and STL Files
 
-The design viewers and STL file downloads are provided below for the three designs.
+The following sections provide CAD viewers, STL file downloads, and advantages and limitations for three alternative 
+motor designs.
 
 ## Two-Stator Two-Coil ([Download](https://www.thingiverse.com/thing:6153166))
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH512d4QTec90decfa6efb2dab18e0c3200b?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
-NEED TO ADD VIDEO
+Advantages:
+* Simple assembly:  Only two electromagnetic windings. Easiest support removal.
+* Lightweight rotor assembly
+* Higher rotational speed than the two-stator four-coil design
+
+Limitations:
+* Rough rotational dynamics:  The electromagnetic windings experience substantial time separated from the stator 
+  magnets' fields. As a result, the motor's rotational speed tends to fluctuate during each revolution.
+* Possibility of shorts:  The commutator segments must be carefully built, since the two brushes are nearby the 
+  same commutator segment and may short across the segment.
 
 ## Two-Stator Four-Coil ([Download](https://www.thingiverse.com/thing:6305321))
 
@@ -321,11 +331,30 @@ NEED TO ADD VIDEO
 
 {% include youtubePlayer.html id="bXlxgaOimZ8" %}
 
+Advantages:
+* Smooth rotational dynamics:  The electromagnetic windings experience less time separated from the stator magnets' 
+  fields. As a result, the motor's rotation speed is more consistent than the two-stator two-coil design. 
+* Unlikely shorts:  The two brushes are never near the same commutator segment and thus are unlikely to short. 
+
+Limitations:
+* Heavy rotor assembly
+* Slow rotational speed
+
 ## Four-Stator Four-Coil ([Download](https://www.thingiverse.com/thing:6305329))
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH512d4QTec90decfa6ee884568e9083a6b5?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
 {% include youtubePlayer.html id="5srIUrAuiNM" %}
+
+Advantages:
+* Highest torque:  The rotor assembly is heavy; however, the winding cores are always actively pushing from and 
+  pulling toward nearby stator magnets.
+* Smooth rotational dynamics
+
+Limitations:
+* Complicated assembly:  Includes four coils and four brushes.
+* Possibility of shorts:  The commutator segments must be carefully built, since adjacent brushes are nearby the 
+  same commutator segment and may short across the segment.
 
 # Other Fun Stuff:  Web-Browser Control with a Digital Tachometer Circuit
 
