@@ -1185,3 +1185,118 @@ class Tachometer(Component):
             read_delay_ms=self.read_delay_ms
         )
         self.reading_pseudo_button.event(lambda s: self.record_low_reading() if s.pressed else None)
+
+
+class RotaryEncoder(Component):
+    """
+    Rotary encoder.
+    """
+
+    class State(Component.State):
+        """
+        State.
+        """
+
+        def __init__(
+                self,
+                degrees: float
+        ):
+            """
+            Initialize the state.
+
+            :param degrees: Degrees of rotation.
+            """
+
+            self.degrees = degrees
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
+            """
+            Check equality.
+
+            :param other: Other state.
+            :return: True if equal and False otherwise.
+            """
+
+            if not isinstance(other, RotaryEncoder.State):
+                raise ValueError(f'Expected a {RotaryEncoder.State}')
+
+            return self.degrees == other.degrees
+
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'Degrees:  {self.degrees}'
+
+    def phase_a_changed(
+            self,
+            up: bool
+    ):
+        """
+        Record phase-a changed.
+
+        :param up: Whether phase-a is up (True) or down (False).
+        """
+
+        self.phase_a_high = up
+        print(f'Phase a:  {self.phase_a_high}')
+
+    def phase_b_changed(
+            self,
+            up: bool
+    ):
+        """
+        Record phase-b changed.
+
+        :param up: Whether phase-b is up (True) or down (False).
+        """
+
+        self.phase_b_high = up
+        print(f'Phase b:  {self.phase_b_high}')
+
+    def __init__(
+            self,
+            phase_a_pin: CkPin,
+            phase_b_pin: CkPin,
+            phase_changes_per_rotation: int
+    ):
+        """
+        Initialize the rotary encoder.
+
+        :param phase_a_pin: Phase-a pin.
+        :param phase_b_pin: Phase-b pin.
+        :param phase_changes_per_rotation: Number of phase changes per rotation.
+        """
+
+        super().__init__(RotaryEncoder.State(0.0))
+
+        self.phase_a_pin = phase_a_pin
+        self.phase_b_pin = phase_b_pin
+        self.phase_changes_per_rotation = phase_changes_per_rotation
+
+        self.phase_a_high = False
+        self.phase_b_high = False
+
+        gpio.setup(self.phase_a_pin, gpio.IN)
+        self.phase_a_pseudo_button = TwoPoleButton(
+            self.phase_a_pin,
+            1,
+            5
+        )
+        self.phase_a_pseudo_button.event(lambda s: self.phase_a_changed(s.pressed))
+
+        gpio.setup(self.phase_b_pin, gpio.IN)
+        self.phase_b_pseudo_button = TwoPoleButton(
+            self.phase_b_pin,
+            1,
+            5
+        )
+        self.phase_b_pseudo_button.event(lambda s: self.phase_b_changed(s.pressed))
