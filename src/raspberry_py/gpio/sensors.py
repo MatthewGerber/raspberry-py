@@ -1185,3 +1185,195 @@ class Tachometer(Component):
             read_delay_ms=self.read_delay_ms
         )
         self.reading_pseudo_button.event(lambda s: self.record_low_reading() if s.pressed else None)
+
+
+class RotaryEncoder(Component):
+    """
+    Rotary encoder designed with a 2-phase rectangular orthogonal circuit. See, for example, the item listed at the
+    following URL:
+
+      https://www.amazon.com/dp/B00UTIFCVA
+
+    Note that, as of 12 December 2023, the wiring instructions listed in the item description are incorrect. Here are
+    the correct wiring instructions:
+
+      * Red wire:  5v input power
+      * Black wire:  Ground
+      * White wire:  Phase 1 signal
+      * Green wire:  Phase 2 signal
+
+    Be careful when wiring the rotary encoder, as incorrectly supplying power through the phase signals can damage the
+    encoder's internal circuitry.
+    """
+
+    class State(Component.State):
+        """
+        State.
+        """
+
+        def __init__(
+                self,
+                degrees: float,
+                degrees_per_second: float,
+                clockwise: bool
+        ):
+            """
+            Initialize the state.
+
+            :param degrees: Degrees of rotation.
+            :param degrees_per_second: Degrees per second.
+            :param clockwise: Whether the encoder is turning in a clockwise direction.
+            """
+
+            self.degrees = degrees
+            self.degrees_per_second = degrees_per_second
+            self.clockwise = clockwise
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
+            """
+            Check equality.
+
+            :param other: Other state.
+            :return: True if equal and False otherwise.
+            """
+
+            if not isinstance(other, RotaryEncoder.State):
+                raise ValueError(f'Expected a {RotaryEncoder.State}')
+
+            return (
+                self.degrees == other.degrees and
+                self.degrees_per_second == other.degrees_per_second and
+                self.clockwise == other.clockwise
+            )
+
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'{self.degrees:.1f} deg @ {self.degrees_per_second:.1f} deg/s clockwise={self.clockwise}'
+
+    def phase_a_changed(
+            self,
+            up: bool
+    ):
+        """
+        Record phase-a changed.
+
+        :param up: Whether phase-a is up (True) or down (False).
+        """
+
+        previous_time_epoch = self.current_time_epoch
+        self.current_time_epoch = time.time()
+        self.phase_a_reporting = True
+        self.phase_a_high = up
+
+        if self.phase_a_high == self.phase_b_high:
+            self.phase_change_index += 1
+        else:
+            self.phase_change_index -= 1
+
+        self.phase_changes += 1
+
+        if self.phase_a_reporting and self.phase_b_reporting:
+            previous_degrees = self.degrees
+            self.degrees = (self.phase_change_index / self.phase_changes_per_degree) % 360.0
+            self.degrees_per_second = (
+                abs(self.degrees - previous_degrees) /
+                (self.current_time_epoch - previous_time_epoch)
+            )
+            self.clockwise = self.degrees > previous_degrees
+            if self.report_state:
+                self.set_state(RotaryEncoder.State(self.degrees, self.degrees_per_second, self.clockwise))
+
+    def phase_b_changed(
+            self,
+            up: bool
+    ):
+        """
+        Record phase-b changed.
+
+        :param up: Whether phase-b is up (True) or down (False).
+        """
+
+        previous_time_epoch = self.current_time_epoch
+        self.current_time_epoch = time.time()
+        self.phase_b_reporting = True
+        self.phase_b_high = up
+
+        if self.phase_b_high == self.phase_a_high:
+            self.phase_change_index -= 1
+        else:
+            self.phase_change_index += 1
+
+        self.phase_changes += 1
+
+        if self.phase_a_reporting and self.phase_b_reporting:
+            previous_degrees = self.degrees
+            self.degrees = (self.phase_change_index / self.phase_changes_per_degree) % 360.0
+            self.degrees_per_second = (
+                abs(self.degrees - previous_degrees) /
+                (self.current_time_epoch - previous_time_epoch)
+            )
+            self.clockwise = self.degrees > previous_degrees
+            if self.report_state:
+                self.set_state(RotaryEncoder.State(self.degrees, self.degrees_per_second, self.clockwise))
+
+    def __init__(
+            self,
+            phase_a_pin: CkPin,
+            phase_b_pin: CkPin,
+            phase_changes_per_rotation: int,
+            report_state: bool
+    ):
+        """
+        Initialize the rotary encoder.
+
+        :param phase_a_pin: Phase-a pin.
+        :param phase_b_pin: Phase-b pin.
+        :param phase_changes_per_rotation: Number of phase changes per rotation.
+        :param report_state: Whether to report state when rotation changes. Because rotary encoders usually need to have
+        very low latency, the added overhead of reporting state can be too much. Pass True here to report state update
+        events in the usual way (more overhead and higher latency), or pass False here to not report state update events
+        (less overhead and lower latency).
+        """
+
+        super().__init__(RotaryEncoder.State(0.0, 0.0, False))
+
+        self.phase_a_pin = phase_a_pin
+        self.phase_b_pin = phase_b_pin
+        self.phase_changes_per_rotation = phase_changes_per_rotation
+        self.report_state = report_state
+
+        self.phase_changes_per_degree = self.phase_changes_per_rotation / 360.0
+        self.phase_change_index = 0
+        self.phase_changes = 0
+        self.degrees = 0.0
+        self.degrees_per_second = 0.0
+        self.clockwise = False
+        self.phase_a_high = False
+        self.phase_a_reporting = False
+        self.phase_b_high = False
+        self.phase_b_reporting = False
+        self.current_time_epoch = None
+
+        gpio.setup(self.phase_a_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
+        gpio.add_event_detect(
+            self.phase_a_pin,
+            gpio.BOTH,
+            callback=lambda channel: self.phase_a_changed(gpio.input(self.phase_a_pin) == gpio.LOW)
+        )
+
+        gpio.setup(self.phase_b_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
+        gpio.add_event_detect(
+            self.phase_b_pin,
+            gpio.BOTH,
+            callback=lambda channel: self.phase_b_changed(gpio.input(self.phase_b_pin) == gpio.LOW)
+        )
