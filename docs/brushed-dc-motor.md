@@ -369,7 +369,9 @@ circuits running on a Raspberry Pi. The web-browser toggle calls a REST endpoint
 the orange relay in the middle of the breadboard seen in the video. This switch is also indicated by illumination of 
 the red LED. I've also added a digital tachometer circuit to estimate rotational speed. The speed is displayed in 
 the browser as revolutions per second (RPS). This motor -- the 4-coil 4-stator design -- runs at about 30 RPS (1,800 
-RPM).
+RPM). The circuit is shown below:
+
+![relay-tach-circuit](brushed-dc-motor/relay-tach-circuit.png)
 
 As noted above in the Test and Fix section, building circuitry around the motor and its high-voltage power supply 
 can be hazardous to your electrical components. A short circuit can easily damage your Raspberry Pi. I did exactly this 
