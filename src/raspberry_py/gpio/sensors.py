@@ -1199,8 +1199,8 @@ class RotaryEncoder(Component):
 
       * Red wire:  5v input power
       * Black wire:  Ground
-      * White wire:  Phase 1 signal
-      * Green wire:  Phase 2 signal
+      * White wire:  Phase-a signal
+      * Green wire:  Phase-b signal
 
     Be careful when wiring the rotary encoder, as incorrectly supplying power through the phase signals can damage the
     encoder's internal circuitry.
