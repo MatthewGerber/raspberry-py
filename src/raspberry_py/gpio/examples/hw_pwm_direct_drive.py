@@ -18,10 +18,8 @@ def main():
     setup()
 
     # set up pwm chip
-    i2c_bus = SMBus('/dev/i2c-1')
-
     pca9685pw = PulseWaveModulatorPCA9685PW(
-        bus=i2c_bus,
+        bus=SMBus('/dev/i2c-1'),
         address=PulseWaveModulatorPCA9685PW.PCA9685PW_ADDRESS,
         frequency_hz=50
     )

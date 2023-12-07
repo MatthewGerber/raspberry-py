@@ -7,7 +7,7 @@ from typing import Optional, Callable
 import RPi.GPIO as gpio
 import numpy as np
 
-from raspberry_py.gpio import Component
+from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
 
 
@@ -28,12 +28,13 @@ class DcMotorDriver(ABC):
         :param previous_state: Previous state.
         :param new_state: New state.
         """
-        pass
 
 
 class DcMotorDriverL293D(DcMotorDriver):
     """
-    Motor driver via L293D IC and software pulse-wave modulation.
+    Motor driver via L293D IC and software pulse-wave modulation (PWM). This is a direct driver, in that the PWM outputs
+    go directly to the motor to provide driving current. This is appropriate when the PWM voltage alone is sufficient
+    for the motor (e.g., a small 5v motor).
     """
 
     def change_state(
@@ -99,7 +100,9 @@ class DcMotorDriverL293D(DcMotorDriver):
 
 class DcMotorDriverPCA9685PW(DcMotorDriver):
     """
-    Motor driver via PCA9685PW IC (hardware pulse-wave modulator).
+    Motor driver via PCA9685PW IC hardware pulse-wave modulator (PWM). This is a direct driver, in that the PWM outputs
+    go directly to the motor to provide driving current.  This is appropriate when the PWM voltage alone is sufficient
+    for the motor (e.g., a small 5v motor).
     """
 
     def change_state(
@@ -150,6 +153,68 @@ class DcMotorDriverPCA9685PW(DcMotorDriver):
         self.motor_channel_1 = motor_channel_1
         self.motor_channel_2 = motor_channel_2
         self.reverse = reverse
+
+
+class DcMotorDriverIndirectPCA9685PW(DcMotorDriver):
+    """
+    Motor driver via PCA9685PW IC hardware pulse-wave modulator (PWM). This is an indirect driver, in that the PWM
+    outputs go to an intermediate DC motor controller that supplies driving current to the motor. This is appropriate
+    when the PWM voltage alone is insufficient for the motor (e.g., a larger 12v or 24v motor). In this case, the
+    intermediate motor controller has a separate larger power supply, and the PWM serves as the controlling signal for
+    the motor controller's voltage regulator.
+    """
+
+    def change_state(
+            self,
+            previous_state: 'DcMotor.State',
+            new_state: 'DcMotor.State'
+    ):
+        """
+        Change state.
+
+        :param previous_state: Previous state.
+        :param new_state: New state.
+        """
+
+        if new_state.speed >= 0:
+            direction = gpio.HIGH
+        else:
+            direction = gpio.LOW
+
+        if self.reverse:
+            direction = gpio.LOW if direction == gpio.HIGH else gpio.HIGH
+
+        gpio.output(self.direction_pin, direction)
+
+        if new_state.on:
+            duty = int((abs(new_state.speed) / 100.0) * 4095)
+        else:
+            duty = 0
+
+        self.pca9685pw.set_channel_pwm_on_off(self.drive_channel, 0, duty)
+
+    def __init__(
+            self,
+            pca9685pw: PulseWaveModulatorPCA9685PW,
+            pwm_channel: int,
+            direction_pin: CkPin,
+            reverse: bool = False
+    ):
+        """
+        Initialize the driver.
+
+        :param pca9685pw: IC.
+        :param pwm_channel: PWM channel to drive.  
+        :param direction_pin: Direction pin, which outputs to the controller's direction input.
+        :param reverse: Whether to reverse speed upon output.
+        """
+
+        self.pca9685pw = pca9685pw
+        self.drive_channel = pwm_channel
+        self.direction_pin = direction_pin
+        self.reverse = reverse
+
+        gpio.setup(self.direction_pin, gpio.OUT)
 
 
 class DcMotor(Component):
@@ -219,7 +284,10 @@ class DcMotor(Component):
 
         constrained_speed = min(self.max_speed, max(state.speed, self.min_speed))
         if constrained_speed != state.speed:
-            logging.warning(f'Requested motor speed ({state.speed}) is out of bounds [{self.min_speed},{self.max_speed}]. Constraining to be in bounds.')
+            logging.warning(
+                f'Requested motor speed ({state.speed}) is out of bounds [{self.min_speed},{self.max_speed}]. '
+                f'Constraining to be in bounds.'
+            )
             state.speed = constrained_speed
 
         self.driver.change_state(self.state, state)
