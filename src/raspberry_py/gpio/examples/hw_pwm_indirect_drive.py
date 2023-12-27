@@ -20,7 +20,7 @@ def main():
     pca9685pw = PulseWaveModulatorPCA9685PW(
         bus=SMBus('/dev/i2c-1'),
         address=PulseWaveModulatorPCA9685PW.PCA9685PW_ADDRESS,
-        frequency_hz=100
+        frequency_hz=400
     )
 
     # test motor
@@ -33,9 +33,9 @@ def main():
         speed=0
     )
     motor.start()
-    motor.set_speed(75)
+    motor.set_speed(50)
     time.sleep(1)
-    motor.set_speed(-75)
+    motor.set_speed(-50)
     time.sleep(1)
     motor.set_speed(0)
     motor.stop()
