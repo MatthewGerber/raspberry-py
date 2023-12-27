@@ -7,7 +7,7 @@ package-dir = {'' = 'src'}
 
 [project]
 name = 'raspberry-py'
-version = '0.5.0'
+version = '0.6.0.dev0'
 description = 'A Python/REST interface for GPIO circuits running on the Raspberry Pi'
 authors = [
     {name = 'Matthew Gerber', email = 'gerber.matthew@gmail.com'}
