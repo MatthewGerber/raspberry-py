@@ -41,7 +41,7 @@ is the best approach if you want to enhance and/or fix the functionality provide
 ```shell
 git clone git@github.com:XXXX/raspberry-py.git
 cd raspberry-py
-virtualenv -p python3.9 venv
+python -m venv venv
 . venv/bin/activate
 pip install -U pip
 pip install -e .
@@ -52,36 +52,47 @@ From here, you can push back to your fork and submit a pull request to the origi
 
 I have designed a range of parts for integration with the Raspberry Pi. See [here](cad-parts.md). 
 
-# Operating System Configuration
+# Ubuntu Operating System
 
-## Ubuntu
-The `raspberry-py` package should be compatible with the standard 
-[Raspberry Pi OS](https://www.raspberrypi.com/software/); however, I have been using the Ubuntu installation described 
-[here](https://matthewgerber.github.io/rlai/raspberry_pi.html#operating-system) (ignore the "Install RLAI" section).
+Raspberry Pi now provides a 64-bit Debian-based operating system via the Raspberry Pi Imager. However, in my experience,
+this operating system can be non-performant, particularly with regard to PyCharm, which is my preferred Python 
+integrated development environment (IDE). I've found that a combination of Ubuntu Service and Xubuntu Desktop performs
+quite well. The installation is a bit more complicated than the standard Raspberry Pi operating system, and the steps
+are listed below.
+
+## Base Operating System
+
+1. Install and start the [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
+2. Select the latest Ubuntu Server 64-bit OS and write the image to the micro-SD card. Be sure to configure WiFi and SSH
+   services on the image.
+3. Boot the Raspberry Pi and log in.
+4. `sudo apt update && sudo apt upgrade`
+5. `sudo systemctl reboot`
+6. `sudo apt install xubuntu-core emacs firefox gcc python3-dev python3-venv raspi-config i2c-tools apache2 net-tools`
+7. `sudo systemctl reboot`
+8. `ssh-keygen` and then upload the key to GitHub if needed.
+
+## PyCharm
+1. Download [here](https://www.jetbrains.com/pycharm/download).
+2. Extract the archive and move the PyCharm directory to `/opt/`
+3. Add the PyCharm `bin` directory to your `PATH` in `.bashrc`.
+
+## I2C Interface
+1. Run `raspi-config` and enable the I2C interface.
+2. Run `i2cdetect -y 1` to confirm. A blank I2C readout will be displayed if no I2C peripherals are connected.
 
 ## GPIO
 By default, Ubuntu does not give the user permission to interact with the GPIO pins of the Raspberry Pi. To grant GPIO 
 permissions when the Raspberry Pi boots:
+
 1. Edit `/etc/udev/rules.d/99-gpiomem.rules` as follows to assign all `gpio*` device to the `dialout` group, which the 
 user is a member of by default:
-```
-KERNEL=="gpio*", OWNER="root", GROUP="dialout"
-```
+   ```
+   KERNEL=="gpio*", OWNER="root", GROUP="dialout"
+   ```
 2. Reboot for the new permissions to take effect.
 
-Use of I2C with the Raspberry Pi (e.g., page 111 of [the tutorial](../manuals/freenove-tutorial.pdf)) requires 
-configuration with the `raspi-config` utility, which is installed by default in the Raspberry Pi OS but not in Ubuntu. 
-Install `raspi-config` for Ubuntu with the following commands:
-```
-sudo apt install lua5.1
-wget http://archive.raspberrypi.org/debian/pool/main/r/raspi-config/raspi-config_20211019_all.deb
-sudo dpkg -i raspi-config_20211019_all.deb
-```
-A full listing of the latest `raspi-config` packages can be found 
-[here](http://archive.raspberrypi.org/debian/pool/main/r/raspi-config). The user will also need to be added to the 
-`i2c` group with `sudo usermod -a -G i2c ubuntu` (then restart for the change to take effect).
-
-Enabling and testing the Raspberry Pi video camera:
+## Raspberry Pi Video Camera
 1. Modify boot config:  `sudo emacs /boot/firmware/config.txt` and add `start_x=1` and `gpu_mem=256` at the end.
 2. Enable camera:  `sudo apt install raspi-config`, then `raspi-config`, then enable the camera.
 3. Give permission:  `sudo usermod -a -G video ubuntu`

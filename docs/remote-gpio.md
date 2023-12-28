@@ -53,15 +53,17 @@ This code specifies an RpyFlask application containing a servo. It is the basis 
 generation, which are explained below.
 
 # Apache HTTP Server
-This example uses Apache, which is simple to configure on Ubuntu for Raspberry Pi. See [here](index.md) for Ubuntu 
-installation on Raspberry Pi and [here](https://ubuntu.com/tutorials/install-and-configure-apache#1-overview) for 
-Apache HTTP server installation. An example Apache site configuration file can be found [here](rpy-rest.conf), though 
-beware of security vulnerabilities like lack of HTTPS and potential exposure of files. Following initial Apache 
-installation, edit the `rpy-rest.conf` file so that the relevant paths match your local file system. Then proceed as 
-follows to install and enable the site:
-```shell
-sudo cp /path/to/rpy-rest.conf /etc/apache2/sites-available
-sudo a2ensite rpy-rest.conf
+This example uses Apache, which can be installed with `sudo apt install apache2`. An example Apache site configuration 
+file can be found [here](rpy-rest.conf), though beware of security vulnerabilities like lack of HTTPS and potential 
+exposure of files. Following initial Apache installation, edit the `rpy-rest.conf` file so that the relevant paths match 
+your local file system. Then proceed as follows to install and enable the site:
+   ```shell
+   sudo cp /path/to/rpy-rest.conf /etc/apache2/sites-available
+   sudo a2ensite rpy-rest.conf
+   ```
+Edit `/etc/apache2/ports.conf` to include 8080, and set permissions on your home directory with `chmod 755 /home/dir` so 
+that Apache can read the files. Then restart the server:
+```
 sudo systemctl reload apache2
 ```
 Once the Apache HTTP server is configured, it's time to generate HTML/JavaScript controls for the RpyFlask application 
