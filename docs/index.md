@@ -68,7 +68,7 @@ are listed below.
 3. Boot the Raspberry Pi and log in.
 4. `sudo apt update && sudo apt upgrade`
 5. `sudo systemctl reboot`
-6. `sudo apt install xubuntu-core emacs firefox gcc python3-dev python3-venv raspi-config i2c-tools apache2 net-tools`
+6. `sudo apt install xubuntu-core emacs firefox gcc python3-dev python3-venv raspi-config i2c-tools apache2 net-tools swig`
 7. `sudo systemctl reboot`
 8. `ssh-keygen` and then upload the key to GitHub if needed.
 
