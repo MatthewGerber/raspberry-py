@@ -111,19 +111,20 @@ sudo kill 1418
 # OctoPrint
 1. Install OctoPrint [manually](https://octoprint.org/download/#installing-manually) and start the server:
    ```shell
+   cd ~
    python3.11 -m venv OctoPrint
    . OctoPrint/bin/activate
    pip install -U pip
    pip install OctoPrint
    octoprint serve
    ``` 
-2. To start OctoPrint on boot:  `crontab -e` and add `@reboot /path/to/OctoPrint/run.sh`. Then create the `run.sh` file
-   as follows:
+2. To start OctoPrint on boot:  `crontab -e` and add `@reboot /path/to/OctoPrint/run.sh`. Then create the `run.sh`
+   file as follows:
    ```shell
-   #!/bin/sh   
-   cd ~/Repos/OctoPrint
-   . venv/bin/activate
-   nohup octoprint serve --port 5001 &
+   #!/bin/sh
+   cd /path/to/OctoPrint
+   . ./bin/activate
+   /usr/bin/nohup octoprint serve --port 5001 &
    ```
    I use port 5001 above (different from the OctoPrint default of 5000) because the Flask REST server that is part of 
    the present raspberry-py package uses port 5000.  
