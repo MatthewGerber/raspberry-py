@@ -39,7 +39,7 @@ is the best approach if you want to enhance and/or fix the functionality provide
 ```shell
 git clone git@github.com:XXXX/raspberry-py.git
 cd raspberry-py
-python3.11 -m venv venv
+python3.10 -m venv venv
 . venv/bin/activate
 pip install -U pip
 pip install -e .

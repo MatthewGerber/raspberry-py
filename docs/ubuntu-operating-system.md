@@ -112,7 +112,7 @@ sudo kill 1418
 1. Install OctoPrint [manually](https://octoprint.org/download/#installing-manually) and start the server:
    ```shell
    cd ~
-   python3.11 -m venv OctoPrint
+   python3.10 -m venv OctoPrint
    . OctoPrint/bin/activate
    pip install -U pip
    pip install OctoPrint
