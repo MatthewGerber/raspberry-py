@@ -19,9 +19,9 @@ def main():
     )
 
     for _ in range(10):
-        phase_changes_start = encoder.phase_changes
+        phase_changes_start = encoder.num_phase_changes
         time.sleep(1.0)
-        phase_changes_end = encoder.phase_changes
+        phase_changes_end = encoder.num_phase_changes
         print(f'Degrees:  {encoder.degrees:.1f}')
         print(f'Degrees / second:  {encoder.degrees_per_second:.1f}')
         print(f'Clockwise:  {encoder.clockwise}')

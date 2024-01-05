@@ -127,27 +127,34 @@ sudo kill 1418
 # OctoPrint
 1. Install OctoPrint [manually](https://octoprint.org/download/#installing-manually) and start the server:
    ```shell
+   cd ~
    python3.11 -m venv OctoPrint
    . OctoPrint/bin/activate
    pip install -U pip
    pip install OctoPrint
    octoprint serve
    ``` 
-2. To start OctoPrint on boot:  `crontab -e` and add `@reboot /path/to/OctoPrint/run.sh`. Then create the `run.sh` file
-   as follows:
+2. To start OctoPrint on boot:  `crontab -e` and add `@reboot /path/to/OctoPrint/run.sh`. Then create the `run.sh`
+   file as follows:
    ```shell
-   #!/bin/sh   
-   cd ~/Repos/OctoPrint
-   . venv/bin/activate
-   nohup octoprint serve --port 5001 &
+   #!/bin/sh
+   cd /path/to/OctoPrint
+   . ./bin/activate
+   /usr/bin/nohup octoprint serve --port 5001 &
    ```
    I use port 5001 above (different from the OctoPrint default of 5000) because the Flask REST server that is part of 
    the present raspberry-py package uses port 5000.  
-3. The following script will start the mjpeg-streamer:
+3. The following script will toggle the mjpeg-streamer on and off:
    ```shell
    #!/bin/sh
-   cd /path/to/mjpg-streamer/mjpg-streamer-experimental
-   nohup ./mjpg_streamer -i "input_uvc.so -fps 30 -r 1280x720 -q 100" -o "./output_http.so -p 8081 -w ./www" &
+   cd /home/matthewgerber/Repos/mjpg-streamer/mjpg-streamer-experimental
+   if test -f streamer.pid; then
+       kill `cat streamer.pid`
+       rm streamer.pid
+   else
+       nohup ./mjpg_streamer -i "input_uvc.so -fps 30 -r 1280x720 -q 100" -o "./output_http.so -p 8081 -w ./www" &
+       echo "$!" > streamer.pid
+   fi
    ```
    I use port 8081 above because the Apache server used as part of the present raspberry-py package uses port 8080.
    Once the stream begins, you should be able to use the following values within OctoPrint's webcam setup:
@@ -155,7 +162,9 @@ sudo kill 1418
    * Stream URL:  http://XXXX:8081/?action=stream
    * Snapshot URL:  http://XXXX:8081/?action=snapshot
    
-   In the above, `XXXX` is the IP address of the Pi system.
+   In the above, `XXXX` is the IP address of the Pi system. For greater convenience, add the `CMD exec` plugin to 
+   OctoPrint and use the full path to the shell script as the command. This will allow you to toggle the webcam from 
+   the OctoPrint web interface.
 
 # References
 * [Setting up OctoPrint on a Raspberry Pi running Raspberry Pi OS (Debian)](https://community.octoprint.org/t/setting-up-octoprint-on-a-raspberry-pi-running-raspberry-pi-os-debian/2337#optional-webcam-9)

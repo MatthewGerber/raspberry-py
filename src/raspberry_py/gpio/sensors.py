@@ -1,5 +1,8 @@
+import RPi.GPIO as gpio
 import base64
+import cv2
 import math
+import numpy as np
 import os
 import shlex
 import signal
@@ -8,10 +11,6 @@ import time
 from enum import Enum, auto
 from threading import Thread, Lock
 from typing import Optional, List, Callable, Tuple
-
-import RPi.GPIO as gpio
-import cv2
-import numpy as np
 
 from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.adc import AdcDevice
@@ -1213,6 +1212,7 @@ class RotaryEncoder(Component):
 
         def __init__(
                 self,
+                net_total_degrees: float,
                 degrees: float,
                 degrees_per_second: float,
                 clockwise: bool
@@ -1220,11 +1220,13 @@ class RotaryEncoder(Component):
             """
             Initialize the state.
 
+            :param net_total_degrees: Net total degrees.
             :param degrees: Degrees of rotation.
             :param degrees_per_second: Degrees per second.
             :param clockwise: Whether the encoder is turning in a clockwise direction.
             """
 
+            self.net_total_degrees = net_total_degrees
             self.degrees = degrees
             self.degrees_per_second = degrees_per_second
             self.clockwise = clockwise
@@ -1244,9 +1246,10 @@ class RotaryEncoder(Component):
                 raise ValueError(f'Expected a {RotaryEncoder.State}')
 
             return (
-                self.degrees == other.degrees and
-                self.degrees_per_second == other.degrees_per_second and
-                self.clockwise == other.clockwise
+                    self.net_total_degrees == other.net_total_degrees and
+                    self.degrees == other.degrees and
+                    self.degrees_per_second == other.degrees_per_second and
+                    self.clockwise == other.clockwise
             )
 
         def __str__(
@@ -1270,8 +1273,6 @@ class RotaryEncoder(Component):
         :param up: Whether phase-a is up (True) or down (False).
         """
 
-        previous_time_epoch = self.current_time_epoch
-        self.current_time_epoch = time.time()
         self.phase_a_reporting = True
         self.phase_a_high = up
 
@@ -1280,18 +1281,10 @@ class RotaryEncoder(Component):
         else:
             self.phase_change_index -= 1
 
-        self.phase_changes += 1
+        self.num_phase_changes += 1
 
         if self.phase_a_reporting and self.phase_b_reporting:
-            previous_degrees = self.degrees
-            self.degrees = (self.phase_change_index / self.phase_changes_per_degree) % 360.0
-            self.degrees_per_second = (
-                abs(self.degrees - previous_degrees) /
-                (self.current_time_epoch - previous_time_epoch)
-            )
-            self.clockwise = self.degrees > previous_degrees
-            if self.report_state:
-                self.set_state(RotaryEncoder.State(self.degrees, self.degrees_per_second, self.clockwise))
+            self.update_state()
 
     def phase_b_changed(
             self,
@@ -1303,8 +1296,6 @@ class RotaryEncoder(Component):
         :param up: Whether phase-b is up (True) or down (False).
         """
 
-        previous_time_epoch = self.current_time_epoch
-        self.current_time_epoch = time.time()
         self.phase_b_reporting = True
         self.phase_b_high = up
 
@@ -1313,18 +1304,38 @@ class RotaryEncoder(Component):
         else:
             self.phase_change_index += 1
 
-        self.phase_changes += 1
+        self.num_phase_changes += 1
 
         if self.phase_a_reporting and self.phase_b_reporting:
-            previous_degrees = self.degrees
-            self.degrees = (self.phase_change_index / self.phase_changes_per_degree) % 360.0
-            self.degrees_per_second = (
-                abs(self.degrees - previous_degrees) /
-                (self.current_time_epoch - previous_time_epoch)
+            self.update_state()
+
+    def update_state(
+            self
+    ):
+        """
+        Update state.
+        """
+
+        previous_time_epoch = self.current_time_epoch
+        self.current_time_epoch = time.time()
+
+        previous_net_total_degrees = self.net_total_degrees
+        self.net_total_degrees = self.phase_change_index / self.phase_changes_per_degree
+        self.degrees = self.net_total_degrees % 360.0
+        self.degrees_per_second = (
+            abs(self.net_total_degrees - previous_net_total_degrees) /
+            (self.current_time_epoch - previous_time_epoch)
+        )
+        self.clockwise = self.net_total_degrees > previous_net_total_degrees
+        if self.report_state:
+            self.set_state(
+                RotaryEncoder.State(
+                    self.net_total_degrees,
+                    self.degrees,
+                    self.degrees_per_second,
+                    self.clockwise
+                )
             )
-            self.clockwise = self.degrees > previous_degrees
-            if self.report_state:
-                self.set_state(RotaryEncoder.State(self.degrees, self.degrees_per_second, self.clockwise))
 
     def __init__(
             self,
@@ -1345,7 +1356,7 @@ class RotaryEncoder(Component):
         (less overhead and lower latency).
         """
 
-        super().__init__(RotaryEncoder.State(0.0, 0.0, False))
+        super().__init__(RotaryEncoder.State(0.0, 0.0, 0.0, False))
 
         self.phase_a_pin = phase_a_pin
         self.phase_b_pin = phase_b_pin
@@ -1354,7 +1365,8 @@ class RotaryEncoder(Component):
 
         self.phase_changes_per_degree = self.phase_changes_per_rotation / 360.0
         self.phase_change_index = 0
-        self.phase_changes = 0
+        self.num_phase_changes = 0
+        self.net_total_degrees = 0.0
         self.degrees = 0.0
         self.degrees_per_second = 0.0
         self.clockwise = False
