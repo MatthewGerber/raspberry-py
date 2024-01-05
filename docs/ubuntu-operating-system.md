@@ -10,22 +10,38 @@ quite well. The installation is a bit more complicated than the standard Raspber
 are listed below.
 
 # Base Operating System
-1. Install and start the [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
-2. Select the latest Ubuntu Server 64-bit OS and write the image to the micro-SD card. Be sure to configure WiFi and SSH
-   services on the image if needed.
-3. Boot the Raspberry Pi on the micro-SD card and log in.
-4. Install dependencies:
+1. Download 
+   [Ubuntu Server 22.04.2 64-bit LTS for Raspberry Pi](https://old-releases.ubuntu.com/releases/22.04/ubuntu-22.04.2-preinstalled-server-arm64+raspi.img.xz). 
+   At the time of writing, this was the most recent LTS version that was distributed with version 5 of the Linux kernel.
+   This is important because the raspberry-py package uses the [RPi.GPIO](https://pypi.org/project/RPi.GPIO/) package, 
+   which is based on a legacy GPIO interface that was removed from more recent Ubuntu Server versions that come with 
+   version 6 of the Linux kernel. A compatibility shim exists in the form of
+   [rpi-lgpio](https://pypi.org/project/rpi-lgpio/); however, I've had trouble installing this shim into Python virtual 
+   environments. In the end, until things change, Ubuntu version 22.04.2 and version 5 of the Linux kernel will work.  
+2. Install and start the [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
+3. Select the Ubuntu image that you downloaded and write the image to the micro-SD card. Be sure to configure WiFi and 
+   SSH services on the image if needed.
+4. Boot the Raspberry Pi on the micro-SD card and log in.
+5. Upgrade and install a few dependencies, general tools and applications, and the Xubuntu desktop environment:
    ```shell
    sudo apt update
    sudo apt upgrade
    sudo apt install xubuntu-core emacs firefox python3-venv raspi-config i2c-tools apache2 net-tools
    sudo systemctl reboot
    ```
+   The Pi should reboot into the Xubuntu desktop environment. Log in.
+
+# GitHub
+1. Run `ssh-keygen` and upload the content of `~/.ssh/id_rsa.pub` to [GitHub](https://github.com/settings/ssh/new).
+2. Clone the [raspberry-py](https://github.com/MatthewGerber/raspberry-py) repository with 
+   `git clone git@github.com:MatthewGerber/raspberry-py.git`.
 
 # PyCharm
-1. Download [here](https://www.jetbrains.com/pycharm/download).
+1. Download the community version [here](https://www.jetbrains.com/pycharm/download). Be sure to download the Linux ARM
+   distribution, which is required for the Pi.
 2. Extract the archive and move the extracted directory to `/opt/`
 3. Add the PyCharm `bin` directory to your `PATH` in `.bashrc`.
+4. Start PyCharm and open the raspberry-py repository.
 
 # I2C Interface
 1. Run `raspi-config` and enable the I2C interface.
