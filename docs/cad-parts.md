@@ -24,7 +24,7 @@ difficult to choose; however, at under $200 with generally quite positive review
 [Creality Ender-3](https://www.creality.com/products/ender-3-3d-printer). It was simple to assemble and has been 
 cranking out high-quality pieces since the start.
 * 3D printer web interface:  I use [OctoPrint](https://octoprint.org) with my Raspberry Pi as an efficient and easy way
-to manage print jobs.
+to manage print jobs. See [here](octoprint.md) for tips on configuring OctoPrint on the Pi.
 
 # Robotic Arm
 

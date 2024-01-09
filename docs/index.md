@@ -27,7 +27,10 @@ designed for the car:
 Additional CAD parts that I have designed are listed [here](cad-parts.md). 
 
 # Use and Development
-The `raspberry-py` package can be consumed in two ways:
+Raspberry Pi now provides a 64-bit Debian-based operating system (OS) via the Raspberry Pi Imager. The OS is quite 
+good, though for some uses Ubuntu seems to work equally well if not better. I've written steps for both operating 
+systems [here](raspberry-pi-operating-system.md) and [here](ubuntu-operating-system.md), respectively. The 
+`raspberry-py` package can be consumed in two ways:
 
 1. Add `raspberry-py` to a project as a PyPI dependency. This is the best approach if you only want to use the 
 functionality provided by `raspberry-py`. The `raspberry-py` package is available 
@@ -39,19 +42,12 @@ is the best approach if you want to enhance and/or fix the functionality provide
 ```shell
 git clone git@github.com:XXXX/raspberry-py.git
 cd raspberry-py
-python3.10 -m venv venv
+python3 -m venv venv
 . venv/bin/activate
 pip install -U pip
 pip install -e .
 ```
 From here, you can push back to your fork and submit a pull request to the original if desired.
 
-# CAD Parts
+# CAD Parts and 3D Printing
 I have designed a range of parts for integration with the Raspberry Pi. See [here](cad-parts.md). 
-
-# Ubuntu Operating System
-Raspberry Pi now provides a 64-bit Debian-based operating system via the Raspberry Pi Imager. However, in my experience,
-this operating system can be non-performant, particularly with regard to PyCharm, which is my preferred Python 
-integrated development environment (IDE). I've found that a combination of Ubuntu Server and Xubuntu Desktop performs
-quite well. The installation is a bit more complicated than the standard Raspberry Pi operating system, and the steps
-are listed [here](ubuntu-operating-system.md).
