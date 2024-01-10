@@ -1,8 +1,5 @@
-import RPi.GPIO as gpio
 import base64
-import cv2
 import math
-import numpy as np
 import os
 import shlex
 import signal
@@ -12,9 +9,13 @@ from enum import Enum, auto
 from threading import Thread, Lock
 from typing import Optional, List, Callable, Tuple
 
+import RPi.GPIO as gpio
+import cv2
+import numpy as np
 from raspberry_py.gpio import Component, CkPin
-from raspberry_py.gpio.adc import AdcDevice
 from raspberry_py.gpio.controls import TwoPoleButton
+
+from raspberry_py.gpio.adc import AdcDevice
 
 
 class Photoresistor(Component):
@@ -1246,10 +1247,10 @@ class RotaryEncoder(Component):
                 raise ValueError(f'Expected a {RotaryEncoder.State}')
 
             return (
-                    self.net_total_degrees == other.net_total_degrees and
-                    self.degrees == other.degrees and
-                    self.degrees_per_second == other.degrees_per_second and
-                    self.clockwise == other.clockwise
+                self.net_total_degrees == other.net_total_degrees and
+                self.degrees == other.degrees and
+                self.degrees_per_second == other.degrees_per_second and
+                self.clockwise == other.clockwise
             )
 
         def __str__(
@@ -1322,9 +1323,13 @@ class RotaryEncoder(Component):
         previous_net_total_degrees = self.net_total_degrees
         self.net_total_degrees = self.phase_change_index / self.phase_changes_per_degree
         self.degrees = self.net_total_degrees % 360.0
-        self.degrees_per_second = (
-            abs(self.net_total_degrees - previous_net_total_degrees) /
+        new_degrees_per_second = (
+            (self.net_total_degrees - previous_net_total_degrees) /
             (self.current_time_epoch - previous_time_epoch)
+        )
+        self.degrees_per_second = (
+            self.degrees_per_second_smoothing * self.degrees_per_second +
+            (1.0 - self.degrees_per_second_smoothing) * new_degrees_per_second
         )
         self.clockwise = self.net_total_degrees > previous_net_total_degrees
         if self.report_state:
@@ -1342,7 +1347,8 @@ class RotaryEncoder(Component):
             phase_a_pin: CkPin,
             phase_b_pin: CkPin,
             phase_changes_per_rotation: int,
-            report_state: bool
+            report_state: bool,
+            degrees_per_second_smoothing: Optional[float]
     ):
         """
         Initialize the rotary encoder.
@@ -1354,6 +1360,9 @@ class RotaryEncoder(Component):
         very low latency, the added overhead of reporting state can be too much. Pass True here to report state update
         events in the usual way (more overhead and higher latency), or pass False here to not report state update events
         (less overhead and lower latency).
+        :param degrees_per_second_smoothing: Smoothing factor to apply to the degrees/second estimate, with 0.0 being
+        no smoothing (the new value equals the most recent value exactly), and 1.0 being complete smoothing (the new
+        value equals the previous value exactly).
         """
 
         super().__init__(RotaryEncoder.State(0.0, 0.0, 0.0, False))
@@ -1362,8 +1371,10 @@ class RotaryEncoder(Component):
         self.phase_b_pin = phase_b_pin
         self.phase_changes_per_rotation = phase_changes_per_rotation
         self.report_state = report_state
+        self.degrees_per_second_smoothing = degrees_per_second_smoothing
 
         self.phase_changes_per_degree = self.phase_changes_per_rotation / 360.0
+
         self.phase_change_index = 0
         self.num_phase_changes = 0
         self.net_total_degrees = 0.0

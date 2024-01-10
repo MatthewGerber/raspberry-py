@@ -15,7 +15,8 @@ def main():
         phase_a_pin=CkPin.GPIO21,
         phase_b_pin=CkPin.GPIO20,
         phase_changes_per_rotation=2400,
-        report_state=False
+        report_state=False,
+        degrees_per_second_smoothing=0.5
     )
 
     for _ in range(10):
