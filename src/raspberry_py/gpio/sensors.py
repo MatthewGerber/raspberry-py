@@ -1262,7 +1262,7 @@ class RotaryEncoder(Component):
             :return: String.
             """
 
-            return f'{self.degrees:.1f} deg @ {self.degrees_per_second:.1f} deg/s clockwise={self.clockwise}'
+            return f'{self.net_total_degrees:.1f} deg @ {self.degrees_per_second:.1f} deg/s clockwise={self.clockwise}'
 
     def phase_a_changed(
             self,
@@ -1319,6 +1319,9 @@ class RotaryEncoder(Component):
 
         previous_time_epoch = self.current_time_epoch
         self.current_time_epoch = time.time()
+
+        if previous_time_epoch is None:
+            return
 
         previous_net_total_degrees = self.net_total_degrees
         self.net_total_degrees = self.phase_change_index / self.phase_changes_per_degree
