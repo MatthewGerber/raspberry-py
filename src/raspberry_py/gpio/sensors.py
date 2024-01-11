@@ -12,10 +12,10 @@ from typing import Optional, List, Callable, Tuple
 import RPi.GPIO as gpio
 import cv2
 import numpy as np
-from raspberry_py.gpio import Component, CkPin
-from raspberry_py.gpio.controls import TwoPoleButton
 
+from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.adc import AdcDevice
+from raspberry_py.gpio.controls import TwoPoleButton
 
 
 class Photoresistor(Component):
@@ -1335,7 +1335,7 @@ class RotaryEncoder(Component):
             (1.0 - self.degrees_per_second_smoothing) * new_degrees_per_second
         )
         self.clockwise = self.net_total_degrees > previous_net_total_degrees
-        if self.report_state:
+        if self.report_state is None or self.report_state(self):
             self.set_state(
                 RotaryEncoder.State(
                     self.net_total_degrees,
@@ -1350,7 +1350,7 @@ class RotaryEncoder(Component):
             phase_a_pin: CkPin,
             phase_b_pin: CkPin,
             phase_changes_per_rotation: int,
-            report_state: bool,
+            report_state: Optional[Callable[['RotaryEncoder'], bool]],
             degrees_per_second_smoothing: Optional[float]
     ):
         """
@@ -1359,10 +1359,9 @@ class RotaryEncoder(Component):
         :param phase_a_pin: Phase-a pin.
         :param phase_b_pin: Phase-b pin.
         :param phase_changes_per_rotation: Number of phase changes per rotation.
-        :param report_state: Whether to report state when rotation changes. Because rotary encoders usually need to have
-        very low latency, the added overhead of reporting state can be too much. Pass True here to report state update
-        events in the usual way (more overhead and higher latency), or pass False here to not report state update events
-        (less overhead and lower latency).
+        :param report_state: A function from the current rotary encoder to a boolean indicating whether to report state
+        when rotation changes. Because rotary encoders usually need to have very low latency, the added overhead of
+        reporting state at ever phase change can reduce timeliness of the updates. Pass None to always report state.
         :param degrees_per_second_smoothing: Smoothing factor to apply to the degrees/second estimate, with 0.0 being
         no smoothing (the new value equals the most recent value exactly), and 1.0 being complete smoothing (the new
         value equals the previous value exactly).

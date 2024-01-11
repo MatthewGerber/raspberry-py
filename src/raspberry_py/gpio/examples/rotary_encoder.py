@@ -15,7 +15,7 @@ def main():
         phase_a_pin=CkPin.GPIO21,
         phase_b_pin=CkPin.GPIO20,
         phase_changes_per_rotation=2400,
-        report_state=False,
+        report_state=lambda e: False,
         degrees_per_second_smoothing=0.5
     )
 
@@ -28,7 +28,7 @@ def main():
         print(f'Clockwise:  {encoder.clockwise}')
         print(f'{(phase_changes_end - phase_changes_start)} phase changes per second')
 
-    encoder.report_state = True
+    encoder.report_state = lambda e: True
     encoder.event(lambda s: print(f'{s}'))
     time.sleep(10)
 
