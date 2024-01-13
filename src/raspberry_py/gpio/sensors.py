@@ -1345,7 +1345,7 @@ class RotaryEncoder(Component):
                 )
             )
 
-    def bookmark_state(
+    def save_state(
             self
     ):
         """
@@ -1357,8 +1357,8 @@ class RotaryEncoder(Component):
         self.net_total_degrees_bookmark = self.net_total_degrees
         self.degrees_bookmark = self.degrees
 
-    def reset_state_to_bookmark(
-            self,
+    def reset_state(
+            self
     ):
         """
         Reset the rotary encoder's state to the bookmark.
