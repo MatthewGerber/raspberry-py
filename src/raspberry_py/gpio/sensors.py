@@ -1345,6 +1345,37 @@ class RotaryEncoder(Component):
                 )
             )
 
+    def bookmark_state(
+            self
+    ):
+        """
+        Bookmark the current state.
+        """
+
+        self.phase_change_index_bookmark = self.phase_change_index
+        self.num_phase_changes_bookmark = self.num_phase_changes
+        self.net_total_degrees_bookmark = self.net_total_degrees
+        self.degrees_bookmark = self.degrees
+
+    def reset_state_to_bookmark(
+            self,
+    ):
+        """
+        Reset the rotary encoder's state to the bookmark.
+        """
+
+        self.phase_change_index = self.phase_change_index_bookmark
+        self.num_phase_changes = self.num_phase_changes_bookmark
+        self.net_total_degrees = self.net_total_degrees_bookmark
+        self.degrees = self.degrees_bookmark
+        self.degrees_per_second = 0.0
+        self.clockwise = False
+        self.phase_a_high = False
+        self.phase_a_reporting = False
+        self.phase_b_high = False
+        self.phase_b_reporting = False
+        self.current_time_epoch = None
+
     def __init__(
             self,
             phase_a_pin: CkPin,
@@ -1388,6 +1419,11 @@ class RotaryEncoder(Component):
         self.phase_b_high = False
         self.phase_b_reporting = False
         self.current_time_epoch = None
+
+        self.phase_change_index_bookmark: Optional[int] = None
+        self.num_phase_changes_bookmark: Optional[int] = None
+        self.net_total_degrees_bookmark: Optional[float] = None
+        self.degrees_bookmark: Optional[float] = None
 
         gpio.setup(self.phase_a_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
         gpio.add_event_detect(
