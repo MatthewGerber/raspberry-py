@@ -1427,12 +1427,14 @@ class RotaryEncoder(Component):
         gpio.add_event_detect(
             self.phase_a_pin,
             gpio.BOTH,
-            callback=lambda channel: self.phase_a_changed(gpio.input(self.phase_a_pin) == gpio.LOW)
+            callback=lambda channel: self.phase_a_changed(gpio.input(self.phase_a_pin) == gpio.LOW),
+            bouncetime=1
         )
 
         gpio.setup(self.phase_b_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
         gpio.add_event_detect(
             self.phase_b_pin,
             gpio.BOTH,
-            callback=lambda channel: self.phase_b_changed(gpio.input(self.phase_b_pin) == gpio.LOW)
+            callback=lambda channel: self.phase_b_changed(gpio.input(self.phase_b_pin) == gpio.LOW),
+            bouncetime=1
         )
