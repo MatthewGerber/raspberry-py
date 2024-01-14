@@ -19,6 +19,10 @@ good, though for some uses [Ubuntu](ubuntu-operating-system.md) seems to work eq
    sudo systemctl reboot
    ```
    The Pi should reboot. Log in.
+5. If you're planning to use [OctoPrint](octoprint.md) for 3D printing, also install the following packages:
+   ```shell
+   sudo apt install libjpeg62-turbo-dev imagemagick ffmpeg libv4l-dev cmake libgphoto2-dev libopencv-dev libsdl1.2-dev libprotobuf-c-dev v4l-utils
+   ```
 
 # GitHub
 1. Run `ssh-keygen` and upload the content of `~/.ssh/id_rsa.pub` to [GitHub](https://github.com/settings/ssh/new).

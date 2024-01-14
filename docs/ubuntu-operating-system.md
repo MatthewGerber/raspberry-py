@@ -30,6 +30,10 @@ are listed below.
    sudo systemctl reboot
    ```
    The Pi should reboot into the Xubuntu desktop environment. Log in.
+6. If you're planning to use [OctoPrint](octoprint.md) for 3D printing, also install the following packages:
+   ```shell
+   sudo apt install libjpeg-turbo8-dev imagemagick ffmpeg libv4l-dev cmake libgphoto2-dev libopencv-dev libsdl-dev libprotobuf-c-dev v4l-utils
+   ```
 
 # GitHub
 1. Run `ssh-keygen` and upload the content of `~/.ssh/id_rsa.pub` to [GitHub](https://github.com/settings/ssh/new).

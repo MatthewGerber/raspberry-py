@@ -7,10 +7,12 @@ This page describes steps for configuring OctoPrint on the Pi and using mjpg-str
 OctoPrint for the purposes of remote monitoring and recording timelapse videos of print jobs.
 
 # Install mjpg-streamer
-The `mjpg-streamer` utility is an efficient way to stream video from various input devices (e.g., Raspberry Pi camera 
-module or USB webcam) to various output devices (e.g., web browser). Install as follows:
+The mjpg-streamer utility is an efficient way to stream video from various input devices (e.g., Raspberry Pi camera 
+module or USB webcam) to various output devices (e.g., web browser). General operating system dependencies differ 
+between [Rasberry Pi OS](raspberry-pi-operating-system.md) and [Ubuntu OS](ubuntu-operating-system.md). See the note 
+"If you're planning to use OctoPrint for 3D printing..." in these pages for dependencies. Install the rest of 
+mjpeg-streamer as follows:
 ```shell
-sudo apt install libjpeg-turbo8-dev imagemagick ffmpeg libv4l-dev cmake libgphoto2-dev libopencv-dev libsdl-dev libprotobuf-c-dev v4l-utils
 git clone https://github.com/jacksonliam/mjpg-streamer.git
 cd mjpg-streamer/mjpg-streamer-experimental/
 export LD_LIBRARY_PATH=.
@@ -75,8 +77,8 @@ sudo kill 1418
    pip install OctoPrint
    octoprint serve
    ``` 
-2. To start OctoPrint on boot:  `crontab -e` and add `@reboot /path/to/OctoPrint/run.sh`. Then create the `run.sh`
-   file as follows:
+2. To start OctoPrint on boot:  `crontab -e` and add `@reboot /path/to/OctoPrint/run.sh`. Then create the `run.sh` file 
+   as follows:
    ```shell
    #!/bin/sh
    cd /path/to/OctoPrint
@@ -84,11 +86,11 @@ sudo kill 1418
    /usr/bin/nohup octoprint serve --port 5001 &
    ```
    I use port 5001 above (different from the OctoPrint default of 5000) because the Flask REST server that is part of 
-   the present raspberry-py package uses port 5000.  
-3. The following script will toggle the mjpeg-streamer on and off:
+   the present raspberry-py package uses port 5000. In the above, be sure to replace `/path/to/` as appropriate.  
+3. The following script, which you can save as `webcam.sh`, will toggle the mjpeg-streamer on and off:
    ```shell
    #!/bin/sh
-   cd /home/matthewgerber/Repos/mjpg-streamer/mjpg-streamer-experimental
+   cd /path/to/mjpg-streamer/mjpg-streamer-experimental
    if test -f streamer.pid; then
        kill `cat streamer.pid`
        rm streamer.pid
@@ -97,8 +99,9 @@ sudo kill 1418
        echo "$!" > streamer.pid
    fi
    ```
-   I use port 8081 above because the Apache server used as part of the present raspberry-py package uses port 8080.
-   Once the stream begins, you should be able to use the following values within OctoPrint's webcam setup:
+   In the above, be sure to replace `/path/to/` as appropriate. I use port 8081 above because the Apache server used as 
+   part of the present raspberry-py package uses port 8080. Once the stream begins, you should be able to use the 
+   following values within OctoPrint's webcam setup:
 
    * Stream URL:  http://XXXX:8081/?action=stream
    * Snapshot URL:  http://XXXX:8081/?action=snapshot
