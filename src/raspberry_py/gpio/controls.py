@@ -192,13 +192,15 @@ class LimitSwitch(Component):
         :param bounce_time_ms: Debounce interval (milliseconds).
         """
 
-        super().__init__(
-            state=LimitSwitch.State(pressed=False)
-        )
-
         self.input_pin = input_pin
 
         gpio.setup(self.input_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
+
+        super().__init__(
+            state=LimitSwitch.State(
+                pressed=gpio.input(self.input_pin) == gpio.LOW
+             )
+        )
 
         def read_after_delay(seconds: float):
             """

@@ -7,7 +7,7 @@ import subprocess
 import time
 from enum import Enum, auto
 from threading import Thread, Lock
-from typing import Optional, List, Callable, Tuple
+from typing import Optional, List, Callable, Tuple, Dict
 
 import RPi.GPIO as gpio
 import cv2
@@ -1345,29 +1345,32 @@ class RotaryEncoder(Component):
                 )
             )
 
-    def save_state(
+    def capture_state(
             self
-    ):
+    ) -> Dict[str, float]:
         """
-        Bookmark the current state.
+        Capture the current state for resetting later.
         """
 
-        self.phase_change_index_bookmark = self.phase_change_index
-        self.num_phase_changes_bookmark = self.num_phase_changes
-        self.net_total_degrees_bookmark = self.net_total_degrees
-        self.degrees_bookmark = self.degrees
+        return {
+            'phase_change_index': self.phase_change_index,
+            'net_total_degrees': self.net_total_degrees,
+            'degrees': self.degrees
+        }
 
     def reset_state(
-            self
+            self,
+            state: Dict[str, float]
     ):
         """
-        Reset the rotary encoder's state to the bookmark.
+        Reset the rotary encoder's state.
+
+        :param state: Saved state.
         """
 
-        self.phase_change_index = self.phase_change_index_bookmark
-        self.num_phase_changes = self.num_phase_changes_bookmark
-        self.net_total_degrees = self.net_total_degrees_bookmark
-        self.degrees = self.degrees_bookmark
+        self.__dict__.update(state)
+
+        self.num_phase_changes = 0
         self.degrees_per_second = 0.0
         self.clockwise = False
         self.phase_a_high = False
@@ -1409,9 +1412,9 @@ class RotaryEncoder(Component):
         self.phase_changes_per_degree = self.phase_changes_per_rotation / 360.0
 
         self.phase_change_index = 0
-        self.num_phase_changes = 0
         self.net_total_degrees = 0.0
         self.degrees = 0.0
+        self.num_phase_changes = 0
         self.degrees_per_second = 0.0
         self.clockwise = False
         self.phase_a_high = False
@@ -1419,11 +1422,6 @@ class RotaryEncoder(Component):
         self.phase_b_high = False
         self.phase_b_reporting = False
         self.current_time_epoch = None
-
-        self.phase_change_index_bookmark: Optional[int] = None
-        self.num_phase_changes_bookmark: Optional[int] = None
-        self.net_total_degrees_bookmark: Optional[float] = None
-        self.degrees_bookmark: Optional[float] = None
 
         gpio.setup(self.phase_a_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
         gpio.add_event_detect(
