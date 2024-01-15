@@ -1349,7 +1349,9 @@ class RotaryEncoder(Component):
             self
     ) -> Dict[str, float]:
         """
-        Capture the current state for resetting later.
+        Capture the current state for restoration later via `restore_captured_state`.
+
+        :return: Captured state.
         """
 
         return {
@@ -1358,17 +1360,17 @@ class RotaryEncoder(Component):
             'degrees': self.degrees
         }
 
-    def reset_state(
+    def restore_captured_state(
             self,
-            state: Dict[str, float]
+            captured_state: Dict[str, float]
     ):
         """
-        Reset the rotary encoder's state.
+        Reset the rotary encoder's state to a previously captured state.
 
-        :param state: Saved state.
+        :param captured_state: Captured state.
         """
 
-        self.__dict__.update(state)
+        self.__dict__.update(captured_state)
 
         self.num_phase_changes = 0
         self.degrees_per_second = 0.0
@@ -1385,7 +1387,8 @@ class RotaryEncoder(Component):
             phase_b_pin: CkPin,
             phase_changes_per_rotation: int,
             report_state: Optional[Callable[['RotaryEncoder'], bool]],
-            degrees_per_second_smoothing: Optional[float]
+            degrees_per_second_smoothing: Optional[float],
+            bounce_time_ms: Optional[float]
     ):
         """
         Initialize the rotary encoder.
@@ -1399,6 +1402,9 @@ class RotaryEncoder(Component):
         :param degrees_per_second_smoothing: Smoothing factor to apply to the degrees/second estimate, with 0.0 being
         no smoothing (the new value equals the most recent value exactly), and 1.0 being complete smoothing (the new
         value equals the previous value exactly).
+        :param bounce_time_ms: Bounce time (ms), or None for no value. This is not usually needed with high-quality
+        rotary encoders that exhibit minimal mechanical bounce in their internal switches. Conversely, any nonzero
+        bounce time will cause missed phase changes and inaccurate rotary encodings.
         """
 
         super().__init__(RotaryEncoder.State(0.0, 0.0, 0.0, False))
@@ -1428,7 +1434,7 @@ class RotaryEncoder(Component):
             self.phase_a_pin,
             gpio.BOTH,
             callback=lambda channel: self.phase_a_changed(gpio.input(self.phase_a_pin) == gpio.LOW),
-            bouncetime=1
+            **{} if bounce_time_ms is None else {'bouncetime': bounce_time_ms}  # must be nonzero if passed
         )
 
         gpio.setup(self.phase_b_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
@@ -1436,5 +1442,5 @@ class RotaryEncoder(Component):
             self.phase_b_pin,
             gpio.BOTH,
             callback=lambda channel: self.phase_b_changed(gpio.input(self.phase_b_pin) == gpio.LOW),
-            bouncetime=1
+            **{} if bounce_time_ms is None else {'bouncetime': bounce_time_ms}  # must be nonzero if passed
         )
