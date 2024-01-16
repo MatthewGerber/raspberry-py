@@ -1,4 +1,5 @@
 import base64
+import logging
 import math
 import os
 import shlex
@@ -1380,6 +1381,24 @@ class RotaryEncoder(Component):
         self.phase_b_high = False
         self.phase_b_reporting = False
         self.current_time_epoch = None
+
+    def wait_for_stationarity(
+            self,
+            wait_interval_seconds: float = 1.0
+    ):
+        """
+        Wait for the rotary encoder to become stationary.
+
+        :param wait_interval_seconds: Wait interval (seconds).
+        """
+
+        logging.info('Waiting for stationarity...')
+        previous_pole_num_phase_changes = self.num_phase_changes
+        time.sleep(wait_interval_seconds)
+        while self.num_phase_changes != previous_pole_num_phase_changes:
+            logging.info('Waiting for stationarity...')
+            previous_pole_num_phase_changes = self.num_phase_changes
+            time.sleep(wait_interval_seconds)
 
     def __init__(
             self,
