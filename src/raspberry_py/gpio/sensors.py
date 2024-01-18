@@ -1371,7 +1371,9 @@ class RotaryEncoder(Component):
         :param captured_state: Captured state.
         """
 
-        self.__dict__.update(captured_state)
+        self.phase_change_index = captured_state['phase_change_index']
+        self.net_total_degrees = captured_state['net_total_degrees']
+        self.degrees = captured_state['degrees']
 
         self.num_phase_changes = 0
         self.degrees_per_second = 0.0
@@ -1399,6 +1401,8 @@ class RotaryEncoder(Component):
             logging.info('Waiting for stationarity...')
             previous_pole_num_phase_changes = self.num_phase_changes
             time.sleep(wait_interval_seconds)
+
+        self.degrees_per_second = 0.0
 
     def __init__(
             self,
