@@ -110,6 +110,36 @@ class CkPin(IntEnum):
     SCL0 = Pin.GPIO_1_ID_SC
 
 
+def get_ck_pin(
+        s: str
+) -> CkPin:
+    """
+    Get CanaKit pin for a string.
+
+    :param s: A type and name from either the `raspberry_py.gpio.Pin` class (e.g., Pin.GPIO_5) or the
+    `raspberry_py.gpio.CkPin` class (e.g., CkPin.GPIO5).
+    :return: CanaKit pin.
+    """
+
+    pin_type, pin_name = s.split('.')
+
+    if pin_type == 'Pin':
+        pin = Pin[pin_name]
+        ck_pins = [
+            p
+            for p in CkPin
+            if p.value == pin.value
+        ]
+        assert len(ck_pins) == 1
+        ck_pin = ck_pins[0]
+    elif pin_type == 'CkPin':
+        ck_pin = CkPin[pin_name]
+    else:
+        raise ValueError(f'Unknown CanaKit pin:  {s}')
+
+    return ck_pin
+
+
 class Event:
     """
     Event.
