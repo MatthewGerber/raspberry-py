@@ -1275,17 +1275,17 @@ class RotaryEncoder(Component):
         :param up: Whether phase-a is up (True) or down (False).
         """
 
-        self.phase_a_reporting = True
-        self.phase_a_high = up
+        with self.state_lock:
 
-        if self.phase_a_high == self.phase_b_high:
-            self.phase_change_index += 1
-        else:
-            self.phase_change_index -= 1
+            self.phase_a_high = up
 
-        self.num_phase_changes += 1
+            if self.phase_a_high == self.phase_b_high:
+                self.phase_change_index += 1
+            else:
+                self.phase_change_index -= 1
 
-        if self.phase_a_reporting and self.phase_b_reporting:
+            self.num_phase_changes += 1
+
             self.update_state()
 
     def phase_b_changed(
@@ -1298,17 +1298,17 @@ class RotaryEncoder(Component):
         :param up: Whether phase-b is up (True) or down (False).
         """
 
-        self.phase_b_reporting = True
-        self.phase_b_high = up
+        with self.state_lock:
 
-        if self.phase_b_high == self.phase_a_high:
-            self.phase_change_index -= 1
-        else:
-            self.phase_change_index += 1
+            self.phase_b_high = up
 
-        self.num_phase_changes += 1
+            if self.phase_b_high == self.phase_a_high:
+                self.phase_change_index -= 1
+            else:
+                self.phase_change_index += 1
 
-        if self.phase_a_reporting and self.phase_b_reporting:
+            self.num_phase_changes += 1
+
             self.update_state()
 
     def update_state(
@@ -1318,33 +1318,57 @@ class RotaryEncoder(Component):
         Update state.
         """
 
-        previous_time_epoch = self.current_time_epoch
-        self.current_time_epoch = time.time()
+        with self.state_lock:
 
-        if previous_time_epoch is None:
-            return
+            previous_time_epoch = self.current_time_epoch
+            self.current_time_epoch = time.time()
 
-        previous_net_total_degrees = self.net_total_degrees
-        self.net_total_degrees = self.phase_change_index / self.phase_changes_per_degree
-        self.degrees = self.net_total_degrees % 360.0
-        new_degrees_per_second = (
-            (self.net_total_degrees - previous_net_total_degrees) /
-            (self.current_time_epoch - previous_time_epoch)
-        )
-        self.degrees_per_second = (
-            self.degrees_per_second_smoothing * self.degrees_per_second +
-            (1.0 - self.degrees_per_second_smoothing) * new_degrees_per_second
-        )
-        self.clockwise = self.net_total_degrees > previous_net_total_degrees
-        if self.report_state is None or self.report_state(self):
-            self.set_state(
-                RotaryEncoder.State(
-                    self.net_total_degrees,
-                    self.degrees,
-                    self.degrees_per_second,
-                    self.clockwise
-                )
+            if previous_time_epoch is None:
+                return
+
+            previous_net_total_degrees = self.net_total_degrees
+            self.net_total_degrees = self.phase_change_index / self.phase_changes_per_degree
+            self.degrees = self.net_total_degrees % 360.0
+            new_degrees_per_second = (
+                (self.net_total_degrees - previous_net_total_degrees) /
+                (self.current_time_epoch - previous_time_epoch)
             )
+            self.degrees_per_second = (
+                self.degrees_per_second_smoothing * self.degrees_per_second +
+                (1.0 - self.degrees_per_second_smoothing) * new_degrees_per_second
+            )
+            self.clockwise = self.net_total_degrees > previous_net_total_degrees
+            if self.report_state is None or self.report_state(self):
+                self.set_state(
+                    RotaryEncoder.State(
+                        self.net_total_degrees,
+                        self.degrees,
+                        self.degrees_per_second,
+                        self.clockwise
+                    )
+                )
+
+    def update_state_if_stale(
+            self
+    ):
+        """
+        Update the state if it is stale, based on the most recent update time epoch. Because the rotary encoder only
+        updates its state when phase-change events occur, it is possible for the rotation to stop before the degrees per
+        second calculation converges to zero (we smooth the updated degrees per second). If this happens, then the
+        degrees per second will remain nonzero until phase-changes begin again. Calling this function provides a
+        stimulus that is independent of rotation to ensure that such lagged state calculations converge appropriately
+        even in the absence of phase-change events.
+        """
+
+        if self.current_time_epoch is None or time.time() - self.current_time_epoch > 0.1:
+
+            # lock the state and snap degrees per second to the next value. the stale threshold used above is
+            # sufficiently long that no smoothing is required.
+            with self.state_lock:
+                original_degrees_per_second_smoothing = self.degrees_per_second_smoothing
+                self.degrees_per_second_smoothing = 0.0
+                self.update_state()
+                self.degrees_per_second_smoothing = original_degrees_per_second_smoothing
 
     def capture_state(
             self
@@ -1355,11 +1379,13 @@ class RotaryEncoder(Component):
         :return: Captured state.
         """
 
-        return {
-            'phase_change_index': self.phase_change_index,
-            'net_total_degrees': self.net_total_degrees,
-            'degrees': self.degrees
-        }
+        with self.state_lock:
+
+            return {
+                'phase_change_index': self.phase_change_index,
+                'net_total_degrees': self.net_total_degrees,
+                'degrees': self.degrees
+            }
 
     def restore_captured_state(
             self,
@@ -1371,18 +1397,18 @@ class RotaryEncoder(Component):
         :param captured_state: Captured state.
         """
 
-        self.phase_change_index = captured_state['phase_change_index']
-        self.net_total_degrees = captured_state['net_total_degrees']
-        self.degrees = captured_state['degrees']
+        with self.state_lock:
 
-        self.num_phase_changes = 0
-        self.degrees_per_second = 0.0
-        self.clockwise = False
-        self.phase_a_high = False
-        self.phase_a_reporting = False
-        self.phase_b_high = False
-        self.phase_b_reporting = False
-        self.current_time_epoch = None
+            self.phase_change_index = captured_state['phase_change_index']
+            self.net_total_degrees = captured_state['net_total_degrees']
+            self.degrees = captured_state['degrees']
+
+            self.num_phase_changes = 0
+            self.degrees_per_second = 0.0
+            self.clockwise = False
+            self.phase_a_high = False
+            self.phase_b_high = False
+            self.current_time_epoch = None
 
     def wait_for_stationarity(
             self,
@@ -1427,7 +1453,7 @@ class RotaryEncoder(Component):
         value equals the previous value exactly).
         :param bounce_time_ms: Bounce time (ms), or None for no value. This is not usually needed with high-quality
         rotary encoders that exhibit minimal mechanical bounce in their internal switches. Conversely, any nonzero
-        bounce time will cause missed phase changes and inaccurate rotary encodings.
+        bounce time will cause missed phase changes and inaccurate rotary encodings. Must be > 0 if non-None.
         """
 
         super().__init__(RotaryEncoder.State(0.0, 0.0, 0.0, False))
@@ -1437,6 +1463,7 @@ class RotaryEncoder(Component):
         self.phase_changes_per_rotation = phase_changes_per_rotation
         self.report_state = report_state
         self.degrees_per_second_smoothing = degrees_per_second_smoothing
+        self.bounce_time_ms = bounce_time_ms
 
         self.phase_changes_per_degree = self.phase_changes_per_rotation / 360.0
 
@@ -1446,24 +1473,22 @@ class RotaryEncoder(Component):
         self.num_phase_changes = 0
         self.degrees_per_second = 0.0
         self.clockwise = False
-        self.phase_a_high = False
-        self.phase_a_reporting = False
-        self.phase_b_high = False
-        self.phase_b_reporting = False
         self.current_time_epoch = None
 
         gpio.setup(self.phase_a_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
+        self.phase_a_high = gpio.input(self.phase_a_pin) == gpio.HIGH
         gpio.add_event_detect(
             self.phase_a_pin,
             gpio.BOTH,
             callback=lambda channel: self.phase_a_changed(gpio.input(self.phase_a_pin) == gpio.LOW),
-            **{} if bounce_time_ms is None else {'bouncetime': bounce_time_ms}  # must be nonzero if passed
+            **{} if self.bounce_time_ms is None else {'bouncetime': self.bounce_time_ms}  # must be nonzero if passed
         )
 
         gpio.setup(self.phase_b_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
+        self.phase_b_high = gpio.input(self.phase_b_pin) == gpio.HIGH
         gpio.add_event_detect(
             self.phase_b_pin,
             gpio.BOTH,
             callback=lambda channel: self.phase_b_changed(gpio.input(self.phase_b_pin) == gpio.LOW),
-            **{} if bounce_time_ms is None else {'bouncetime': bounce_time_ms}  # must be nonzero if passed
+            **{} if self.bounce_time_ms is None else {'bouncetime': self.bounce_time_ms}  # must be nonzero if passed
         )

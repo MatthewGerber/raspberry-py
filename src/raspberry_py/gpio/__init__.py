@@ -4,7 +4,7 @@ import uuid
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import IntEnum
-from threading import Thread, Lock
+from threading import Thread, RLock
 from typing import List, Callable, Optional
 
 import RPi.GPIO as gpio
@@ -290,7 +290,7 @@ class Component(ABC):
         self.state = state
 
         self.events: List[Event] = []
-        self.state_lock = Lock()
+        self.state_lock = RLock()
         self.id = str(uuid.uuid4())
 
     def __str__(
