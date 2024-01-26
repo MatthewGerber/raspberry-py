@@ -1351,6 +1351,19 @@ class RotaryEncoder(Component):
                     )
                 )
 
+    @staticmethod
+    def state_is_stale(
+            current_time_epoch: Optional[float]
+    ) -> bool:
+        """
+        Get whether the state is stale.
+
+        :param current_time_epoch: Current state's time epoch, or None if there is no current state.
+        :return: True if stale and False otherwise.
+        """
+
+        return current_time_epoch is None or time.time() - current_time_epoch > 0.1
+
     def update_state_if_stale(
             self
     ):
@@ -1360,10 +1373,11 @@ class RotaryEncoder(Component):
         second calculation converges to zero (we smooth the updated degrees per second). If this happens, then the
         degrees per second will remain nonzero until phase-changes begin again. Calling this function provides a
         stimulus that is independent of rotation to ensure that such lagged state calculations converge appropriately
-        even in the absence of phase-change events.
+        even in the absence of phase-change events. However, note that this function will hold a lock that prevents
+        phase-change events from being processed. It should only be called if the state is actually stale.
         """
 
-        if self.current_time_epoch is None or time.time() - self.current_time_epoch > 0.1:
+        if RotaryEncoder.state_is_stale(self.current_time_epoch):
 
             # lock the state and snap degrees per second to the next value. the stale threshold used above is
             # sufficiently long that no smoothing is required.
@@ -1522,7 +1536,8 @@ class MultiprocessRotaryEncoder:
                 net_total_degrees_value: Value,
                 degrees_value: Value,
                 degrees_per_second_value: Value,
-                clockwise_value: Value
+                clockwise_value: Value,
+                current_time_epoch_value: Value
         ):
             """
             Initialize the rotary encoder.
@@ -1541,10 +1556,11 @@ class MultiprocessRotaryEncoder:
             rotary encoders that exhibit minimal mechanical bounce in their internal switches. Conversely, any nonzero
             bounce time will cause missed phase changes and inaccurate rotary encodings. Must be > 0 if non-None.
             :param identifier: Descriptive identifier for the process.
-            :param net_total_degrees_value: Shared-memory structure for reading the current net-total degrees.
-            :param degrees_value: Shared-memory structure for reading the current degrees.
+            :param net_total_degrees_value: Shared-memory structure for reading the current net-total-degrees value.
+            :param degrees_value: Shared-memory structure for reading the current degrees value.
             :param degrees_per_second_value: Shared-memory structure for reading the current degrees per second value.
-            :param clockwise_value: Shared-memory structure for reading the clockwise value.
+            :param clockwise_value: Shared-memory structure for reading the current clockwise value.
+            :param current_time_epoch_value: Shared-memory structure for reading the current time epoch value.
             """
 
             super().__init__(
@@ -1561,6 +1577,7 @@ class MultiprocessRotaryEncoder:
             self.degrees_value = degrees_value
             self.degrees_per_second_value = degrees_per_second_value
             self.clockwise_value = clockwise_value
+            self.current_time_epoch_value = current_time_epoch_value
 
             self.set_shared_memory_values()
 
@@ -1586,6 +1603,7 @@ class MultiprocessRotaryEncoder:
             self.degrees_value.value = self.degrees
             self.degrees_per_second_value.value = self.degrees_per_second
             self.clockwise_value.value = 1 if self.clockwise else 0
+            self.current_time_epoch_value.value = -1.0 if self.current_time_epoch is None else self.current_time_epoch
 
     class CommandFunction(Enum):
         """
@@ -1636,7 +1654,7 @@ class MultiprocessRotaryEncoder:
     @classmethod
     def process_command(
             cls,
-            rotary_encoder: 'SharedMemoryRotaryEncoder',
+            rotary_encoder: 'MultiprocessRotaryEncoder.SharedMemoryRotaryEncoder',
             command: 'MultiprocessRotaryEncoder.Command'
     ) -> Tuple[Optional[Any], bool]:
         """
@@ -1666,7 +1684,7 @@ class MultiprocessRotaryEncoder:
             logging.info(f'{rotary_encoder.identifier}:  Terminating.')
             break_value = True
         else:
-            raise ValueError(f'Unknown function:  {command.function}')
+            raise ValueError(f'Unknown command function:  {command.function}')
 
         return return_value, break_value
 
@@ -1681,6 +1699,7 @@ class MultiprocessRotaryEncoder:
             degrees_value: Value,
             degrees_per_second_value: Value,
             clockwise_value: Value,
+            current_time_epoch_value: Value,
             command_pipe: Connection
     ):
         """
@@ -1697,6 +1716,7 @@ class MultiprocessRotaryEncoder:
         :param degrees_value: Shared-memory structure for reading the current degrees.
         :param degrees_per_second_value: Shared-memory structure for reading the current degrees per second value.
         :param clockwise_value: Shared-memory structure for reading the clockwise value.
+        :param current_time_epoch_value: Shared-memory structure for reading the current time epoch value.
         :param command_pipe: Command pipe that the command loop will use to receive commands and send return values.
         """
 
@@ -1711,7 +1731,8 @@ class MultiprocessRotaryEncoder:
             net_total_degrees_value=net_total_degrees_value,
             degrees_value=degrees_value,
             degrees_per_second_value=degrees_per_second_value,
-            clockwise_value=clockwise_value
+            clockwise_value=clockwise_value,
+            current_time_epoch_value=current_time_epoch_value
         )
 
         break_value = False
@@ -1749,9 +1770,10 @@ class MultiprocessRotaryEncoder:
         self.degrees_value = Value('d', 0.0)
         self.degrees_per_second_value = Value('d', 0.0)
         self.clockwise_value = Value('i', 0)
+        self.current_time_epoch_value = Value('d', -1.0)
         self.parent_connection, self.child_connection = Pipe()
         self.process = Process(
-            target=MultiprocessRotaryEncoder.run_command_loop,
+            target=self.run_command_loop,
             args=(
                 self.identifier,
                 self.phase_a_pin,
@@ -1761,10 +1783,24 @@ class MultiprocessRotaryEncoder:
                 self.degrees_value,
                 self.degrees_per_second_value,
                 self.clockwise_value,
+                self.current_time_epoch_value,
                 self.child_connection
             )
         )
+
+    def wait_for_startup(
+            self
+    ):
+        """
+        Wait for startup.
+        """
+
         self.process.start()
+        self.parent_connection.send(
+            MultiprocessRotaryEncoder.Command(MultiprocessRotaryEncoder.CommandFunction.WAIT_FOR_STARTUP)
+        )
+        return_value = self.parent_connection.recv()
+        assert return_value is None
 
     def get_net_total_degrees(
             self
@@ -1810,20 +1846,16 @@ class MultiprocessRotaryEncoder:
 
         return self.clockwise_value.value == 1
 
-    def wait_for_startup(
+    def get_current_time_epoch(
             self
-    ):
+    ) -> Optional[float]:
         """
-        Wait for startup.
+        Get the current time epoch.
+
+        :return: Time epoch or None.
         """
 
-        self.parent_connection.send(
-            MultiprocessRotaryEncoder.Command(MultiprocessRotaryEncoder.CommandFunction.WAIT_FOR_STARTUP)
-        )
-
-        return_value = self.parent_connection.recv()
-
-        assert return_value is None
+        return None if self.current_time_epoch_value.value == -1.0 else self.current_time_epoch_value.value
 
     def capture_state(
             self
@@ -1856,9 +1888,7 @@ class MultiprocessRotaryEncoder:
                 [captured_state]
             )
         )
-
         return_value = self.parent_connection.recv()
-
         assert return_value is None
 
     def update_state_if_stale(
@@ -1868,13 +1898,17 @@ class MultiprocessRotaryEncoder:
         Update the state if it is stale.
         """
 
-        self.parent_connection.send(
-            MultiprocessRotaryEncoder.Command(MultiprocessRotaryEncoder.CommandFunction.UPDATE_STATE_IF_STALE)
-        )
-
-        return_value = self.parent_connection.recv()
-
-        assert return_value is None
+        # only send the command if the state is actually stale, since processing the command consumes cycles and this
+        # prevents rotary phase-change events from being processed.
+        if RotaryEncoder.state_is_stale(self.get_current_time_epoch()):
+            logging.debug(f'{self.identifier}:  State is stale. Forcing an update.')
+            self.parent_connection.send(
+                MultiprocessRotaryEncoder.Command(MultiprocessRotaryEncoder.CommandFunction.UPDATE_STATE_IF_STALE)
+            )
+            return_value = self.parent_connection.recv()
+            assert return_value is None
+        else:
+            logging.debug(f'{self.identifier}:  State is not stale. Not forcing an update.')
 
     def wait_for_stationarity(
             self
@@ -1886,13 +1920,7 @@ class MultiprocessRotaryEncoder:
         self.parent_connection.send(
             MultiprocessRotaryEncoder.Command(MultiprocessRotaryEncoder.CommandFunction.WAIT_FOR_STATIONARITY)
         )
-
         return_value = self.parent_connection.recv()
-
-        assert return_value is None
-
-        return_value = self.parent_connection.recv()
-
         assert return_value is None
 
     def wait_for_termination(
@@ -1905,9 +1933,6 @@ class MultiprocessRotaryEncoder:
         self.parent_connection.send(
             MultiprocessRotaryEncoder.Command(MultiprocessRotaryEncoder.CommandFunction.TERMINATE)
         )
-
         return_value = self.parent_connection.recv()
-
         assert return_value is None
-
         self.process.join()
