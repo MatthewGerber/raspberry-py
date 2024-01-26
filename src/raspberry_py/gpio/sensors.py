@@ -7,8 +7,11 @@ import signal
 import subprocess
 import time
 from enum import Enum, auto
+from multiprocessing import Value, Process, Pipe
+# noinspection PyProtectedMember
+from multiprocessing.connection import Connection
 from threading import Thread, Lock
-from typing import Optional, List, Callable, Tuple, Dict
+from typing import Optional, List, Callable, Tuple, Dict, Any
 
 import RPi.GPIO as gpio
 import cv2
@@ -1492,3 +1495,419 @@ class RotaryEncoder(Component):
             callback=lambda channel: self.phase_b_changed(gpio.input(self.phase_b_pin) == gpio.LOW),
             **{} if self.bounce_time_ms is None else {'bouncetime': self.bounce_time_ms}  # must be nonzero if passed
         )
+
+
+class MultiprocessRotaryEncoder:
+    """
+    Multiprocess wrapper around the rotary encoder. This allows the rotary encoder to receive phase-change events on a
+    dedicated CPU core that is separate from the main program. This is important because rotary encoders receive events
+    at a high rate, and if events are dropped because the event callbacks are competing with other threads on the same
+    core, then events can be dropped and the rotary encoder's output will be incorrect.
+    """
+
+    class SharedMemoryRotaryEncoder(RotaryEncoder):
+        """
+        Extension of the rotary encoder that provides shared-memory access to internal variables.
+        """
+
+        def __init__(
+                self,
+                phase_a_pin: CkPin,
+                phase_b_pin: CkPin,
+                phase_changes_per_rotation: int,
+                report_state: Optional[Callable[[RotaryEncoder], bool]],
+                degrees_per_second_smoothing: Optional[float],
+                bounce_time_ms: Optional[float],
+                identifier: str,
+                net_total_degrees_value: Value,
+                degrees_value: Value,
+                degrees_per_second_value: Value,
+                clockwise_value: Value
+        ):
+            """
+            Initialize the rotary encoder.
+
+            :param phase_a_pin: Phase-a pin.
+            :param phase_b_pin: Phase-b pin.
+            :param phase_changes_per_rotation: Number of phase changes per rotation.
+            :param report_state: A function from the current rotary encoder to a boolean indicating whether to report
+            state when rotation changes. Because rotary encoders usually need to have very low latency, the added
+            overhead of reporting state at ever phase change can reduce timeliness of the updates. Pass None to always
+            report state.
+            :param degrees_per_second_smoothing: Smoothing factor to apply to the degrees/second estimate, with 0.0
+            being no smoothing (the new value equals the most recent value exactly), and 1.0 being complete smoothing
+            (the new value equals the previous value exactly).
+            :param bounce_time_ms: Bounce time (ms), or None for no value. This is not usually needed with high-quality
+            rotary encoders that exhibit minimal mechanical bounce in their internal switches. Conversely, any nonzero
+            bounce time will cause missed phase changes and inaccurate rotary encodings. Must be > 0 if non-None.
+            :param identifier: Descriptive identifier for the process.
+            :param net_total_degrees_value: Shared-memory structure for reading the current net-total degrees.
+            :param degrees_value: Shared-memory structure for reading the current degrees.
+            :param degrees_per_second_value: Shared-memory structure for reading the current degrees per second value.
+            :param clockwise_value: Shared-memory structure for reading the clockwise value.
+            """
+
+            super().__init__(
+                phase_a_pin=phase_a_pin,
+                phase_b_pin=phase_b_pin,
+                phase_changes_per_rotation=phase_changes_per_rotation,
+                report_state=report_state,
+                degrees_per_second_smoothing=degrees_per_second_smoothing,
+                bounce_time_ms=bounce_time_ms
+            )
+
+            self.identifier = identifier
+            self.net_total_degrees_value = net_total_degrees_value
+            self.degrees_value = degrees_value
+            self.degrees_per_second_value = degrees_per_second_value
+            self.clockwise_value = clockwise_value
+
+            self.set_shared_memory_values()
+
+        def update_state(
+                self
+        ):
+            """
+            Update state.
+            """
+
+            super().update_state()
+
+            self.set_shared_memory_values()
+
+        def set_shared_memory_values(
+                self
+        ):
+            """
+            Set shared-memory values.
+            """
+
+            self.net_total_degrees_value.value = self.net_total_degrees
+            self.degrees_value.value = self.degrees
+            self.degrees_per_second_value.value = self.degrees_per_second
+            self.clockwise_value.value = 1 if self.clockwise else 0
+
+    class CommandFunction(Enum):
+        """
+        Command functions that can be sent to the rotary encoder.
+        """
+
+        # Wait for the rotary encoder process to start up and enter the command loop.
+        WAIT_FOR_STARTUP = auto()
+
+        # Capture the state of the rotary encoder for subsequent restoration via RESTORE_CAPTURED_STATE.
+        CAPTURE_STATE = auto()
+
+        # Restore a state previously captured via CAPTURE_STATE.
+        RESTORE_CAPTURED_STATE = auto()
+
+        # Update the rotary encoder's state if it is stale.
+        UPDATE_STATE_IF_STALE = auto()
+
+        # Wait for the rotary encoder to become stationary.
+        WAIT_FOR_STATIONARITY = auto()
+
+        # Terminate the process running the rotary encoder.
+        TERMINATE = auto()
+
+    class Command:
+        """
+        Command to send to the rotary encoder.
+        """
+
+        def __init__(
+                self,
+                function: 'MultiprocessRotaryEncoder.CommandFunction',
+                args: Optional[List[Any]] = None
+        ):
+            """
+            Initialize the command.
+
+            :param function: Function.
+            :param args: Optional list of arguments passed to the function.
+            """
+
+            if args is None:
+                args = []
+
+            self.function = function
+            self.args = args
+
+    @classmethod
+    def process_command(
+            cls,
+            rotary_encoder: 'SharedMemoryRotaryEncoder',
+            command: 'MultiprocessRotaryEncoder.Command'
+    ) -> Tuple[Optional[Any], bool]:
+        """
+        Process a command.
+
+        :param rotary_encoder: Rotary encoder.
+        :param command: Command.
+        :return: 2-tuple of the return value and whether to break the command loop.
+        """
+
+        return_value = None
+        break_value = False
+
+        if command.function == MultiprocessRotaryEncoder.CommandFunction.WAIT_FOR_STARTUP:
+            logging.info(f'{rotary_encoder.identifier}:  Startup complete.')
+        elif command.function == MultiprocessRotaryEncoder.CommandFunction.CAPTURE_STATE:
+            return_value = rotary_encoder.capture_state()
+        elif command.function == MultiprocessRotaryEncoder.CommandFunction.RESTORE_CAPTURED_STATE:
+            rotary_encoder.restore_captured_state(*command.args)
+            rotary_encoder.set_shared_memory_values()
+        elif command.function == MultiprocessRotaryEncoder.CommandFunction.UPDATE_STATE_IF_STALE:
+            rotary_encoder.update_state_if_stale()
+        elif command.function == MultiprocessRotaryEncoder.CommandFunction.WAIT_FOR_STATIONARITY:
+            rotary_encoder.wait_for_stationarity(1.0)
+            rotary_encoder.set_shared_memory_values()
+        elif command.function == MultiprocessRotaryEncoder.CommandFunction.TERMINATE:
+            logging.info(f'{rotary_encoder.identifier}:  Terminating.')
+            break_value = True
+        else:
+            raise ValueError(f'Unknown function:  {command.function}')
+
+        return return_value, break_value
+
+    @classmethod
+    def run_command_loop(
+            cls,
+            identifier: str,
+            phase_a_pin: CkPin,
+            phase_b_pin: CkPin,
+            degrees_per_second_smoothing: float,
+            net_total_degrees_value: Value,
+            degrees_value: Value,
+            degrees_per_second_value: Value,
+            clockwise_value: Value,
+            command_pipe: Connection
+    ):
+        """
+        Run the command loop. This instantiates the shared-memory rotary encoder, passing in shared-memory variables to
+        enable reading the rotary encoder's state.
+
+        :param identifier: Descriptive string identifier for the command loop.
+        :param phase_a_pin: Phase-a pin.
+        :param phase_b_pin: Phase-b pin.
+        :param degrees_per_second_smoothing: Smoothing factor to apply to the degrees/second estimate, with 0.0 being no
+        smoothing (the new value equals the most recent value exactly), and 1.0 being complete smoothing (the new value
+        equals the previous value exactly).
+        :param net_total_degrees_value: Shared-memory structure for reading the current net-total degrees.
+        :param degrees_value: Shared-memory structure for reading the current degrees.
+        :param degrees_per_second_value: Shared-memory structure for reading the current degrees per second value.
+        :param clockwise_value: Shared-memory structure for reading the clockwise value.
+        :param command_pipe: Command pipe that the command loop will use to receive commands and send return values.
+        """
+
+        rotary_encoder = MultiprocessRotaryEncoder.SharedMemoryRotaryEncoder(
+            identifier=identifier,
+            phase_a_pin=phase_a_pin,
+            phase_b_pin=phase_b_pin,
+            phase_changes_per_rotation=2400,
+            report_state=lambda e: False,
+            degrees_per_second_smoothing=degrees_per_second_smoothing,
+            bounce_time_ms=None,
+            net_total_degrees_value=net_total_degrees_value,
+            degrees_value=degrees_value,
+            degrees_per_second_value=degrees_per_second_value,
+            clockwise_value=clockwise_value
+        )
+
+        break_value = False
+        while not break_value:
+            logging.info(f'{rotary_encoder.identifier}:  Waiting for command...')
+            command: MultiprocessRotaryEncoder.Command = command_pipe.recv()
+            logging.info(f'{rotary_encoder.identifier}:  Command received:  {command.function}')
+            return_value, break_value = cls.process_command(rotary_encoder, command)
+            command_pipe.send(return_value)
+
+    def __init__(
+            self,
+            identifier: str,
+            phase_a_pin: CkPin,
+            phase_b_pin: CkPin,
+            degrees_per_second_smoothing: float
+    ):
+        """
+        Initialize the multiprocess rotary encoder.
+
+        :param identifier: Descriptive identifier for the process.
+        :param phase_a_pin: Phase-a pin.
+        :param phase_b_pin: Phase-b pin.
+        :param degrees_per_second_smoothing: Smoothing factor to apply to the degrees/second estimate, with 0.0 being no
+        smoothing (the new value equals the most recent value exactly), and 1.0 being complete smoothing (the new value
+        equals the previous value exactly).
+        """
+
+        self.identifier = identifier
+        self.phase_a_pin = phase_a_pin
+        self.phase_b_pin = phase_b_pin
+        self.degrees_per_second_smoothing = degrees_per_second_smoothing
+
+        self.net_total_degrees_value = Value('d', 0.0)
+        self.degrees_value = Value('d', 0.0)
+        self.degrees_per_second_value = Value('d', 0.0)
+        self.clockwise_value = Value('i', 0)
+        self.parent_connection, self.child_connection = Pipe()
+        self.process = Process(
+            target=MultiprocessRotaryEncoder.run_command_loop,
+            args=(
+                self.identifier,
+                self.phase_a_pin,
+                self.phase_b_pin,
+                self.degrees_per_second_smoothing,
+                self.net_total_degrees_value,
+                self.degrees_value,
+                self.degrees_per_second_value,
+                self.clockwise_value,
+                self.child_connection
+            )
+        )
+        self.process.start()
+
+    def get_net_total_degrees(
+            self
+    ) -> float:
+        """
+        Get net total degrees in (-inf,inf).
+
+        :return: Degrees.
+        """
+
+        return self.net_total_degrees_value.value
+
+    def get_degrees(
+            self
+    ) -> float:
+        """
+        Get rotational degrees in [0,360].
+
+        :return: Degrees.
+        """
+
+        return self.degrees_value.value
+
+    def get_degrees_per_second(
+            self
+    ) -> float:
+        """
+        Get degrees per second.
+
+        :return: Degrees per second.
+        """
+
+        return self.degrees_per_second_value.value
+
+    def get_clockwise(
+            self
+    ) -> bool:
+        """
+        Get clockwise.
+
+        :return: True if clockwise.
+        """
+
+        return self.clockwise_value.value == 1
+
+    def wait_for_startup(
+            self
+    ):
+        """
+        Wait for startup.
+        """
+
+        self.parent_connection.send(
+            MultiprocessRotaryEncoder.Command(MultiprocessRotaryEncoder.CommandFunction.WAIT_FOR_STARTUP)
+        )
+
+        return_value = self.parent_connection.recv()
+
+        assert return_value is None
+
+    def capture_state(
+            self
+    ) -> Dict[str, float]:
+        """
+        Capture state.
+
+        :return: Captured state.
+        """
+
+        self.parent_connection.send(
+            MultiprocessRotaryEncoder.Command(MultiprocessRotaryEncoder.CommandFunction.CAPTURE_STATE)
+        )
+
+        return self.parent_connection.recv()
+
+    def restore_captured_state(
+            self,
+            captured_state: Dict[str, float]
+    ):
+        """
+        Restore captured state.
+
+        :param captured_state: Captured state.
+        """
+
+        self.parent_connection.send(
+            MultiprocessRotaryEncoder.Command(
+                MultiprocessRotaryEncoder.CommandFunction.RESTORE_CAPTURED_STATE,
+                [captured_state]
+            )
+        )
+
+        return_value = self.parent_connection.recv()
+
+        assert return_value is None
+
+    def update_state_if_stale(
+            self
+    ):
+        """
+        Update the state if it is stale.
+        """
+
+        self.parent_connection.send(
+            MultiprocessRotaryEncoder.Command(MultiprocessRotaryEncoder.CommandFunction.UPDATE_STATE_IF_STALE)
+        )
+
+        return_value = self.parent_connection.recv()
+
+        assert return_value is None
+
+    def wait_for_stationarity(
+            self
+    ):
+        """
+        Wait for stationarity.
+        """
+
+        self.parent_connection.send(
+            MultiprocessRotaryEncoder.Command(MultiprocessRotaryEncoder.CommandFunction.WAIT_FOR_STATIONARITY)
+        )
+
+        return_value = self.parent_connection.recv()
+
+        assert return_value is None
+
+        return_value = self.parent_connection.recv()
+
+        assert return_value is None
+
+    def wait_for_termination(
+            self
+    ):
+        """
+        Wait for termination.
+        """
+
+        self.parent_connection.send(
+            MultiprocessRotaryEncoder.Command(MultiprocessRotaryEncoder.CommandFunction.TERMINATE)
+        )
+
+        return_value = self.parent_connection.recv()
+
+        assert return_value is None
+
+        self.process.join()
