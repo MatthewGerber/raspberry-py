@@ -1270,17 +1270,17 @@ class RotaryEncoder(Component):
 
     def phase_a_changed(
             self,
-            up: bool
+            high: bool
     ):
         """
         Record phase-a changed.
 
-        :param up: Whether phase-a is up (True) or down (False).
+        :param high: Whether phase-a is high (True) or low (False).
         """
 
         with self.state_lock:
 
-            self.phase_a_high = up
+            self.phase_a_high = high
 
             if self.phase_a_high == self.phase_b_high:
                 self.phase_change_index += 1
@@ -1289,21 +1289,22 @@ class RotaryEncoder(Component):
 
             self.num_phase_changes += 1
 
-            self.update_state()
+            if self.num_phase_changes % 20 == 0:
+                self.update_state()
 
     def phase_b_changed(
             self,
-            up: bool
+            high: bool
     ):
         """
         Record phase-b changed.
 
-        :param up: Whether phase-b is up (True) or down (False).
+        :param high: Whether phase-b is high (True) or low (False).
         """
 
         with self.state_lock:
 
-            self.phase_b_high = up
+            self.phase_b_high = high
 
             if self.phase_b_high == self.phase_a_high:
                 self.phase_change_index -= 1
@@ -1312,7 +1313,8 @@ class RotaryEncoder(Component):
 
             self.num_phase_changes += 1
 
-            self.update_state()
+            if self.num_phase_changes % 20 == 0:
+                self.update_state()
 
     def update_state(
             self
@@ -1353,16 +1355,24 @@ class RotaryEncoder(Component):
 
     @staticmethod
     def state_is_stale(
-            current_time_epoch: Optional[float]
+            current_time_epoch: Optional[float],
+            current_degrees_per_second: float
     ) -> bool:
         """
         Get whether the state is stale.
 
         :param current_time_epoch: Current state's time epoch, or None if there is no current state.
         :return: True if stale and False otherwise.
+        :param current_degrees_per_second: Current degrees per second.
         """
 
-        return current_time_epoch is None or time.time() - current_time_epoch > 0.1
+        return (
+            not np.isclose(current_degrees_per_second, 0.0) and
+            (
+                current_time_epoch is None or
+                time.time() - current_time_epoch > 0.1
+            )
+        )
 
     def update_state_if_stale(
             self
@@ -1377,7 +1387,7 @@ class RotaryEncoder(Component):
         phase-change events from being processed. It should only be called if the state is actually stale.
         """
 
-        if RotaryEncoder.state_is_stale(self.current_time_epoch):
+        if RotaryEncoder.state_is_stale(self.current_time_epoch, self.degrees_per_second):
 
             # lock the state and snap degrees per second to the next value. the stale threshold used above is
             # sufficiently long that no smoothing is required.
@@ -1497,7 +1507,7 @@ class RotaryEncoder(Component):
         gpio.add_event_detect(
             self.phase_a_pin,
             gpio.BOTH,
-            callback=lambda channel: self.phase_a_changed(gpio.input(self.phase_a_pin) == gpio.LOW),
+            callback=lambda channel: self.phase_a_changed(gpio.input(self.phase_a_pin) == gpio.HIGH),
             **{} if self.bounce_time_ms is None else {'bouncetime': self.bounce_time_ms}  # must be nonzero if passed
         )
 
@@ -1506,7 +1516,7 @@ class RotaryEncoder(Component):
         gpio.add_event_detect(
             self.phase_b_pin,
             gpio.BOTH,
-            callback=lambda channel: self.phase_b_changed(gpio.input(self.phase_b_pin) == gpio.LOW),
+            callback=lambda channel: self.phase_b_changed(gpio.input(self.phase_b_pin) == gpio.HIGH),
             **{} if self.bounce_time_ms is None else {'bouncetime': self.bounce_time_ms}  # must be nonzero if passed
         )
 
@@ -1900,7 +1910,7 @@ class MultiprocessRotaryEncoder:
 
         # only send the command if the state is actually stale, since processing the command consumes cycles and this
         # prevents rotary phase-change events from being processed.
-        if RotaryEncoder.state_is_stale(self.get_current_time_epoch()):
+        if RotaryEncoder.state_is_stale(self.get_current_time_epoch(), self.get_degrees_per_second()):
             logging.debug(f'{self.identifier}:  State is stale. Forcing an update.')
             self.parent_connection.send(
                 MultiprocessRotaryEncoder.Command(MultiprocessRotaryEncoder.CommandFunction.UPDATE_STATE_IF_STALE)
