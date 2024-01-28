@@ -20,6 +20,7 @@ import numpy as np
 from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.adc import AdcDevice
 from raspberry_py.gpio.controls import TwoPoleButton
+from raspberry_py.utils import IncrementalSampleAverager
 
 
 class Photoresistor(Component):
@@ -1126,19 +1127,9 @@ class Tachometer(Component):
 
         self.reading_low_count = self.reading_low_count + 1
         if self.reading_low_count % self.low_readings_per_rotation == 0:
-
-            rotations_per_second = 1.0 / (current_timestamp - self.previous_rotation_timestamp)
-
-            if np.isnan(self.state.rotations_per_second):
-                smoothed_rotations_per_second = (1.0 - self.smoothing_factor) * rotations_per_second
-            else:
-                smoothed_rotations_per_second = (
-                    self.smoothing_factor * self.state.rotations_per_second +
-                    (1.0 - self.smoothing_factor) * rotations_per_second
-                )
-
+            self.rotations_per_second.update(1.0 / (current_timestamp - self.previous_rotation_timestamp))
             self.previous_rotation_timestamp = current_timestamp
-            self.set_state(Tachometer.State(smoothed_rotations_per_second))
+            self.set_state(Tachometer.State(self.rotations_per_second.get_value()))
 
     def get_rps(
             self
@@ -1159,7 +1150,7 @@ class Tachometer(Component):
             bounce_time_ms: int,
             read_delay_ms: float,
             low_readings_per_rotation: int,
-            smoothing_factor: float
+            rotations_per_second_step_size: float
     ):
         """
         Initialize the tachometer.
@@ -1168,9 +1159,7 @@ class Tachometer(Component):
         :param bounce_time_ms: Debounce interval (milliseconds). Minimum time between event callbacks.
         :param read_delay_ms: Delay (milliseconds) between event callback and reading the GPIO value of the switch.
         :param low_readings_per_rotation: Number of low readings per rotation.
-        :param smoothing_factor: Smoothing factor [0.0, 1.0) to apply to estimated rotations per second. The larger the
-        value, the smoother the estimates will be, the larger the bias, the smaller the variance, etc. The smaller the
-        value, the rougher the estimates will be, the smaller the bias, the larger the variance, etc.
+        :param rotations_per_second_step_size: Step size when creating a smoothed estimate.
         """
 
         super().__init__(Tachometer.State(np.nan))
@@ -1179,8 +1168,12 @@ class Tachometer(Component):
         self.bounce_time_ms = bounce_time_ms
         self.read_delay_ms = read_delay_ms
         self.low_readings_per_rotation = low_readings_per_rotation
-        self.smoothing_factor = smoothing_factor
+        self.rotations_per_second_step_size = rotations_per_second_step_size
 
+        self.rotations_per_second = IncrementalSampleAverager(
+            initial_value=0.0,
+            alpha=self.rotations_per_second_step_size
+        )
         self.previous_rotation_timestamp: Optional[float] = None
         self.reading_low_count = 0
         self.reading_pseudo_button = TwoPoleButton(
@@ -1289,7 +1282,7 @@ class RotaryEncoder(Component):
 
             self.num_phase_changes += 1
 
-            if self.num_phase_changes % 20 == 0:
+            if self.num_phase_changes % self.state_update_subsampling == 0:
                 self.update_state()
 
     def phase_b_changed(
@@ -1313,7 +1306,7 @@ class RotaryEncoder(Component):
 
             self.num_phase_changes += 1
 
-            if self.num_phase_changes % 20 == 0:
+            if self.num_phase_changes % self.state_update_subsampling == 0:
                 self.update_state()
 
     def update_state(
@@ -1325,52 +1318,62 @@ class RotaryEncoder(Component):
 
         with self.state_lock:
 
-            previous_time_epoch = self.current_time_epoch
-            self.current_time_epoch = time.time()
+            current_time_epoch = time.time()
 
-            if previous_time_epoch is None:
-                return
+            if self.previous_time_epoch is None:
+                self.previous_time_epoch = current_time_epoch
+            else:
 
-            previous_net_total_degrees = self.net_total_degrees
-            self.net_total_degrees = self.phase_change_index / self.phase_changes_per_degree
-            self.degrees = self.net_total_degrees % 360.0
-            new_degrees_per_second = (
-                (self.net_total_degrees - previous_net_total_degrees) /
-                (self.current_time_epoch - previous_time_epoch)
-            )
-            self.degrees_per_second = (
-                self.degrees_per_second_smoothing * self.degrees_per_second +
-                (1.0 - self.degrees_per_second_smoothing) * new_degrees_per_second
-            )
-            self.clockwise = self.net_total_degrees > previous_net_total_degrees
-            if self.report_state is None or self.report_state(self):
-                self.set_state(
-                    RotaryEncoder.State(
-                        self.net_total_degrees,
-                        self.degrees,
-                        self.degrees_per_second,
-                        self.clockwise
+                elapsed_seconds = current_time_epoch - self.previous_time_epoch
+
+                # modulate the subsampling to achieve the target updates per second
+                self.current_state_updates_per_second.update(1.0 / elapsed_seconds)
+                if self.state_updates_per_second is not None:
+                    if self.current_state_updates_per_second > self.state_updates_per_second:
+                        self.state_update_subsampling += 1
+                    elif (
+                        self.state_update_subsampling > 1 and
+                        self.current_state_updates_per_second < self.state_updates_per_second
+                    ):
+                        self.state_update_subsampling -= 1
+
+                # update state
+                previous_net_total_degrees = self.net_total_degrees
+                self.net_total_degrees = self.phase_change_index / self.phase_changes_per_degree
+                self.degrees = self.net_total_degrees % 360.0
+                self.degrees_per_second.update((self.net_total_degrees - previous_net_total_degrees) / elapsed_seconds)
+                self.clockwise = self.net_total_degrees > previous_net_total_degrees
+                if self.report_state is None or self.report_state(self):
+                    self.set_state(
+                        RotaryEncoder.State(
+                            self.net_total_degrees,
+                            self.degrees,
+                            self.degrees_per_second.get_value(),
+                            self.clockwise
+                        )
                     )
-                )
+
+                self.previous_time_epoch = current_time_epoch
 
     @staticmethod
     def state_is_stale(
-            current_time_epoch: Optional[float],
-            current_degrees_per_second: float
+            time_epoch: Optional[float],
+            degrees_per_second: float
     ) -> bool:
         """
         Get whether the state is stale.
 
-        :param current_time_epoch: Current state's time epoch, or None if there is no current state.
+        :param time_epoch: Current state's time epoch, or None if there is no current state.
+        :param degrees_per_second: Current degrees per second.
         :return: True if stale and False otherwise.
-        :param current_degrees_per_second: Current degrees per second.
         """
 
+        # the state is only stale if degrees per second hasn't converged to zero and significant time has elapsed
         return (
-            not np.isclose(current_degrees_per_second, 0.0) and
+            not np.isclose(degrees_per_second, 0.0) and
             (
-                current_time_epoch is None or
-                time.time() - current_time_epoch > 0.1
+                time_epoch is None or
+                time.time() - time_epoch > 0.1
             )
         )
 
@@ -1387,15 +1390,15 @@ class RotaryEncoder(Component):
         phase-change events from being processed. It should only be called if the state is actually stale.
         """
 
-        if RotaryEncoder.state_is_stale(self.current_time_epoch, self.degrees_per_second):
+        if RotaryEncoder.state_is_stale(self.previous_time_epoch, self.degrees_per_second.get_value()):
 
-            # lock the state and snap degrees per second to the next value. the stale threshold used above is
+            # lock the state and snap degrees per second to the next value. the stale interval threshold used above is
             # sufficiently long that no smoothing is required.
             with self.state_lock:
-                original_degrees_per_second_smoothing = self.degrees_per_second_smoothing
-                self.degrees_per_second_smoothing = 0.0
+                original_degrees_per_second_step_size = self.degrees_per_second.alpha
+                self.degrees_per_second.alpha = 1.0
                 self.update_state()
-                self.degrees_per_second_smoothing = original_degrees_per_second_smoothing
+                self.degrees_per_second.alpha = original_degrees_per_second_step_size
 
     def capture_state(
             self
@@ -1431,11 +1434,11 @@ class RotaryEncoder(Component):
             self.degrees = captured_state['degrees']
 
             self.num_phase_changes = 0
-            self.degrees_per_second = 0.0
+            self.degrees_per_second.reset()
             self.clockwise = False
             self.phase_a_high = False
             self.phase_b_high = False
-            self.current_time_epoch = None
+            self.previous_time_epoch = None
 
     def wait_for_stationarity(
             self,
@@ -1455,7 +1458,7 @@ class RotaryEncoder(Component):
             previous_pole_num_phase_changes = self.num_phase_changes
             time.sleep(wait_interval_seconds)
 
-        self.degrees_per_second = 0.0
+        self.degrees_per_second.reset()
 
     def __init__(
             self,
@@ -1463,8 +1466,9 @@ class RotaryEncoder(Component):
             phase_b_pin: CkPin,
             phase_changes_per_rotation: int,
             report_state: Optional[Callable[['RotaryEncoder'], bool]],
-            degrees_per_second_smoothing: Optional[float],
-            bounce_time_ms: Optional[float]
+            degrees_per_second_step_size: Optional[float],
+            bounce_time_ms: Optional[float],
+            state_updates_per_second: Optional[float]
     ):
         """
         Initialize the rotary encoder.
@@ -1475,12 +1479,22 @@ class RotaryEncoder(Component):
         :param report_state: A function from the current rotary encoder to a boolean indicating whether to report state
         when rotation changes. Because rotary encoders usually need to have very low latency, the added overhead of
         reporting state at ever phase change can reduce timeliness of the updates. Pass None to always report state.
-        :param degrees_per_second_smoothing: Smoothing factor to apply to the degrees/second estimate, with 0.0 being
-        no smoothing (the new value equals the most recent value exactly), and 1.0 being complete smoothing (the new
-        value equals the previous value exactly).
+        :param degrees_per_second_step_size: Step size in the half-open interval (0.0,1.0] that is used to create a
+        smoothed estimate of the degrees per second of rotation. Values closer to 0.0 create estimates that are
+        smoother with less variance, but they have greater lag and bias. A value of 1.0 creates estimates that have
+        no lag or bias, but they are less smooth and have greater variance.
         :param bounce_time_ms: Bounce time (ms), or None for no value. This is not usually needed with high-quality
         rotary encoders that exhibit minimal mechanical bounce in their internal switches. Conversely, any nonzero
         bounce time will cause missed phase changes and inaccurate rotary encodings. Must be > 0 if non-None.
+        :param state_updates_per_second: Number of state updates to perform per second, or None to update the state in
+        response to each phase-change event. There is a limit to the rate at which the state can be updated in response
+        to phase-change events from the rotary encoder. Attempting to update the state in response to each phase change
+        may, if the rotary encoder is rotating quickly, cause loss of phase-change events and inaccurate state
+        estimates. The solution in such situations is to update the state less frequently than the phase-change events
+        arrive. On the other hand, if the rotary encoder is rotating slowly, then it may be possible to update the state
+        upon each phase-change event. Thus, the appropriate choice for this parameter depends on the anticipated
+        rotational speed of the encoder as well as the rate at which the state needs to be updated for proper use by the
+        surrounding system.
         """
 
         super().__init__(RotaryEncoder.State(0.0, 0.0, 0.0, False))
@@ -1489,18 +1503,24 @@ class RotaryEncoder(Component):
         self.phase_b_pin = phase_b_pin
         self.phase_changes_per_rotation = phase_changes_per_rotation
         self.report_state = report_state
-        self.degrees_per_second_smoothing = degrees_per_second_smoothing
+        self.degrees_per_second_step_size = degrees_per_second_step_size
         self.bounce_time_ms = bounce_time_ms
+        self.state_updates_per_second = state_updates_per_second
 
         self.phase_changes_per_degree = self.phase_changes_per_rotation / 360.0
+        self.current_state_updates_per_second = IncrementalSampleAverager(0.0, 0.1)
+        self.state_update_subsampling = 1
 
         self.phase_change_index = 0
         self.net_total_degrees = 0.0
         self.degrees = 0.0
         self.num_phase_changes = 0
-        self.degrees_per_second = 0.0
+        self.degrees_per_second = IncrementalSampleAverager(
+            initial_value=0.0,
+            alpha=self.degrees_per_second_step_size
+        )
         self.clockwise = False
-        self.current_time_epoch = None
+        self.previous_time_epoch = None
 
         gpio.setup(self.phase_a_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
         self.phase_a_high = gpio.input(self.phase_a_pin) == gpio.HIGH
@@ -1540,14 +1560,15 @@ class MultiprocessRotaryEncoder:
                 phase_b_pin: CkPin,
                 phase_changes_per_rotation: int,
                 report_state: Optional[Callable[[RotaryEncoder], bool]],
-                degrees_per_second_smoothing: Optional[float],
+                degrees_per_second_step_size: Optional[float],
                 bounce_time_ms: Optional[float],
+                state_updates_per_second: Optional[float],
                 identifier: str,
                 net_total_degrees_value: Value,
                 degrees_value: Value,
                 degrees_per_second_value: Value,
                 clockwise_value: Value,
-                current_time_epoch_value: Value
+                time_epoch_value: Value
         ):
             """
             Initialize the rotary encoder.
@@ -1559,9 +1580,10 @@ class MultiprocessRotaryEncoder:
             state when rotation changes. Because rotary encoders usually need to have very low latency, the added
             overhead of reporting state at ever phase change can reduce timeliness of the updates. Pass None to always
             report state.
-            :param degrees_per_second_smoothing: Smoothing factor to apply to the degrees/second estimate, with 0.0
-            being no smoothing (the new value equals the most recent value exactly), and 1.0 being complete smoothing
-            (the new value equals the previous value exactly).
+            :param degrees_per_second_step_size: Step size in the half-open interval (0.0,1.0] that is used to create a
+            smoothed estimate of the degrees per second of rotation. Values closer to 0.0 create estimates that are
+            smoother with less variance, but they have greater lag and bias. A value of 1.0 creates estimates that have
+            no lag or bias, but they are less smooth and have greater variance.
             :param bounce_time_ms: Bounce time (ms), or None for no value. This is not usually needed with high-quality
             rotary encoders that exhibit minimal mechanical bounce in their internal switches. Conversely, any nonzero
             bounce time will cause missed phase changes and inaccurate rotary encodings. Must be > 0 if non-None.
@@ -1570,7 +1592,16 @@ class MultiprocessRotaryEncoder:
             :param degrees_value: Shared-memory structure for reading the current degrees value.
             :param degrees_per_second_value: Shared-memory structure for reading the current degrees per second value.
             :param clockwise_value: Shared-memory structure for reading the current clockwise value.
-            :param current_time_epoch_value: Shared-memory structure for reading the current time epoch value.
+            :param time_epoch_value: Shared-memory structure for reading the current time epoch value.
+            :param state_updates_per_second: Number of state updates to perform per second, or None to update the state
+            in response to each phase-change event. There is a limit to the rate at which the state can be updated in
+            response to phase-change events from the rotary encoder. Attempting to update the state in response to each
+            phase change may, if the rotary encoder is rotating quickly, cause loss of phase-change events and
+            inaccurate state estimates. The solution in such situations is to update the state less frequently than the
+            phase-change events arrive. On the other hand, if the rotary encoder is rotating slowly, then it may be
+            possible to update the state upon each phase-change event. Thus, the appropriate choice for this parameter
+            depends on the anticipated rotational speed of the encoder as well as the rate at which the state needs to
+            be updated for proper use by the surrounding system.
             """
 
             super().__init__(
@@ -1578,8 +1609,9 @@ class MultiprocessRotaryEncoder:
                 phase_b_pin=phase_b_pin,
                 phase_changes_per_rotation=phase_changes_per_rotation,
                 report_state=report_state,
-                degrees_per_second_smoothing=degrees_per_second_smoothing,
-                bounce_time_ms=bounce_time_ms
+                degrees_per_second_step_size=degrees_per_second_step_size,
+                bounce_time_ms=bounce_time_ms,
+                state_updates_per_second=state_updates_per_second
             )
 
             self.identifier = identifier
@@ -1587,7 +1619,7 @@ class MultiprocessRotaryEncoder:
             self.degrees_value = degrees_value
             self.degrees_per_second_value = degrees_per_second_value
             self.clockwise_value = clockwise_value
-            self.current_time_epoch_value = current_time_epoch_value
+            self.time_epoch_value = time_epoch_value
 
             self.set_shared_memory_values()
 
@@ -1611,9 +1643,9 @@ class MultiprocessRotaryEncoder:
 
             self.net_total_degrees_value.value = self.net_total_degrees
             self.degrees_value.value = self.degrees
-            self.degrees_per_second_value.value = self.degrees_per_second
+            self.degrees_per_second_value.value = self.degrees_per_second.get_value()
             self.clockwise_value.value = 1 if self.clockwise else 0
-            self.current_time_epoch_value.value = -1.0 if self.current_time_epoch is None else self.current_time_epoch
+            self.time_epoch_value.value = -1.0 if self.previous_time_epoch is None else self.previous_time_epoch
 
     class CommandFunction(Enum):
         """
@@ -1704,12 +1736,13 @@ class MultiprocessRotaryEncoder:
             identifier: str,
             phase_a_pin: CkPin,
             phase_b_pin: CkPin,
-            degrees_per_second_smoothing: float,
+            degrees_per_second_step_size: float,
+            state_updates_per_second: Optional[float],
             net_total_degrees_value: Value,
             degrees_value: Value,
             degrees_per_second_value: Value,
             clockwise_value: Value,
-            current_time_epoch_value: Value,
+            time_epoch_value: Value,
             command_pipe: Connection
     ):
         """
@@ -1719,14 +1752,24 @@ class MultiprocessRotaryEncoder:
         :param identifier: Descriptive string identifier for the command loop.
         :param phase_a_pin: Phase-a pin.
         :param phase_b_pin: Phase-b pin.
-        :param degrees_per_second_smoothing: Smoothing factor to apply to the degrees/second estimate, with 0.0 being no
-        smoothing (the new value equals the most recent value exactly), and 1.0 being complete smoothing (the new value
-        equals the previous value exactly).
+        :param degrees_per_second_step_size: Step size in the half-open interval (0.0,1.0] that is used to create a
+        smoothed estimate of the degrees per second of rotation. Values closer to 0.0 create estimates that are
+        smoother with less variance, but they have greater lag and bias. A value of 1.0 creates estimates that have
+        no lag or bias, but they are less smooth and have greater variance.
+        :param state_updates_per_second: Number of state updates to perform per second, or None to update the state in
+        response to each phase-change event. There is a limit to the rate at which the state can be updated in response
+        to phase-change events from the rotary encoder. Attempting to update the state in response to each phase change
+        may, if the rotary encoder is rotating quickly, cause loss of phase-change events and inaccurate state
+        estimates. The solution in such situations is to update the state less frequently than the phase-change events
+        arrive. On the other hand, if the rotary encoder is rotating slowly, then it may be possible to update the state
+        upon each phase-change event. Thus, the appropriate choice for this parameter depends on the anticipated
+        rotational speed of the encoder as well as the rate at which the state needs to be updated for proper use by the
+        surrounding system.
         :param net_total_degrees_value: Shared-memory structure for reading the current net-total degrees.
         :param degrees_value: Shared-memory structure for reading the current degrees.
         :param degrees_per_second_value: Shared-memory structure for reading the current degrees per second value.
         :param clockwise_value: Shared-memory structure for reading the clockwise value.
-        :param current_time_epoch_value: Shared-memory structure for reading the current time epoch value.
+        :param time_epoch_value: Shared-memory structure for reading the current time epoch value.
         :param command_pipe: Command pipe that the command loop will use to receive commands and send return values.
         """
 
@@ -1736,13 +1779,14 @@ class MultiprocessRotaryEncoder:
             phase_b_pin=phase_b_pin,
             phase_changes_per_rotation=2400,
             report_state=lambda e: False,
-            degrees_per_second_smoothing=degrees_per_second_smoothing,
+            degrees_per_second_step_size=degrees_per_second_step_size,
             bounce_time_ms=None,
+            state_updates_per_second=state_updates_per_second,
             net_total_degrees_value=net_total_degrees_value,
             degrees_value=degrees_value,
             degrees_per_second_value=degrees_per_second_value,
             clockwise_value=clockwise_value,
-            current_time_epoch_value=current_time_epoch_value
+            time_epoch_value=time_epoch_value
         )
 
         break_value = False
@@ -1758,7 +1802,8 @@ class MultiprocessRotaryEncoder:
             identifier: str,
             phase_a_pin: CkPin,
             phase_b_pin: CkPin,
-            degrees_per_second_smoothing: float
+            degrees_per_second_step_size: float,
+            state_updates_per_second: Optional[float]
     ):
         """
         Initialize the multiprocess rotary encoder.
@@ -1766,21 +1811,32 @@ class MultiprocessRotaryEncoder:
         :param identifier: Descriptive identifier for the process.
         :param phase_a_pin: Phase-a pin.
         :param phase_b_pin: Phase-b pin.
-        :param degrees_per_second_smoothing: Smoothing factor to apply to the degrees/second estimate, with 0.0 being no
-        smoothing (the new value equals the most recent value exactly), and 1.0 being complete smoothing (the new value
-        equals the previous value exactly).
+        :param degrees_per_second_step_size: Step size in the half-open interval (0.0,1.0] that is used to create a
+        smoothed estimate of the degrees per second of rotation. Values closer to 0.0 create estimates that are
+        smoother with less variance, but they have greater lag and bias. A value of 1.0 creates estimates that have
+        no lag or bias, but they are less smooth and have greater variance.
+        :param state_updates_per_second: Number of state updates to perform per second, or None to update the state in
+        response to each phase-change event. There is a limit to the rate at which the state can be updated in response
+        to phase-change events from the rotary encoder. Attempting to update the state in response to each phase change
+        may, if the rotary encoder is rotating quickly, cause loss of phase-change events and inaccurate state
+        estimates. The solution in such situations is to update the state less frequently than the phase-change events
+        arrive. On the other hand, if the rotary encoder is rotating slowly, then it may be possible to update the state
+        upon each phase-change event. Thus, the appropriate choice for this parameter depends on the anticipated
+        rotational speed of the encoder as well as the rate at which the state needs to be updated for proper use by the
+        surrounding system.
         """
 
         self.identifier = identifier
         self.phase_a_pin = phase_a_pin
         self.phase_b_pin = phase_b_pin
-        self.degrees_per_second_smoothing = degrees_per_second_smoothing
+        self.degrees_per_second_step_size = degrees_per_second_step_size
+        self.state_updates_per_second = state_updates_per_second
 
         self.net_total_degrees_value = Value('d', 0.0)
         self.degrees_value = Value('d', 0.0)
         self.degrees_per_second_value = Value('d', 0.0)
         self.clockwise_value = Value('i', 0)
-        self.current_time_epoch_value = Value('d', -1.0)
+        self.time_epoch_value = Value('d', -1.0)
         self.parent_connection, self.child_connection = Pipe()
         self.process = Process(
             target=self.run_command_loop,
@@ -1788,12 +1844,13 @@ class MultiprocessRotaryEncoder:
                 self.identifier,
                 self.phase_a_pin,
                 self.phase_b_pin,
-                self.degrees_per_second_smoothing,
+                self.degrees_per_second_step_size,
+                self.state_updates_per_second,
                 self.net_total_degrees_value,
                 self.degrees_value,
                 self.degrees_per_second_value,
                 self.clockwise_value,
-                self.current_time_epoch_value,
+                self.time_epoch_value,
                 self.child_connection
             )
         )
@@ -1856,7 +1913,7 @@ class MultiprocessRotaryEncoder:
 
         return self.clockwise_value.value == 1
 
-    def get_current_time_epoch(
+    def get_time_epoch(
             self
     ) -> Optional[float]:
         """
@@ -1865,7 +1922,7 @@ class MultiprocessRotaryEncoder:
         :return: Time epoch or None.
         """
 
-        return None if self.current_time_epoch_value.value == -1.0 else self.current_time_epoch_value.value
+        return None if self.time_epoch_value.value == -1.0 else self.time_epoch_value.value
 
     def capture_state(
             self
@@ -1910,7 +1967,7 @@ class MultiprocessRotaryEncoder:
 
         # only send the command if the state is actually stale, since processing the command consumes cycles and this
         # prevents rotary phase-change events from being processed.
-        if RotaryEncoder.state_is_stale(self.get_current_time_epoch(), self.get_degrees_per_second()):
+        if RotaryEncoder.state_is_stale(self.get_time_epoch(), self.get_degrees_per_second()):
             logging.debug(f'{self.identifier}:  State is stale. Forcing an update.')
             self.parent_connection.send(
                 MultiprocessRotaryEncoder.Command(MultiprocessRotaryEncoder.CommandFunction.UPDATE_STATE_IF_STALE)

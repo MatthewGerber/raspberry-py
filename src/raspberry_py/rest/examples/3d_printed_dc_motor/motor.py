@@ -14,7 +14,7 @@ tachometer = Tachometer(
     bounce_time_ms=1,
     read_delay_ms=0.1,
     low_readings_per_rotation=4,
-    smoothing_factor=0.98
+    rotations_per_second_step_size=0.02
 )
 tachometer.id = 'tachometer-1'
 app.add_component(tachometer, True)
