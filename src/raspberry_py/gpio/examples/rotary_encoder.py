@@ -12,27 +12,28 @@ def main():
     setup()
 
     encoder = RotaryEncoder(
-        phase_a_pin=CkPin.GPIO21,
-        phase_b_pin=CkPin.GPIO20,
+        phase_a_pin=CkPin.GPIO17,
+        phase_b_pin=CkPin.GPIO27,
         phase_changes_per_rotation=2400,
-        report_state=lambda e: False,
-        degrees_per_second_step_size=0.5,
+        report_state=None,
+        degrees_per_second_step_size=0.05,
         bounce_time_ms=None,
         state_updates_per_second=50.0
     )
 
-    for _ in range(10):
-        phase_changes_start = encoder.num_phase_changes
-        time.sleep(1.0)
-        phase_changes_end = encoder.num_phase_changes
-        print(f'Degrees:  {encoder.degrees:.1f}')
-        print(f'Degrees / second:  {encoder.degrees_per_second:.1f}')
-        print(f'Clockwise:  {encoder.clockwise}')
-        print(f'{(phase_changes_end - phase_changes_start)} phase changes per second')
-
-    encoder.report_state = lambda e: True
-    encoder.event(lambda s: print(f'{s}'))
-    time.sleep(10)
+    try:
+        while True:
+            phase_changes_start = encoder.num_phase_changes
+            time.sleep(1.0)
+            phase_changes_end = encoder.num_phase_changes
+            print(
+                f'Degrees:  {encoder.degrees:.1f}\n'
+                f'Degrees / second:  {encoder.degrees_per_second:.1f}\n'
+                f'Clockwise:  {encoder.clockwise}\n'
+                f'Phase changes per second:  {(phase_changes_end - phase_changes_start)}\n'
+            )
+    except KeyboardInterrupt:
+        pass
 
     cleanup()
 
