@@ -1208,7 +1208,7 @@ class RotaryEncoder:
         Phase-change modes.
         """
 
-        # Highest resolution with internal direction detection.
+        # Highest resolution with internal rotational direction detection.
         BIPHASE = auto()
 
         # 1/2 the highest resolution with external direction signal.
@@ -1225,7 +1225,8 @@ class RotaryEncoder:
         """
         Get number of phase changes per degree.
 
-        :param phase_changes_per_rotation: Number of phase changes per rotation.
+        :param phase_changes_per_rotation: Number of phase changes per rotation. This is for a single signal (e.g.,
+        only the phase-a signal).
         :param phase_change_mode: Phase-change mode.
         :return: Phase changes per degree.
         """
@@ -1241,6 +1242,70 @@ class RotaryEncoder:
 
         return phase_changes_per_degree
 
+    def __init__(
+            self,
+            phase_a_pin: CkPin,
+            phase_b_pin: CkPin,
+            phase_chanage_mode: 'RotaryEncoder.PhaseChangeMode',
+            phase_change_index: Optional[Value] = None,
+            clockwise: Optional[Value] = None
+    ):
+        """
+        Initialize the rotary encoder.
+
+        :param phase_a_pin: Phase-a pin.
+        :param phase_b_pin: Phase-b pin.
+        :param phase_chanage_mode: Phase-change mode.
+        :param phase_change_index: Phase-change index value in shared memory.
+        :param clockwise: Clockwise value in shared memory.
+        """
+
+        if phase_change_index is None:
+            phase_change_index = Value('i', 0)
+
+        if clockwise is None:
+            clockwise = Value('i', 0)
+
+        self.phase_a_pin = phase_a_pin
+        self.phase_b_pin = phase_b_pin
+        self.phase_change_mode = phase_chanage_mode
+        self.phase_change_index = phase_change_index
+        self.clockwise = clockwise
+
+        self.num_phase_changes = 0
+
+        gpio.setup(self.phase_a_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
+        self.phase_a_high = gpio.input(self.phase_a_pin) == gpio.HIGH
+
+        gpio.setup(self.phase_b_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
+        self.phase_b_high = gpio.input(self.phase_b_pin) == gpio.HIGH
+
+        if self.phase_change_mode == RotaryEncoder.PhaseChangeMode.BIPHASE:
+            gpio.add_event_detect(
+                self.phase_a_pin,
+                gpio.BOTH,
+                callback=lambda channel: self.biphase_a_changed(gpio.input(self.phase_a_pin) == gpio.HIGH)
+            )
+            gpio.add_event_detect(
+                self.phase_b_pin,
+                gpio.BOTH,
+                callback=lambda channel: self.biphase_b_changed(gpio.input(self.phase_b_pin) == gpio.HIGH)
+            )
+        elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.UNIPHASE_BIDIRECTIONAL:
+            gpio.add_event_detect(
+                self.phase_a_pin,
+                gpio.BOTH,
+                callback=lambda channel: self.uniphase_a_changed(gpio.input(self.phase_a_pin) == gpio.HIGH)
+            )
+        elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.UNIPHASE_UNIDIRECTIONAL:
+            gpio.add_event_detect(
+                self.phase_a_pin,
+                gpio.RISING,
+                callback=lambda channel: self.uniphase_a_up()
+            )
+        else:
+            raise ValueError(f'Unknown phase-change mode:  {self.phase_change_mode}')
+
     def biphase_a_changed(
             self,
             high: bool
@@ -1255,10 +1320,10 @@ class RotaryEncoder:
 
         if self.phase_a_high == self.phase_b_high:
             self.phase_change_index.value = self.phase_change_index.value + 1
-            self.clockwise.value = True
+            self.clockwise.value = False
         else:
             self.phase_change_index.value = self.phase_change_index.value - 1
-            self.clockwise.value = False
+            self.clockwise.value = True
 
         self.num_phase_changes += 1
 
@@ -1276,10 +1341,10 @@ class RotaryEncoder:
 
         if self.phase_b_high == self.phase_a_high:
             self.phase_change_index.value = self.phase_change_index.value - 1
-            self.clockwise.value = False
+            self.clockwise.value = True
         else:
             self.phase_change_index.value = self.phase_change_index.value + 1
-            self.clockwise.value = True
+            self.clockwise.value = False
 
         self.num_phase_changes += 1
 
@@ -1332,63 +1397,20 @@ class RotaryEncoder:
             previous_num_phase_changes = self.num_phase_changes
             time.sleep(wait_interval_seconds)
 
-    def __init__(
-            self,
-            phase_a_pin: CkPin,
-            phase_b_pin: CkPin,
-            phase_changes_per_rotation: int,
-            phase_chanage_mode: 'RotaryEncoder.PhaseChangeMode',
-            phase_change_index: Value,
-            clockwise: Value
+    def cleanup(
+            self
     ):
         """
-        Initialize the rotary encoder.
-
-        :param phase_a_pin: Phase-a pin.
-        :param phase_b_pin: Phase-b pin.
-        :param phase_changes_per_rotation: Number of phase changes per rotation.
-        :param phase_chanage_mode: Phase-change mode.
-        :param phase_change_index: Phase-change index value in shared memory.
-        :param clockwise: Clockwise value in shared memory.
+        Release GPIO event detection.
         """
 
-        self.phase_a_pin = phase_a_pin
-        self.phase_b_pin = phase_b_pin
-        self.phase_changes_per_rotation = phase_changes_per_rotation
-        self.phase_change_mode = phase_chanage_mode
-        self.phase_change_index = phase_change_index
-        self.clockwise = clockwise
-
-        self.num_phase_changes = 0
-
-        gpio.setup(self.phase_a_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
-        self.phase_a_high = gpio.input(self.phase_a_pin) == gpio.HIGH
-        gpio.setup(self.phase_b_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
-        self.phase_b_high = gpio.input(self.phase_b_pin) == gpio.HIGH
-
         if self.phase_change_mode == RotaryEncoder.PhaseChangeMode.BIPHASE:
-            gpio.add_event_detect(
-                self.phase_a_pin,
-                gpio.BOTH,
-                callback=lambda channel: self.biphase_a_changed(gpio.input(self.phase_a_pin) == gpio.HIGH)
-            )
-            gpio.add_event_detect(
-                self.phase_b_pin,
-                gpio.BOTH,
-                callback=lambda channel: self.biphase_b_changed(gpio.input(self.phase_b_pin) == gpio.HIGH)
-            )
+            gpio.remove_event_detect(self.phase_a_pin)
+            gpio.remove_event_detect(self.phase_b_pin)
         elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.UNIPHASE_BIDIRECTIONAL:
-            gpio.add_event_detect(
-                self.phase_a_pin,
-                gpio.RISING,
-                callback=lambda channel: self.uniphase_a_changed(gpio.input(self.phase_a_pin) == gpio.HIGH)
-            )
+            gpio.remove_event_detect(self.phase_a_pin)
         elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.UNIPHASE_UNIDIRECTIONAL:
-            gpio.add_event_detect(
-                self.phase_a_pin,
-                gpio.RISING,
-                callback=lambda channel: self.uniphase_a_up()
-            )
+            gpio.remove_event_detect(self.phase_a_pin)
         else:
             raise ValueError(f'Unknown phase-change mode:  {self.phase_change_mode}')
 
@@ -1518,6 +1540,7 @@ class MultiprocessRotaryEncoder(Component):
         elif command.function == MultiprocessRotaryEncoder.CommandFunction.WAIT_FOR_STATIONARITY:
             rotary_encoder.wait_for_stationarity(1.0)
         elif command.function == MultiprocessRotaryEncoder.CommandFunction.TERMINATE:
+            rotary_encoder.cleanup()
             break_value = True
         else:
             raise ValueError(f'Unknown command function:  {command.function}')
@@ -1529,7 +1552,6 @@ class MultiprocessRotaryEncoder(Component):
             cls,
             phase_a_pin: CkPin,
             phase_b_pin: CkPin,
-            phase_changes_per_rotation: int,
             phase_change_mode: RotaryEncoder.PhaseChangeMode,
             phase_change_index: Value,
             clockwise: Value,
@@ -1540,7 +1562,6 @@ class MultiprocessRotaryEncoder(Component):
 
         :param phase_a_pin: Phase-a pin.
         :param phase_b_pin: Phase-b pin.
-        :param phase_changes_per_rotation: Number of phase changes per rotation.
         :param phase_change_mode: Phase-change mode.
         :param phase_change_index: Phase-change index value in shared memory.
         :param clockwise: Clockwise value in shared memory.
@@ -1550,7 +1571,6 @@ class MultiprocessRotaryEncoder(Component):
         rotary_encoder = RotaryEncoder(
             phase_a_pin=phase_a_pin,
             phase_b_pin=phase_b_pin,
-            phase_changes_per_rotation=phase_changes_per_rotation,
             phase_chanage_mode=phase_change_mode,
             phase_change_index=phase_change_index,
             clockwise=clockwise
@@ -1575,7 +1595,8 @@ class MultiprocessRotaryEncoder(Component):
 
         :param phase_a_pin: Phase-a pin.
         :param phase_b_pin: Phase-b pin.
-        :param phase_changes_per_rotation: Number of phase changes per rotation.
+        :param phase_changes_per_rotation: Number of phase changes per rotation. This is for a single signal (e.g.,
+        only the phase-a signal).
         :param phase_change_mode: Phase-change mode.
         :param degrees_per_second_step_size: Step size for degrees per second smoothing.
         """
@@ -1596,8 +1617,8 @@ class MultiprocessRotaryEncoder(Component):
         self.degrees_per_second_step_size = degrees_per_second_step_size
 
         self.phase_changes_per_degree = RotaryEncoder.get_phase_changes_per_degree(
-            self.phase_changes_per_rotation,
-            self.phase_change_mode
+            phase_changes_per_rotation=self.phase_changes_per_rotation,
+            phase_change_mode=self.phase_change_mode
         )
         self.previous_state_time_epoch = None
         self.degrees_per_second = IncrementalSampleAverager(0.0, self.degrees_per_second_step_size)
@@ -1610,7 +1631,6 @@ class MultiprocessRotaryEncoder(Component):
             args=(
                 self.phase_a_pin,
                 self.phase_b_pin,
-                self.phase_changes_per_rotation,
                 self.phase_change_mode,
                 self.phase_change_index,
                 self.clockwise,
@@ -1650,15 +1670,71 @@ class MultiprocessRotaryEncoder(Component):
             net_total_degrees = self.phase_change_index.value / self.phase_changes_per_degree
             degrees = net_total_degrees % 360.0
             self.degrees_per_second.update((net_total_degrees - previous_net_total_degrees) / elapsed_seconds)
-            self.previous_state_time_epoch = next_state_time_epoch
             self.set_state(
                 MultiprocessRotaryEncoder.State(
-                    net_total_degrees,
-                    degrees,
-                    self.degrees_per_second.get_value(),
-                    self.clockwise.value
+                    net_total_degrees=net_total_degrees,
+                    degrees=degrees,
+                    degrees_per_second=self.degrees_per_second.get_value(),
+                    clockwise=bool(self.clockwise.value)
                 )
             )
+            self.previous_state_time_epoch = next_state_time_epoch
+
+    def get_net_total_degrees(
+            self
+    ) -> float:
+        """
+        Get net total degrees.
+
+        :return: Degrees.
+        """
+
+        self.update_state()
+        state: MultiprocessRotaryEncoder.State = self.state
+
+        return state.net_total_degrees
+
+    def get_degrees(
+            self
+    ) -> float:
+        """
+        Get degrees.
+
+        :return: Degrees.
+        """
+
+        self.update_state()
+        state: MultiprocessRotaryEncoder.State = self.state
+
+        return state.degrees
+
+    def get_degrees_per_second(
+            self
+    ) -> float:
+        """
+        Get degrees per second.
+
+        :return: Degrees per second.
+        """
+
+        self.update_state()
+        state: MultiprocessRotaryEncoder.State = self.state
+
+        return state.degrees_per_second
+
+    def get_clockwise(
+            self
+    ) -> bool:
+        """
+        Get clockwise.
+
+        :return: Clockwise.
+        """
+
+        self.update_state()
+        state: MultiprocessRotaryEncoder.State = self.state
+
+        return state.clockwise
 
     def wait_for_stationarity(
             self
