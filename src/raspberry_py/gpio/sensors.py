@@ -1659,26 +1659,28 @@ class MultiprocessRotaryEncoder(Component):
         Update state.
         """
 
+        self.state: MultiprocessRotaryEncoder.State
+        previous_net_total_degrees = self.state.net_total_degrees
+        net_total_degrees = self.phase_change_index.value / self.phase_changes_per_degree
         next_state_time_epoch = time.time()
+        degrees = net_total_degrees % 360.0
 
+        # upad degrees per second
         if self.previous_state_time_epoch is None:
             self.previous_state_time_epoch = next_state_time_epoch
         else:
-            self.state: MultiprocessRotaryEncoder.State
             elapsed_seconds = next_state_time_epoch - self.previous_state_time_epoch
-            previous_net_total_degrees = self.state.net_total_degrees
-            net_total_degrees = self.phase_change_index.value / self.phase_changes_per_degree
-            degrees = net_total_degrees % 360.0
             self.degrees_per_second.update((net_total_degrees - previous_net_total_degrees) / elapsed_seconds)
-            self.set_state(
-                MultiprocessRotaryEncoder.State(
-                    net_total_degrees=net_total_degrees,
-                    degrees=degrees,
-                    degrees_per_second=self.degrees_per_second.get_value(),
-                    clockwise=bool(self.clockwise.value)
-                )
+
+        self.set_state(
+            MultiprocessRotaryEncoder.State(
+                net_total_degrees=net_total_degrees,
+                degrees=degrees,
+                degrees_per_second=self.degrees_per_second.get_value(),
+                clockwise=bool(self.clockwise.value)
             )
-            self.previous_state_time_epoch = next_state_time_epoch
+        )
+        self.previous_state_time_epoch = next_state_time_epoch
 
     def get_net_total_degrees(
             self
