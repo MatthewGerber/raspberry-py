@@ -26,7 +26,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    'bump2version~=1.0'
+    'bump2version~=1.0',
+    'mypy~=1.8',
+    'flake8~=7.0.0'
 ]
 
 [project.urls]
