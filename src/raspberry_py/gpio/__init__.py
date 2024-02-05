@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import IntEnum
 from threading import Thread, RLock
-from typing import List, Callable, Optional
+from typing import List, Callable, Optional, Dict
 
 import RPi.GPIO as gpio
 
@@ -292,6 +292,35 @@ class Component(ABC):
         self.events: List[Event] = []
         self.state_lock = RLock()
         self.id = str(uuid.uuid4())
+
+    def __getstate__(
+            self
+    ) -> Dict:
+        """
+        Get state to picle.
+
+        :return: State.
+        """
+
+        state = dict(self.__dict__)
+
+        state['state_lock'] = None
+
+        return state
+
+    def __setstate__(
+            self,
+            state: Dict
+    ):
+        """
+        Set state from pickle.
+
+        :param state: State.
+        """
+
+        self.__dict__ = state
+
+        self.state_lock = RLock()
 
     def __str__(
             self
