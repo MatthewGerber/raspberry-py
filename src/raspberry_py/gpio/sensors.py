@@ -1665,7 +1665,7 @@ class MultiprocessRotaryEncoder(Component):
         next_state_time_epoch = time.time()
         degrees = net_total_degrees % 360.0
 
-        # upad degrees per second
+        # update degrees per second
         if self.previous_state_time_epoch is None:
             self.previous_state_time_epoch = next_state_time_epoch
         else:
