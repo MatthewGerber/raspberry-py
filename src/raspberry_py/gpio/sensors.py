@@ -1680,6 +1680,7 @@ class MultiprocessRotaryEncoder(Component):
                 clockwise=bool(self.clockwise.value)
             )
         )
+
         self.previous_state_time_epoch = next_state_time_epoch
 
     def get_net_total_degrees(
