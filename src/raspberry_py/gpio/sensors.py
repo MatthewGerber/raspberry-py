@@ -17,7 +17,7 @@ import RPi.GPIO as gpio
 import cv2
 import numpy as np
 
-from raspberry_py.gpio import Component, CkPin
+from raspberry_py.gpio import Component, CkPin, setup, cleanup
 from raspberry_py.gpio.adc import AdcDevice
 from raspberry_py.gpio.controls import TwoPoleButton
 from raspberry_py.utils import IncrementalSampleAverager
@@ -1236,7 +1236,7 @@ class RotaryEncoder:
         elif phase_change_mode == RotaryEncoder.PhaseChangeMode.UNIPHASE_BIDIRECTIONAL:
             phase_changes_per_degree = phase_changes_per_rotation / 360.0
         elif phase_change_mode == RotaryEncoder.PhaseChangeMode.UNIPHASE_UNIDIRECTIONAL:
-            phase_changes_per_degree = phase_changes_per_rotation / (360.0 * 2.0)
+            phase_changes_per_degree = (phase_changes_per_rotation / 2.0) / 360.0
         else:
             raise ValueError(f'Unknown phase-change mode:  {phase_change_mode}')
 
@@ -1246,7 +1246,7 @@ class RotaryEncoder:
             self,
             phase_a_pin: CkPin,
             phase_b_pin: CkPin,
-            phase_chanage_mode: 'RotaryEncoder.PhaseChangeMode',
+            phase_change_mode: 'RotaryEncoder.PhaseChangeMode',
             phase_change_index: Optional[Value] = None,
             clockwise: Optional[Value] = None
     ):
@@ -1255,7 +1255,7 @@ class RotaryEncoder:
 
         :param phase_a_pin: Phase-a pin.
         :param phase_b_pin: Phase-b pin.
-        :param phase_chanage_mode: Phase-change mode.
+        :param phase_change_mode: Phase-change mode.
         :param phase_change_index: Phase-change index value in shared memory.
         :param clockwise: Clockwise value in shared memory.
         """
@@ -1268,7 +1268,7 @@ class RotaryEncoder:
 
         self.phase_a_pin = phase_a_pin
         self.phase_b_pin = phase_b_pin
-        self.phase_change_mode = phase_chanage_mode
+        self.phase_change_mode = phase_change_mode
         self.phase_change_index = phase_change_index
         self.clockwise = clockwise
 
@@ -1319,10 +1319,10 @@ class RotaryEncoder:
         self.phase_a_high = high
 
         if self.phase_a_high == self.phase_b_high:
-            self.phase_change_index.value = self.phase_change_index.value + 1
+            self.phase_change_index.value = self.phase_change_index.value - 1
             self.clockwise.value = False
         else:
-            self.phase_change_index.value = self.phase_change_index.value - 1
+            self.phase_change_index.value = self.phase_change_index.value + 1
             self.clockwise.value = True
 
         self.num_phase_changes += 1
@@ -1340,10 +1340,10 @@ class RotaryEncoder:
         self.phase_b_high = high
 
         if self.phase_b_high == self.phase_a_high:
-            self.phase_change_index.value = self.phase_change_index.value - 1
+            self.phase_change_index.value = self.phase_change_index.value + 1
             self.clockwise.value = True
         else:
-            self.phase_change_index.value = self.phase_change_index.value + 1
+            self.phase_change_index.value = self.phase_change_index.value - 1
             self.clockwise.value = False
 
         self.num_phase_changes += 1
@@ -1568,10 +1568,12 @@ class MultiprocessRotaryEncoder(Component):
         :param command_pipe: Command pipe that the command loop will use to receive commands and send return values.
         """
 
+        setup()
+
         rotary_encoder = RotaryEncoder(
             phase_a_pin=phase_a_pin,
             phase_b_pin=phase_b_pin,
-            phase_chanage_mode=phase_change_mode,
+            phase_change_mode=phase_change_mode,
             phase_change_index=phase_change_index,
             clockwise=clockwise
         )
@@ -1581,6 +1583,8 @@ class MultiprocessRotaryEncoder(Component):
             command: MultiprocessRotaryEncoder.Command = command_pipe.recv()
             return_value, break_value = cls.process_command(rotary_encoder, command)
             command_pipe.send(return_value)
+
+        cleanup()
 
     def __init__(
             self,

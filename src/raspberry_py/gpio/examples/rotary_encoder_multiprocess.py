@@ -6,7 +6,7 @@ from raspberry_py.gpio.sensors import MultiprocessRotaryEncoder, RotaryEncoder
 
 def main():
     """
-    Example.
+    Example of using a multiprocess rotary encoder.
     """
 
     setup()
@@ -27,7 +27,7 @@ def main():
                 time.sleep(1.0/20.0)
                 encoder.update_state()
                 state: MultiprocessRotaryEncoder.State = encoder.state
-                print(f'RPM:  {60.0 * state.degrees_per_second / 360.0:.1f}')
+                print(f'Degrees:  {state.degrees}; RPM:  {60.0 * state.degrees_per_second / 360.0:.1f} (clockwise={state.clockwise})')
             encoder.wait_for_termination()
             time.sleep(1.0)
     except KeyboardInterrupt:
