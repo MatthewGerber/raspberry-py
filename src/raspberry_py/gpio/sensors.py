@@ -17,7 +17,7 @@ import RPi.GPIO as gpio
 import cv2
 import numpy as np
 
-from raspberry_py.gpio import Component, CkPin, setup, cleanup
+from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.adc import AdcDevice
 from raspberry_py.gpio.controls import TwoPoleButton
 from raspberry_py.utils import IncrementalSampleAverager
@@ -1208,14 +1208,20 @@ class RotaryEncoder:
         Phase-change modes.
         """
 
-        # Highest resolution with internal rotational direction detection.
-        BIPHASE = auto()
+        # Highest resolution with internal rotational direction detection. The primary benefit of this mode is that the
+        # rotational direction is detected internally; however, this comes at the potential cost of missed phase
+        # changes and consequent inaccuracy. Phase changes may be missed because there is only a single underlying
+        # thread used to process phase-change callbacks. The processing time required by the phase-change callbacks may
+        # cause concurrent phase-changes to be missed.
+        TWO_SIGNAL_TWO_EDGE = auto()
 
-        # 1/2 the highest resolution with external direction signal.
-        UNIPHASE_BIDIRECTIONAL = auto()
+        # 1/2 the highest resolution with external direction signal. The rotational direction cannot be detected
+        # internally because only a single signal is used. Phase changes are detected on both rising and falling edges.
+        ONE_SIGNAL_TWO_EDGE = auto()
 
-        # 1/4 the highest resolution with external direction signal.
-        UNIPHASE_UNIDIRECTIONAL = auto()
+        # 1/4 the highest resolution with external direction signal. Phase changes are detected only on a single edge of
+        # one signal.
+        ONE_SIGNAL_ONE_EDGE = auto()
 
     @staticmethod
     def get_phase_changes_per_degree(
@@ -1231,11 +1237,11 @@ class RotaryEncoder:
         :return: Phase changes per degree.
         """
 
-        if phase_change_mode == RotaryEncoder.PhaseChangeMode.BIPHASE:
+        if phase_change_mode == RotaryEncoder.PhaseChangeMode.TWO_SIGNAL_TWO_EDGE:
             phase_changes_per_degree = 2.0 * phase_changes_per_rotation / 360.0
-        elif phase_change_mode == RotaryEncoder.PhaseChangeMode.UNIPHASE_BIDIRECTIONAL:
+        elif phase_change_mode == RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_TWO_EDGE:
             phase_changes_per_degree = phase_changes_per_rotation / 360.0
-        elif phase_change_mode == RotaryEncoder.PhaseChangeMode.UNIPHASE_UNIDIRECTIONAL:
+        elif phase_change_mode == RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_ONE_EDGE:
             phase_changes_per_degree = (phase_changes_per_rotation / 2.0) / 360.0
         else:
             raise ValueError(f'Unknown phase-change mode:  {phase_change_mode}')
@@ -1280,7 +1286,7 @@ class RotaryEncoder:
         gpio.setup(self.phase_b_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
         self.phase_b_high = gpio.input(self.phase_b_pin) == gpio.HIGH
 
-        if self.phase_change_mode == RotaryEncoder.PhaseChangeMode.BIPHASE:
+        if self.phase_change_mode == RotaryEncoder.PhaseChangeMode.TWO_SIGNAL_TWO_EDGE:
             gpio.add_event_detect(
                 self.phase_a_pin,
                 gpio.BOTH,
@@ -1291,13 +1297,13 @@ class RotaryEncoder:
                 gpio.BOTH,
                 callback=lambda channel: self.biphase_b_changed(gpio.input(self.phase_b_pin) == gpio.HIGH)
             )
-        elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.UNIPHASE_BIDIRECTIONAL:
+        elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_TWO_EDGE:
             gpio.add_event_detect(
                 self.phase_a_pin,
                 gpio.BOTH,
                 callback=lambda channel: self.uniphase_a_changed(gpio.input(self.phase_a_pin) == gpio.HIGH)
             )
-        elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.UNIPHASE_UNIDIRECTIONAL:
+        elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_ONE_EDGE:
             gpio.add_event_detect(
                 self.phase_a_pin,
                 gpio.RISING,
@@ -1404,12 +1410,12 @@ class RotaryEncoder:
         Release GPIO event detection.
         """
 
-        if self.phase_change_mode == RotaryEncoder.PhaseChangeMode.BIPHASE:
+        if self.phase_change_mode == RotaryEncoder.PhaseChangeMode.TWO_SIGNAL_TWO_EDGE:
             gpio.remove_event_detect(self.phase_a_pin)
             gpio.remove_event_detect(self.phase_b_pin)
-        elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.UNIPHASE_BIDIRECTIONAL:
+        elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_TWO_EDGE:
             gpio.remove_event_detect(self.phase_a_pin)
-        elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.UNIPHASE_UNIDIRECTIONAL:
+        elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_ONE_EDGE:
             gpio.remove_event_detect(self.phase_a_pin)
         else:
             raise ValueError(f'Unknown phase-change mode:  {self.phase_change_mode}')
@@ -1568,8 +1574,6 @@ class MultiprocessRotaryEncoder(Component):
         :param command_pipe: Command pipe that the command loop will use to receive commands and send return values.
         """
 
-        setup()
-
         rotary_encoder = RotaryEncoder(
             phase_a_pin=phase_a_pin,
             phase_b_pin=phase_b_pin,
@@ -1583,8 +1587,6 @@ class MultiprocessRotaryEncoder(Component):
             command: MultiprocessRotaryEncoder.Command = command_pipe.recv()
             return_value, break_value = cls.process_command(rotary_encoder, command)
             command_pipe.send(return_value)
-
-        cleanup()
 
     def __init__(
             self,

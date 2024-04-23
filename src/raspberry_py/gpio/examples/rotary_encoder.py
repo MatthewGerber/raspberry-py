@@ -19,7 +19,7 @@ def main():
                 phase_b_pin=CkPin.GPIO27,
                 phase_change_mode=phase_change_mode
             )
-            for _ in range(5):
+            for _ in range(10):
                 phase_changes_start = encoder.num_phase_changes
                 time.sleep(1.0)
                 phase_changes_end = encoder.num_phase_changes
