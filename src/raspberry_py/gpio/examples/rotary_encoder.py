@@ -6,7 +6,7 @@ from raspberry_py.gpio.sensors import RotaryEncoder
 
 def main():
     """
-    Example.
+    Example of using a rotary encoder in each of several phase-change modes.
     """
 
     setup()
@@ -17,9 +17,9 @@ def main():
             encoder = RotaryEncoder(
                 phase_a_pin=CkPin.GPIO17,
                 phase_b_pin=CkPin.GPIO27,
-                phase_chanage_mode=phase_change_mode
+                phase_change_mode=phase_change_mode
             )
-            for _ in range(5):
+            for _ in range(10):
                 phase_changes_start = encoder.num_phase_changes
                 time.sleep(1.0)
                 phase_changes_end = encoder.num_phase_changes
