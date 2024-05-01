@@ -4,13 +4,13 @@ from raspberry_py.gpio.sensors import Tachometer
 from raspberry_py.rest.application import app
 
 power = Relay(
-    transistor_base_pin=CkPin.GPIO21
+    transistor_base_pin=CkPin.GPIO17
 )
 power.id = 'power-1'
 app.add_component(power, True)
 
 tachometer = Tachometer(
-    reading_pin=CkPin.GPIO24,
+    reading_pin=CkPin.GPIO27,
     bounce_time_ms=1,
     read_delay_ms=0.1,
     low_readings_per_rotation=4,

@@ -139,9 +139,9 @@ WARNING: This is a development server. Do not use it in a production deployment.
  * Running on http://10.0.0.59:5000
 Press CTRL+C to quit
 ```
-You should now be able to visit `http://10.0.0.59/examples/servo/servo.html` from any web browser that has access to the
-host IP address. The page should appear as shown above, and interacting with the controls should cause the Flask server 
-to emit messages such as the following (e.g., for the servo's power switch and slider):
+You should now be able to visit `http://10.0.0.59:8080/examples/servo/servo.html` from any web browser that has access 
+to the host IP address. The page should appear as shown above, and interacting with the controls should cause the Flask 
+server to emit messages such as the following (e.g., for the servo's power switch and slider):
 ```shell
 10.0.0.246 - - [02/Dec/2022 22:51:26] "GET /call/servo-1/start HTTP/1.1" 200 -
 INFO:werkzeug:10.0.0.246 - - [02/Dec/2022 22:51:26] "GET /call/servo-1/start HTTP/1.1" 200 -
