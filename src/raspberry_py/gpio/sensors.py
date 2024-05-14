@@ -1248,10 +1248,34 @@ class RotaryEncoder:
 
         return phase_changes_per_degree
 
+    @staticmethod
+    def check_args(
+            phase_b_pin: Optional[CkPin],
+            phase_change_mode: 'RotaryEncoder.PhaseChangeMode'
+    ):
+        """
+        Check arguments.
+
+        :param phase_b_pin: Phase-b pin.
+        :param phase_change_mode: Phase-change mode.
+        """
+
+        if phase_change_mode in [
+            RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_TWO_EDGE,
+            RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_ONE_EDGE
+        ]:
+            if phase_b_pin is not None:
+                raise ValueError(
+                    f'Expected phase-b pin to be None when using {phase_change_mode} but got {phase_b_pin}.'
+                )
+        else:
+            if phase_b_pin is None:
+                raise ValueError(f'Expected phase-b pin to be non-None when using {phase_change_mode}.')
+
     def __init__(
             self,
             phase_a_pin: CkPin,
-            phase_b_pin: CkPin,
+            phase_b_pin: Optional[CkPin],
             phase_change_mode: 'RotaryEncoder.PhaseChangeMode',
             phase_change_index: Optional[Value] = None,
             clockwise: Optional[Value] = None
@@ -1260,11 +1284,17 @@ class RotaryEncoder:
         Initialize the rotary encoder.
 
         :param phase_a_pin: Phase-a pin.
-        :param phase_b_pin: Phase-b pin.
+        :param phase_b_pin: Phase-b pin. Only used when phase-change mode is `TWO_SIGNAL_TWO_EDGE`.
         :param phase_change_mode: Phase-change mode.
         :param phase_change_index: Phase-change index value in shared memory.
-        :param clockwise: Clockwise value in shared memory.
+        :param clockwise: Clockwise value in shared memory. When `phase_change_mode` is `TWO_SIGNAL_TWO_EDGE`, then this
+        value will be set internally to reflect the current direction of the rotary encoder. This is possible because
+        both signals of the rotary encoder are being read, which allows the direction to be detected. When
+        `phase_change_mode` is `ONE_SIGNAL_TWO_EDGE` or `ONE_SIGNAL_ONE_EDGE`, then this value must be set externally to
+        tell the internal logic of this class which direction the rotary encoder is turning.
         """
+
+        self.check_args(phase_b_pin, phase_change_mode)
 
         if phase_change_index is None:
             phase_change_index = Value('i', 0)
@@ -1283,10 +1313,11 @@ class RotaryEncoder:
         gpio.setup(self.phase_a_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
         self.phase_a_high = gpio.input(self.phase_a_pin) == gpio.HIGH
 
-        gpio.setup(self.phase_b_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
-        self.phase_b_high = gpio.input(self.phase_b_pin) == gpio.HIGH
-
         if self.phase_change_mode == RotaryEncoder.PhaseChangeMode.TWO_SIGNAL_TWO_EDGE:
+
+            gpio.setup(self.phase_b_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
+            self.phase_b_high = gpio.input(self.phase_b_pin) == gpio.HIGH
+
             gpio.add_event_detect(
                 self.phase_a_pin,
                 gpio.BOTH,
@@ -1557,7 +1588,7 @@ class MultiprocessRotaryEncoder(Component):
     def run_command_loop(
             cls,
             phase_a_pin: CkPin,
-            phase_b_pin: CkPin,
+            phase_b_pin: Optional[CkPin],
             phase_change_mode: RotaryEncoder.PhaseChangeMode,
             phase_change_index: Value,
             clockwise: Value,
@@ -1567,10 +1598,14 @@ class MultiprocessRotaryEncoder(Component):
         Run the command loop.
 
         :param phase_a_pin: Phase-a pin.
-        :param phase_b_pin: Phase-b pin.
+        :param phase_b_pin: Phase-b pin. Only used when phase-change mode is `TWO_SIGNAL_TWO_EDGE`.
         :param phase_change_mode: Phase-change mode.
         :param phase_change_index: Phase-change index value in shared memory.
-        :param clockwise: Clockwise value in shared memory.
+        :param clockwise: Clockwise value in shared memory. When `phase_change_mode` is `TWO_SIGNAL_TWO_EDGE`, then this
+        value will be set internally to reflect the current direction of the rotary encoder. This is possible because
+        both signals of the rotary encoder are being read, which allows the direction to be detected. When
+        `phase_change_mode` is `ONE_SIGNAL_TWO_EDGE` or `ONE_SIGNAL_ONE_EDGE`, then this value must be set externally to
+        tell the internal logic of this class which direction the rotary encoder is turning.
         :param command_pipe: Command pipe that the command loop will use to receive commands and send return values.
         """
 
@@ -1591,21 +1626,32 @@ class MultiprocessRotaryEncoder(Component):
     def __init__(
             self,
             phase_a_pin: CkPin,
-            phase_b_pin: CkPin,
+            phase_b_pin: Optional[CkPin],
             phase_changes_per_rotation: int,
             phase_change_mode: RotaryEncoder.PhaseChangeMode,
-            degrees_per_second_step_size: float
+            degrees_per_second_step_size: float,
+            clockwise: Optional[Value] = None
     ):
         """
         Initialize the multiprocess rotary encoder.
 
         :param phase_a_pin: Phase-a pin.
-        :param phase_b_pin: Phase-b pin.
+        :param phase_b_pin: Phase-b pin. Only used when phase-change mode is `TWO_SIGNAL_TWO_EDGE`.
         :param phase_changes_per_rotation: Number of phase changes per rotation. This is for a single signal (e.g.,
         only the phase-a signal).
         :param phase_change_mode: Phase-change mode.
         :param degrees_per_second_step_size: Step size for degrees per second smoothing.
+        :param clockwise: Clockwise value in shared memory. When `phase_change_mode` is `TWO_SIGNAL_TWO_EDGE`, then this
+        value will be set internally to reflect the current direction of the rotary encoder. This is possible because
+        both signals of the rotary encoder are being read, which allows the direction to be detected. When
+        `phase_change_mode` is `ONE_SIGNAL_TWO_EDGE` or `ONE_SIGNAL_ONE_EDGE`, then this value must be set externally to
+        tell the internal logic of this class which direction the rotary encoder is turning.
         """
+
+        RotaryEncoder.check_args(phase_b_pin, phase_change_mode)
+
+        if clockwise is None:
+            clockwise = Value('i', 0)
 
         super().__init__(
             MultiprocessRotaryEncoder.State(
@@ -1629,7 +1675,7 @@ class MultiprocessRotaryEncoder(Component):
         self.previous_state_time_epoch = None
         self.degrees_per_second = IncrementalSampleAverager(0.0, self.degrees_per_second_step_size)
         self.phase_change_index = Value('i', 0)
-        self.clockwise = Value('i', 0)
+        self.clockwise = clockwise
         self.parent_connection, self.child_connection = Pipe()
 
         self.process = Process(
@@ -1668,6 +1714,7 @@ class MultiprocessRotaryEncoder(Component):
         self.state: MultiprocessRotaryEncoder.State
         previous_net_total_degrees = self.state.net_total_degrees
         net_total_degrees = self.phase_change_index.value / self.phase_changes_per_degree
+        clockwise = bool(self.clockwise.value)
         next_state_time_epoch = time.time()
         degrees = net_total_degrees % 360.0
 
@@ -1683,7 +1730,7 @@ class MultiprocessRotaryEncoder(Component):
                 net_total_degrees=net_total_degrees,
                 degrees=degrees,
                 degrees_per_second=self.degrees_per_second.get_value(),
-                clockwise=bool(self.clockwise.value)
+                clockwise=clockwise
             )
         )
 
@@ -1771,3 +1818,85 @@ class MultiprocessRotaryEncoder(Component):
         return_value = self.parent_connection.recv()
         assert return_value is None
         self.process.join()
+
+
+class DualMultiprocessRotaryEncoder(Component):
+    """
+    A two-process arrangement of monitoring for a rotary encoder that confers the benefits of two-signal direction
+    detection with single-signal measurement accuracy.
+    """
+
+    def __init__(
+            self,
+            speed_phase_a_pin: CkPin,
+            direction_phase_a_pin: CkPin,
+            direction_phase_b_pin: CkPin,
+            phase_changes_per_rotation: int,
+            degrees_per_second_step_size: float,
+    ):
+        super().__init__(
+            MultiprocessRotaryEncoder.State(
+                0.0,
+                0.0,
+                0.0,
+                False
+            )
+        )
+
+        self.speed_phase_a_pin = speed_phase_a_pin
+        self.direction_phase_a_pin = direction_phase_a_pin
+        self.direction_phase_b_pin = direction_phase_b_pin
+        self.phase_changes_per_rotation = phase_changes_per_rotation
+        self.degrees_per_second_step_size = degrees_per_second_step_size
+
+        self.speed_encoder = MultiprocessRotaryEncoder(
+            phase_a_pin=self.speed_phase_a_pin,
+            phase_b_pin=None,
+            phase_changes_per_rotation=self.phase_changes_per_rotation,
+            phase_change_mode=RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_TWO_EDGE,
+            degrees_per_second_step_size=self.degrees_per_second_step_size
+        )
+
+        # link the encoder monitoring processes via the clockwise shared-memory indicator. the following rotary encoder
+        # will set the clockwise value, which will be reflected in the measurements obtained by the previous rotary
+        # encoder.
+        self.direction_encoder = MultiprocessRotaryEncoder(
+            phase_a_pin=self.direction_phase_a_pin,
+            phase_b_pin=self.direction_phase_b_pin,
+            phase_changes_per_rotation=self.phase_changes_per_rotation,
+            phase_change_mode=RotaryEncoder.PhaseChangeMode.TWO_SIGNAL_TWO_EDGE,
+            degrees_per_second_step_size=1.0,  # not used. we only use the clockwise value.
+            clockwise=self.speed_encoder.clockwise
+        )
+
+    def wait_for_startup(
+            self
+    ):
+        """
+        Wait for startup.
+        """
+
+        self.speed_encoder.wait_for_startup()
+        self.direction_encoder.wait_for_startup()
+
+    def update_state(
+            self
+    ):
+        """
+        Update state, giving positional information.
+        """
+
+        self.speed_encoder.update_state()
+        self.set_state(self.speed_encoder.state)
+
+    def wait_for_termination(
+            self
+    ):
+        """
+        Wait for termination.
+        """
+
+        self.speed_encoder.wait_for_termination()
+        self.direction_encoder.wait_for_termination()
+
+

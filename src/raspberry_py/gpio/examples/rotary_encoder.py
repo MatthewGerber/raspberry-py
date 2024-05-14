@@ -16,7 +16,10 @@ def main():
             print(f'Running in phase-change mode:  {phase_change_mode}...')
             encoder = RotaryEncoder(
                 phase_a_pin=CkPin.GPIO17,
-                phase_b_pin=CkPin.GPIO27,
+                phase_b_pin=(
+                    CkPin.GPIO27 if phase_change_mode == RotaryEncoder.PhaseChangeMode.TWO_SIGNAL_TWO_EDGE
+                    else None
+                ),
                 phase_change_mode=phase_change_mode
             )
             for _ in range(10):
