@@ -1898,5 +1898,3 @@ class DualMultiprocessRotaryEncoder(Component):
 
         self.speed_encoder.wait_for_termination()
         self.direction_encoder.wait_for_termination()
-
-
