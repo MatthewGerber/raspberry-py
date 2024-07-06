@@ -44,12 +44,31 @@ is the best approach if you want to enhance and/or fix the functionality provide
    ```shell
    git clone git@github.com:XXXX/raspberry-py.git
    cd raspberry-py
-   python3 -m venv venv
-   . venv/bin/activate
-   pip install -U pip
-   pip install -e .
+   poetry env use 3.11
+   poetry install
    ```
 From here, you can push back to your fork and submit a pull request to the original if desired.
 
 # CAD Parts and 3D Printing
 I have designed a range of parts for integration with the Raspberry Pi. See [here](cad-parts.md). 
+
+# Releasing
+1. Bump to release and tag:
+   ```bash
+   OLD_VERSION=$(poetry version --short)
+   poetry version prerelease --next-phase  # beta
+   poetry version prerelease --next-phase  # rc
+   poetry version prerelease --next-phase  # release
+   VERSION=$(poetry version --short)
+   git commit -a -m "Bump version:  ${OLD_VERSION} → ${VERSION}"
+   git tag -a -m "raspberry-py v${VERSION}" v${VERSION}
+   git push --follow-tags
+   ```
+2. Increment the version to the next preminor:
+   ```bash
+   OLD_VERSION=$(poetry version --short)
+   poetry version preminor
+   VERSION=$(poetry version --short)
+   git commit -a -m "Bump version:  ${OLD_VERSION} → ${VERSION}"
+   git push
+   ```

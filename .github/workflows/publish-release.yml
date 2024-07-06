@@ -1,0 +1,29 @@
+name: Publish Release
+
+on:
+  release:
+    types: [ published ]
+
+jobs:
+  deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.11.8'
+
+    - name: Install dependencies
+      run: |
+        curl -sSL https://install.python-poetry.org | python3.11 -
+        poetry install
+
+    - name: Build and publish
+      run: |
+        poetry config pypi-token.pypi '${{ secrets.PYPI_API_TOKEN }}'
+        poetry publish --build
