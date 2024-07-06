@@ -1,39 +1,33 @@
 [build-system]
-requires = ['setuptools']
-build-backend = 'setuptools.build_meta'
+requires = ['poetry-core']
+build-backend = 'poetry.core.masonry.api'
 
-[tool.setuptools]
-package-dir = {'' = 'src'}
-
-[project]
+[tool.poetry]
 name = 'raspberry-py'
-version = '0.6.0.dev0'
+version = '0.6.0a0'
 description = 'A Python/REST interface for GPIO circuits running on the Raspberry Pi'
-authors = [
-    {name = 'Matthew Gerber', email = 'gerber.matthew@gmail.com'}
-]
 readme = 'README.md'
-requires-python = '>=3.10'
-dependencies = [
-    'numpy~=1.26',
-    'RPi.GPIO~=0.7',
-    'smbus2~=0.4',
-    'Flask~=3.0',
-    'Flask-Cors~=4.0',
-    'opencv-python~=4.8',
-    'rpi-ws281x~=5.0'
+authors = [
+    'Matthew Gerber <gerber.matthew@gmail.com>'
 ]
-
-[project.optional-dependencies]
-dev = [
-    'bump2version~=1.0',
-    'mypy~=1.8',
-    'flake8~=7.0.0'
+packages = [
+    { include = 'raspberry_py', from = 'src'}
 ]
+repository = 'https://github.com/MatthewGerber/raspberry-py'
 
-[project.urls]
-Repository = 'https://github.com/MatthewGerber/raspberry-py'
-Homepage = 'https://matthewgerber.github.io/raspberry-py'
+[tool.poetry.dependencies]
+python = '>=3.10'
+numpy = '~=1.26'
+RPi.GPIO = '~=0.7'
+smbus2 = '~=0.4'
+Flask = '~=3.0'
+Flask-Cors = '~=4.0'
+opencv-python = '~=4.8'
+rpi-ws281x = '~=5.0'
 
-[project.scripts]
+[tool.poetry.group.dev.dependencies]
+mypy = '~=1.10'
+flake8 = '~=7.0'
+
+[tool.poetry.scripts]
 write_component_files = 'raspberry_py.rest.application:write_component_files_cli'
