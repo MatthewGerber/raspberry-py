@@ -18,7 +18,7 @@ repository = 'https://github.com/MatthewGerber/raspberry-py'
 [tool.poetry.dependencies]
 python = '>=3.10'
 numpy = '~=1.26'
-RPi.GPIO = '~=0.7'
+'RPi.GPIO' = '~=0.7'
 smbus2 = '~=0.4'
 Flask = '~=3.0'
 Flask-Cors = '~=4.0'

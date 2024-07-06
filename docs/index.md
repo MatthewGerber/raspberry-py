@@ -29,8 +29,10 @@ Additional CAD parts that I have designed are listed [here](cad-parts.md).
 # Use and Development
 Raspberry Pi now provides a 64-bit Debian-based operating system (OS) via the Raspberry Pi Imager. The OS is quite 
 good, though for some uses Ubuntu seems to work equally well if not better. I've written steps for both operating 
-systems [here](raspberry-pi-operating-system.md) and [here](ubuntu-operating-system.md), respectively. The 
-`raspberry-py` package can be consumed in two ways:
+systems [here](raspberry-pi-operating-system.md) and [here](ubuntu-operating-system.md), respectively. The following steps use [poetry](https://python-poetry.org/) for 
+installation.
+
+The `raspberry-py` package can be consumed in two ways:
 
 1. Add `raspberry-py` to a project as a PyPI dependency. This is the best approach if you only want to use the 
 functionality provided by `raspberry-py`. The `raspberry-py` package is available 
@@ -39,14 +41,14 @@ functionality provided by `raspberry-py`. The `raspberry-py` package is availabl
 2. [Fork](https://github.com/MatthewGerber/raspberry-py/fork) the present repository and then install it locally. This 
 is the best approach if you want to enhance and/or fix the functionality provided by `raspberry-py`. In the following, 
 `XXXX` is the user account into which the repository is forked:
-```shell
-git clone git@github.com:XXXX/raspberry-py.git
-cd raspberry-py
-python3 -m venv venv
-. venv/bin/activate
-pip install -U pip
-pip install -e .
-```
+   ```shell
+   git clone git@github.com:XXXX/raspberry-py.git
+   cd raspberry-py
+   python3 -m venv venv
+   . venv/bin/activate
+   pip install -U pip
+   pip install -e .
+   ```
 From here, you can push back to your fork and submit a pull request to the original if desired.
 
 # CAD Parts and 3D Printing
