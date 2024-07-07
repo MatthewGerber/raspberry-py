@@ -70,3 +70,9 @@ is the best approach if you want to enhance and/or fix the functionality provide
    git commit -a -m "Bump version:  ${OLD_VERSION} → ${VERSION}"
    git push
    ```
+
+# Troubleshooting
+* If `poetry install` hangs when attempting to unlock the keyring, disable the keyring with the following:
+  ```
+  poetry config keyring.enabled false
+  ```
