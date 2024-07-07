@@ -24,7 +24,8 @@ designed for the car:
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH35dfcQT936092f0e4344f64dd3dcf58a6f?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
-Additional CAD parts that I have designed are listed [here](cad-parts.md). 
+# CAD Parts and 3D Printing
+I have designed a range of parts for integration with the Raspberry Pi. See [here](cad-parts.md).
 
 # Use and Development
 Raspberry Pi now provides a 64-bit Debian-based operating system (OS) via the Raspberry Pi Imager. The OS is quite 
@@ -47,10 +48,7 @@ is the best approach if you want to enhance and/or fix the functionality provide
    poetry env use 3.11
    poetry install
    ```
-From here, you can push back to your fork and submit a pull request to the original if desired.
-
-# CAD Parts and 3D Printing
-I have designed a range of parts for integration with the Raspberry Pi. See [here](cad-parts.md). 
+   From here, you can push back to your fork and submit a pull request to the original if desired.
 
 # Releasing
 1. Bump to release and tag:
