@@ -16,7 +16,7 @@ packages = [
 repository = 'https://github.com/MatthewGerber/raspberry-py'
 
 [tool.poetry.dependencies]
-python = '>=3.10'
+python = '>=3.10,<3.13'
 numpy = '~=1.26'
 'RPi.GPIO' = '~=0.7'
 smbus2 = '~=0.4'
