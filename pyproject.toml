@@ -4,7 +4,7 @@ build-backend = 'poetry.core.masonry.api'
 
 [tool.poetry]
 name = 'raspberry-py'
-version = '0.6.0a0'
+version = "0.6.0"
 description = 'A Python/REST interface for GPIO circuits running on the Raspberry Pi'
 readme = 'README.md'
 authors = [
