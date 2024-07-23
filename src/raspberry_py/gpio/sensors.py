@@ -1310,31 +1310,40 @@ class RotaryEncoder:
 
         self.num_phase_changes = 0
 
+        # we always read the phase-a pin
         gpio.setup(self.phase_a_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
         self.phase_a_high = gpio.input(self.phase_a_pin) == gpio.HIGH
 
         if self.phase_change_mode == RotaryEncoder.PhaseChangeMode.TWO_SIGNAL_TWO_EDGE:
 
-            gpio.setup(self.phase_b_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
-            self.phase_b_high = gpio.input(self.phase_b_pin) == gpio.HIGH
-
+            # detect rising and falling of the phase-a signal
             gpio.add_event_detect(
                 self.phase_a_pin,
                 gpio.BOTH,
                 callback=lambda channel: self.biphase_a_changed(gpio.input(self.phase_a_pin) == gpio.HIGH)
             )
+
+            # detect rising and falling of the phase-b signal
+            gpio.setup(self.phase_b_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
+            self.phase_b_high = gpio.input(self.phase_b_pin) == gpio.HIGH
             gpio.add_event_detect(
                 self.phase_b_pin,
                 gpio.BOTH,
                 callback=lambda channel: self.biphase_b_changed(gpio.input(self.phase_b_pin) == gpio.HIGH)
             )
+
         elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_TWO_EDGE:
+
+            # detect rising and falling of the phase-a pin
             gpio.add_event_detect(
                 self.phase_a_pin,
                 gpio.BOTH,
                 callback=lambda channel: self.uniphase_a_changed(gpio.input(self.phase_a_pin) == gpio.HIGH)
             )
+
         elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_ONE_EDGE:
+
+            # detect rising of the phase-a pin
             gpio.add_event_detect(
                 self.phase_a_pin,
                 gpio.RISING,
@@ -1407,6 +1416,10 @@ class RotaryEncoder:
     def uniphase_a_up(
             self
     ):
+        """
+        Phase-a has risen.
+        """
+
         self.phase_a_high = True
 
         if self.clockwise.value:
