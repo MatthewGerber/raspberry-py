@@ -1483,6 +1483,7 @@ class MultiprocessRotaryEncoder(Component):
                 net_total_degrees: float,
                 degrees: float,
                 degrees_per_second: float,
+                degrees_acceleration_per_second: float,
                 clockwise: bool
         ):
             """
@@ -1491,12 +1492,14 @@ class MultiprocessRotaryEncoder(Component):
             :param net_total_degrees: Net total degrees.
             :param degrees: Degrees of rotation.
             :param degrees_per_second: Degrees per second.
+            :param degrees_acceleration_per_second: Degrees acceleration per second.
             :param clockwise: Whether the encoder is turning in a clockwise direction.
             """
 
             self.net_total_degrees = net_total_degrees
             self.degrees = degrees
             self.degrees_per_second = degrees_per_second
+            self.degrees_acceleration_per_second = degrees_acceleration_per_second
             self.clockwise = clockwise
 
         def __eq__(
@@ -1517,6 +1520,7 @@ class MultiprocessRotaryEncoder(Component):
                 self.net_total_degrees == other.net_total_degrees and
                 self.degrees == other.degrees and
                 self.degrees_per_second == other.degrees_per_second and
+                self.degrees_acceleration_per_second == other.degrees_acceleration_per_second and
                 self.clockwise == other.clockwise
             )
 
@@ -1529,7 +1533,10 @@ class MultiprocessRotaryEncoder(Component):
             :return: String.
             """
 
-            return f'{self.net_total_degrees:.1f} deg @ {self.degrees_per_second:.1f} deg/s clockwise={self.clockwise}'
+            return (
+                f'{self.net_total_degrees:.1f} deg @ {self.degrees_per_second:.1f} deg/s @ '
+                f'{self.degrees_acceleration_per_second} deg/s^2 clockwise={self.clockwise}'
+            )
 
     class CommandFunction(Enum):
         """
@@ -1671,6 +1678,7 @@ class MultiprocessRotaryEncoder(Component):
                 0.0,
                 0.0,
                 0.0,
+                0.0,
                 False
             )
         )
@@ -1686,7 +1694,14 @@ class MultiprocessRotaryEncoder(Component):
             phase_change_mode=self.phase_change_mode
         )
         self.previous_state_time_epoch = None
-        self.degrees_per_second = IncrementalSampleAverager(0.0, self.degrees_per_second_step_size)
+        self.degrees_per_second = IncrementalSampleAverager(
+            0.0,
+            self.degrees_per_second_step_size
+        )
+        self.degrees_acceleration_per_second = IncrementalSampleAverager(
+            0.0,
+            self.degrees_per_second_step_size
+        )
         self.phase_change_index = Value('i', 0)
         self.clockwise = clockwise
         self.parent_connection, self.child_connection = Pipe()
@@ -1736,13 +1751,19 @@ class MultiprocessRotaryEncoder(Component):
             self.previous_state_time_epoch = next_state_time_epoch
         else:
             elapsed_seconds = next_state_time_epoch - self.previous_state_time_epoch
+            previous_degrees_per_second = self.degrees_per_second.get_value()
             self.degrees_per_second.update((net_total_degrees - previous_net_total_degrees) / elapsed_seconds)
+            self.degrees_acceleration_per_second.update(
+                (self.degrees_per_second.get_value() - previous_degrees_per_second) /
+                elapsed_seconds
+            )
 
         self.set_state(
             MultiprocessRotaryEncoder.State(
                 net_total_degrees=net_total_degrees,
                 degrees=degrees,
                 degrees_per_second=self.degrees_per_second.get_value(),
+                degrees_acceleration_per_second=self.degrees_acceleration_per_second.get_value(),
                 clockwise=clockwise
             )
         )
@@ -1790,6 +1811,20 @@ class MultiprocessRotaryEncoder(Component):
         state: MultiprocessRotaryEncoder.State = self.state
 
         return state.degrees_per_second
+
+    def get_degrees_acceleration_per_second(
+            self
+    ) -> float:
+        """
+        Get degrees acceleration per second.
+
+        :return: Degrees acceleration per second.
+        """
+
+        self.update_state()
+        state: MultiprocessRotaryEncoder.State = self.state
+
+        return state.degrees_acceleration_per_second
 
     def get_clockwise(
             self
@@ -1852,6 +1887,7 @@ class DualMultiprocessRotaryEncoder(Component):
                 0.0,
                 0.0,
                 0.0,
+                0.0,
                 False
             )
         )
@@ -1872,7 +1908,7 @@ class DualMultiprocessRotaryEncoder(Component):
 
         # link the encoder monitoring processes via the clockwise shared-memory indicator. the following rotary encoder
         # will set the clockwise value, which will be reflected in the measurements obtained by the previous rotary
-        # encoder.
+        # encoder to measure speed.
         self.direction_encoder = MultiprocessRotaryEncoder(
             phase_a_pin=self.direction_phase_a_pin,
             phase_b_pin=self.direction_phase_b_pin,
