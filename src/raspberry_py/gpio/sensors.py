@@ -1349,6 +1349,7 @@ class RotaryEncoder:
                 gpio.RISING,
                 callback=lambda channel: self.uniphase_a_up()
             )
+
         else:
             raise ValueError(f'Unknown phase-change mode:  {self.phase_change_mode}')
 
@@ -1852,6 +1853,9 @@ class MultiprocessRotaryEncoder(Component):
         )
         return_value = self.parent_connection.recv()
         assert return_value is None
+
+        self.degrees_per_second.reset()
+        self.degrees_acceleration_per_second.reset()
 
     def wait_for_termination(
             self
