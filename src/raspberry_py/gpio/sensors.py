@@ -1856,6 +1856,7 @@ class MultiprocessRotaryEncoder(Component):
 
         self.degrees_per_second.reset()
         self.degrees_acceleration_per_second.reset()
+        self.previous_state_time_epoch = None
 
     def wait_for_termination(
             self
