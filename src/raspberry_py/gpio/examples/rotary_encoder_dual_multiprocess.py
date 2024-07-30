@@ -23,7 +23,7 @@ def main():
     try:
         while True:
             time.sleep(1.0/10.0)
-            encoder.update_state()
+            encoder.update_state(True)
             state: MultiprocessRotaryEncoder.State = encoder.state
             print(
                 f'Degrees:  {state.degrees}; RPM:  {60.0 * state.degrees_per_second / 360.0:.1f} '

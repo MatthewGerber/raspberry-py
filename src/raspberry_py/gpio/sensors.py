@@ -1734,30 +1734,34 @@ class MultiprocessRotaryEncoder(Component):
         assert return_value is None
 
     def update_state(
-            self
+            self,
+            update_velocity_and_acceleration: bool
     ):
         """
         Update state.
+
+        :param update_velocity_and_acceleration: Whether to update velocity and acceleration estimates.
         """
 
-        self.state: MultiprocessRotaryEncoder.State
-        previous_net_total_degrees = self.state.net_total_degrees
         net_total_degrees = self.phase_change_index.value / self.phase_changes_per_degree
-        clockwise = bool(self.clockwise.value)
-        next_state_time_epoch = time.time()
         degrees = net_total_degrees % 360.0
+        clockwise = bool(self.clockwise.value)
 
-        # update degrees per second
-        if self.previous_state_time_epoch is None:
-            self.previous_state_time_epoch = next_state_time_epoch
-        else:
-            elapsed_seconds = next_state_time_epoch - self.previous_state_time_epoch
-            previous_degrees_per_second = self.degrees_per_second.get_value()
-            self.degrees_per_second.update((net_total_degrees - previous_net_total_degrees) / elapsed_seconds)
-            self.degrees_acceleration_per_second.update(
-                (self.degrees_per_second.get_value() - previous_degrees_per_second) /
-                elapsed_seconds
-            )
+        if update_velocity_and_acceleration:
+            current_state_time_epoch = time.time()
+            if self.previous_state_time_epoch is None:
+                self.previous_state_time_epoch = current_state_time_epoch
+            else:
+                self.state: MultiprocessRotaryEncoder.State
+                previous_net_total_degrees = self.state.net_total_degrees
+                previous_degrees_per_second = self.degrees_per_second.get_value()
+                elapsed_seconds = current_state_time_epoch - self.previous_state_time_epoch
+                self.degrees_per_second.update((net_total_degrees - previous_net_total_degrees) / elapsed_seconds)
+                self.degrees_acceleration_per_second.update(
+                    (self.degrees_per_second.get_value() - previous_degrees_per_second) /
+                    elapsed_seconds
+                )
+            self.previous_state_time_epoch = current_state_time_epoch
 
         self.set_state(
             MultiprocessRotaryEncoder.State(
@@ -1769,74 +1773,82 @@ class MultiprocessRotaryEncoder(Component):
             )
         )
 
-        self.previous_state_time_epoch = next_state_time_epoch
-
     def get_net_total_degrees(
-            self
+            self,
+            update_velocity_and_acceleration: bool
     ) -> float:
         """
         Get net total degrees.
 
+        :param update_velocity_and_acceleration: Whether to update velocity and acceleration estimates.
         :return: Degrees.
         """
 
-        self.update_state()
+        self.update_state(update_velocity_and_acceleration)
         state: MultiprocessRotaryEncoder.State = self.state
 
         return state.net_total_degrees
 
     def get_degrees(
-            self
+            self,
+            update_velocity_and_acceleration: bool
     ) -> float:
         """
         Get degrees.
 
+        :param update_velocity_and_acceleration: Whether to update velocity and acceleration estimates.
         :return: Degrees.
         """
 
-        self.update_state()
+        self.update_state(update_velocity_and_acceleration)
         state: MultiprocessRotaryEncoder.State = self.state
 
         return state.degrees
 
     def get_degrees_per_second(
-            self
+            self,
+            update_velocity_and_acceleration: bool
     ) -> float:
         """
         Get degrees per second.
 
+        :param update_velocity_and_acceleration: Whether to update velocity and acceleration estimates.
         :return: Degrees per second.
         """
 
-        self.update_state()
+        self.update_state(update_velocity_and_acceleration)
         state: MultiprocessRotaryEncoder.State = self.state
 
         return state.degrees_per_second
 
     def get_degrees_acceleration_per_second(
-            self
+            self,
+            update_velocity_and_acceleration: bool
     ) -> float:
         """
         Get degrees acceleration per second.
 
+        :param update_velocity_and_acceleration: Whether to update velocity and acceleration estimates.
         :return: Degrees acceleration per second.
         """
 
-        self.update_state()
+        self.update_state(update_velocity_and_acceleration)
         state: MultiprocessRotaryEncoder.State = self.state
 
         return state.degrees_acceleration_per_second
 
     def get_clockwise(
-            self
+            self,
+            update_velocity_and_acceleration: bool
     ) -> bool:
         """
         Get clockwise.
 
+        :param update_velocity_and_acceleration: Whether to update velocity and acceleration estimates.
         :return: Clockwise.
         """
 
-        self.update_state()
+        self.update_state(update_velocity_and_acceleration)
         state: MultiprocessRotaryEncoder.State = self.state
 
         return state.clockwise
@@ -1934,13 +1946,16 @@ class DualMultiprocessRotaryEncoder(Component):
         self.direction_encoder.wait_for_startup()
 
     def update_state(
-            self
+            self,
+            update_velocity_and_acceleration: bool
     ):
         """
         Update state, giving positional information.
+
+        :param update_velocity_and_acceleration: Whether to update velocity and acceleration estimates.
         """
 
-        self.speed_encoder.update_state()
+        self.speed_encoder.update_state(update_velocity_and_acceleration)
         self.set_state(self.speed_encoder.state)
 
     def wait_for_termination(
