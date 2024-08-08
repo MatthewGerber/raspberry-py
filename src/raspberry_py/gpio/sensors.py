@@ -1440,13 +1440,15 @@ class RotaryEncoder:
         :param wait_interval_seconds: Wait interval (seconds).
         """
 
-        logging.info('Waiting for stationarity...')
+        logging.info('Waiting for stationarity.')
         previous_num_phase_changes = self.num_phase_changes
         time.sleep(wait_interval_seconds)
         while self.num_phase_changes != previous_num_phase_changes:
-            logging.info('Waiting for stationarity...')
+            logging.debug('Waiting for stationarity.')
             previous_num_phase_changes = self.num_phase_changes
             time.sleep(wait_interval_seconds)
+
+        logging.info('Stationary.')
 
     def cleanup(
             self
