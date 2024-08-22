@@ -282,7 +282,7 @@ class DcMotor(Component):
         if not isinstance(state, DcMotor.State):
             raise ValueError(f'Expected a {DcMotor.State}')
 
-        constrained_speed = min(self.max_speed, max(state.speed, self.min_speed))
+        constrained_speed = self.constrain_speed(state.speed)
         if constrained_speed != state.speed:
             logging.warning(
                 f'Requested motor speed ({state.speed}) is out of bounds [{self.min_speed},{self.max_speed}]. '
@@ -293,6 +293,19 @@ class DcMotor(Component):
         self.driver.change_state(self.state, state)
 
         super().set_state(state)
+
+    def constrain_speed(
+            self,
+            speed: int
+    ) -> int:
+        """
+        Constrain speed to be in the motor's range.
+
+        :param speed: Speed.
+        :return: Constrained speed.
+        """
+
+        return min(self.max_speed, max(self.min_speed, speed))
 
     def start(
             self
