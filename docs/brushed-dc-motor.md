@@ -237,7 +237,7 @@ Next position the winding holder precisely on the rotor and begin gluing them in
 
 Very important notes:
 1. The winding cores must be oriented such that the iron cores are exactly aligned with the gaps between the 
-   commutator segments. Think of it this way:  When the iron cores are pointing directly and their stator magnets, 
+   commutator segments. Think of it this way:  When the iron cores are pointing directly at their stator magnets, 
    the electromagnets need to be in a neutral or unpowered position between one polarity and the other.
 2. The commutator segments need to be placed in the correct sequence of recesses that depends on your design: 
    1. __Two-stator two-coil__:  The two commutator segments may be placed in either of the rotor recesses. The only 
