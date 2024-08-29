@@ -16,6 +16,7 @@ def main():
         CkPin.GPIO17,
         CkPin.GPIO27,
         1200,
+        1.0,
         1.0
     )
     encoder.wait_for_startup()
@@ -26,7 +27,7 @@ def main():
             encoder.update_state(True)
             state: MultiprocessRotaryEncoder.State = encoder.state
             print(
-                f'Degrees:  {state.degrees}; RPM:  {60.0 * state.degrees_per_second / 360.0:.1f} '
+                f'Degrees:  {state.degrees}; RPM:  {60.0 * state.angular_velocity / 360.0:.1f} '
                 f'(clockwise={state.clockwise})'
             )
     except KeyboardInterrupt:

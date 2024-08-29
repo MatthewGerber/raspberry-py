@@ -17,7 +17,8 @@ def main():
         phase_b_pin=CkPin.GPIO27,
         phase_changes_per_rotation=1200,
         phase_change_mode=RotaryEncoder.PhaseChangeMode.TWO_SIGNAL_TWO_EDGE,
-        degrees_per_second_step_size=0.5
+        angular_velocity_step_size=0.5,
+        angular_acceleration_step_size=0.5
     )
     encoder.wait_for_startup()
 
@@ -27,7 +28,7 @@ def main():
             encoder.update_state(True)
             state: MultiprocessRotaryEncoder.State = encoder.state
             print(
-                f'Degrees:  {state.degrees:.1f}; RPM:  {60.0 * state.degrees_per_second / 360.0:.1f} '
+                f'Degrees:  {state.degrees:.1f}; RPM:  {60.0 * state.angular_velocity / 360.0:.1f} '
                 f'(clockwise={state.clockwise})'
             )
     except KeyboardInterrupt:

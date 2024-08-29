@@ -46,7 +46,7 @@ def main():
         servo.set_degrees(degrees)
         time.sleep(0.25)
     for degrees in reversed(degree_range):
-        servo.set_degrees(degrees)
+        servo.set_degrees(float(degrees))
         time.sleep(0.25)
 
     # clean up
