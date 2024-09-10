@@ -11,6 +11,7 @@ def main():
 
     setup()
 
+    encoder = None
     try:
         for phase_change_mode in RotaryEncoder.PhaseChangeMode:
             print(f'Running in phase-change mode:  {phase_change_mode}...')
@@ -32,10 +33,11 @@ def main():
                     f'Degrees:  {state.degrees}; RPM:  {60.0 * state.angular_velocity / 360.0:.1f} '
                     f'(clockwise={state.clockwise})'
                 )
-            encoder.wait_for_termination()
             time.sleep(1.0)
     except KeyboardInterrupt:
-        pass
+        if encoder is not None:
+            encoder.wait_for_termination()
+            time.sleep(1.0)
 
     cleanup()
 

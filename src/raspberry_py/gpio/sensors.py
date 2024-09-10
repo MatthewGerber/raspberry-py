@@ -1728,7 +1728,7 @@ class MultiprocessRotaryEncoder(Component):
             self
     ):
         """
-        Wait for startup.
+        Wait for startup. May raise errors if interprocess communication fails.
         """
 
         self.process.start()
@@ -1871,7 +1871,7 @@ class MultiprocessRotaryEncoder(Component):
             self
     ):
         """
-        Wait for stationarity.
+        Wait for stationarity. May raise errors if interprocess communication fails.
         """
 
         self.parent_connection.send(
@@ -1888,7 +1888,7 @@ class MultiprocessRotaryEncoder(Component):
             self
     ):
         """
-        Wait for termination.
+        Wait for termination. May raise errors if interprocess communication fails.
         """
 
         self.parent_connection.send(
@@ -1969,7 +1969,7 @@ class DualMultiprocessRotaryEncoder(Component):
             self
     ):
         """
-        Wait for startup.
+        Wait for startup. May raise errors if interprocess communication fails.
         """
 
         self.speed_encoder.wait_for_startup()
@@ -1992,8 +1992,22 @@ class DualMultiprocessRotaryEncoder(Component):
             self
     ):
         """
-        Wait for termination.
+        Wait for termination. May raise errors if interprocess communication fails.
         """
 
-        self.speed_encoder.wait_for_termination()
-        self.direction_encoder.wait_for_termination()
+        error = None
+
+        # noinspection PyBroadException
+        try:
+            self.speed_encoder.wait_for_termination()
+        except Exception as e:
+            error = e
+
+        # noinspection PyBroadException
+        try:
+            self.direction_encoder.wait_for_termination()
+        except Exception as e:
+            error = e
+
+        if error is not None:
+            raise error
