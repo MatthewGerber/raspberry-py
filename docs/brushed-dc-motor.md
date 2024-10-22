@@ -190,8 +190,9 @@ Use a multimeter to test all coils for integrity and roughly similar resistance.
    ohms of resistance. With a 12-volt power supply, this would result in 12.0 / 15.0 = 0.8 amps of current running 
    through the wire, which is acceptable. The final assembly including the commutator and brushes will have more 
    resistance, which will further decrease the current. The final current needs to be within the operating range of 
-   the wire. [This](../manuals/coildata.xls) workbook suggests the fusing current of 30 AWG wire is 10 amps, so the 
-   final current running through the coils must be substantially below this.
+   the wire. [This](https://github.com/MatthewGerber/raspberry-py/blob/main/manuals/coildata.xls) workbook suggests the 
+   fusing current of 30 AWG wire is 10 amps, so the final current running through the coils must be substantially below
+   this.
 
 # Build the Commutator
 
@@ -386,7 +387,9 @@ commutator segment, blew up a transistor, and damaged a GPIO port on the Raspber
 # References
 
 1. [Voltage, Current, and Resistance (a basic overview)](https://learn.sparkfun.com/tutorials/voltage-current-resistance-and-ohms-law/all)
-2. [Electromagnets](http://www.coolmagnetman.com/magelect.htm):  In particular, the author's [coildata.xls](../manuals/coildata.xls) spreadsheet is a fantastic way to learn about the ingredients of an electromagnet (coil gauge, winding count, current input, gauss output, etc.)
+2. [Electromagnets](http://www.coolmagnetman.com/magelect.htm):  In particular, the author's [coildata.xls](https://github.com/MatthewGerber/raspberry-py/blob/main/manuals/coildata.xls) 
+   spreadsheet is a fantastic way to learn about the ingredients of an electromagnet (coil gauge, winding count, current 
+   input, gauss output, etc.)
 3. [Brushed DC electric motor (Wikipedia)](https://en.wikipedia.org/wiki/Brushed_DC_electric_motor).
 
 Other parts can be found [here](cad-parts.md).
