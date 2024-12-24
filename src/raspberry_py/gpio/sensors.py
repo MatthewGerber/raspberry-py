@@ -1209,20 +1209,17 @@ class RotaryEncoder(Component):
         Phase-change modes.
         """
 
-        # Highest resolution with internal rotational direction detection. The primary benefit of this mode is that
-        # the rotational direction is detected internally; however, this comes at the potential cost of missed phase
-        # changes and consequent inaccuracy. Phase changes may be missed because there is only a single underlying
-        # thread used to process phase-change callbacks. The processing time required by the phase-change callbacks
-        # may cause concurrent phase-changes to be missed.
+        # Highest resolution, but phase changes may be missed because there is only a single underlying thread used to
+        # process the two interrupts associated with the white and green inputs. The processing time required by the
+        # interrupt callbacks may cause phase-changes to be missed.
         TWO_SIGNAL_TWO_EDGE = auto()
 
-        # 1/2 the highest resolution with external direction signal. The rotational direction cannot be detected
-        # internally because only a single signal is used. Phase changes are detected on both rising and falling
-        # edges.
+        # 1/2 the highest resolution, with phase changes detected on both rising and falling edges of a single signal.
+        # This only uses a single interrupt and callback.
         ONE_SIGNAL_TWO_EDGE = auto()
 
-        # 1/4 the highest resolution with external direction signal. Phase changes are detected only on a single
-        # edge of one signal.
+        # 1/4 the highest resolution, with phase changes detected on a single edge of a single signal. This only uses a
+        # single interrupt and callback.
         ONE_SIGNAL_ONE_EDGE = auto()
 
     @staticmethod
@@ -1266,8 +1263,10 @@ class RotaryEncoder(Component):
             """
             Initialize the state.
 
-            :param net_total_degrees: Net total degrees.
-            :param degrees: Degrees of rotation.
+            :param net_total_degrees: Net total degrees of rotation since the start of tracking. This is signed and
+            unbounded. For example, after two full clockwise rotations, this value will be 720. After two clockwise
+            rotations following by three counterclockwise rotations, this value will be -360.
+            :param degrees: Degrees of rotation in the range [-360,360].
             :param angular_velocity: Angular velocity (degrees/second).
             :param angular_acceleration: Angular acceleration (degrees/second^2).
             :param clockwise: Whether the encoder is turning in a clockwise direction.
@@ -1311,14 +1310,34 @@ class RotaryEncoder(Component):
             """
 
             return (
-                f'{self.net_total_degrees:.1f} deg @ {self.angular_velocity:.1f} deg/s @ '
+                f'{self.net_total_degrees:.1f} ({self.degrees:.1f}) deg @ {self.angular_velocity:.1f} deg/s @ '
                 f'{self.angular_acceleration} deg/s^2 clockwise={self.clockwise}'
             )
 
     class Interface(ABC):
         """
-        Abstract interface to a rotary encoder.
+        Abstract interface to a rotary encoder's state.
         """
+
+        def __init__(
+                self,
+                phase_change_mode: 'RotaryEncoder.PhaseChangeMode'
+        ):
+            """
+            Initialize the interface.
+
+            :param phase_change_mode: Phase-change mode.
+            """
+
+            self.phase_change_mode = phase_change_mode
+
+        @abstractmethod
+        def start(
+                self
+        ):
+            """
+            Start the interface.
+            """
 
         @abstractmethod
         def get_num_phase_changes(
@@ -1336,7 +1355,7 @@ class RotaryEncoder(Component):
                 self
         ) -> int:
             """
-            Get phase change index.
+            Get phase change index, which can be negative or positive depending on the direction of rotation.
 
             :return: Phase change index.
             """
@@ -1356,7 +1375,7 @@ class RotaryEncoder(Component):
                 self
         ):
             """
-            Clean up resources.
+            Clean up resources held by the interface.
             """
 
     class PiGPIO(Interface):
@@ -1366,39 +1385,12 @@ class RotaryEncoder(Component):
         subject to losses resulting from the Pi running a full operating system with shared scheduling across processes.
         """
 
-        @staticmethod
-        def check_args(
-                phase_b_pin: Optional[CkPin],
-                phase_change_mode: 'RotaryEncoder.PhaseChangeMode'
-        ):
-            """
-            Check arguments.
-
-            :param phase_b_pin: Phase-b pin.
-            :param phase_change_mode: Phase-change mode.
-            """
-
-            if phase_change_mode in [
-                RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_TWO_EDGE,
-                RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_ONE_EDGE
-            ]:
-                if phase_b_pin is not None:
-                    raise ValueError(
-                        f'Expected phase-b pin to be None when using {phase_change_mode} but got {phase_b_pin}.'
-                    )
-            else:
-                if phase_b_pin is None:
-                    raise ValueError(f'Expected phase-b pin to be non-None when using {phase_change_mode}.')
-
         def __init__(
                 self,
                 phase_change_mode: 'RotaryEncoder.PhaseChangeMode',
                 phase_a_pin: CkPin,
-                phase_b_pin: Optional[CkPin],
-                set_num_phase_changes: Optional[Callable[[int], None]] = None,
-                set_phase_change_index: Optional[Callable[[int], None]] = None,
-                get_clockwise: Optional[Callable[[], bool]] = None,
-                set_clockwise: Optional[Callable[[bool], None]] = None
+                phase_b_pin: CkPin,
+                on_update: Callable[[int, int, bool], None] = None
         ):
             """
             Initialize the interface.
@@ -1406,30 +1398,31 @@ class RotaryEncoder(Component):
             :param phase_change_mode: Phase-change mode.
             :param phase_a_pin: Phase-a pin.
             :param phase_b_pin: Phase-b pin. Only used when phase-change mode is `TWO_SIGNAL_TWO_EDGE`.
-            :param set_num_phase_changes: Function called when the number of phase changes is changed.
-            :param set_phase_change_index: Function called when the phase-change index changes.
-            :param get_clockwise: Function that gets an external clockwise value to use for `ONE_SIGNAL_TWO_EDGE` and
-            `ONE_SIGNAL_ONE_EDGE`.
-            :param set_clockwise: Function that sets an external clockwise value when using `TWO_SIGNAL_TWO_EDGE`.
+            :param on_update: Function to call with updated values for (1) number of phase changes, (2) phase-change
+            index, and (3) clockwise.
             """
 
-            RotaryEncoder.PiGPIO.check_args(phase_b_pin, phase_change_mode)
+            super().__init__(
+                phase_change_mode=phase_change_mode
+            )
 
-            self.phase_change_mode = phase_change_mode
             self.phase_a_pin = phase_a_pin
             self.phase_b_pin = phase_b_pin
-            self.set_num_phase_changes = set_num_phase_changes
-            self.set_phase_change_index = set_phase_change_index
-            self.get_clockwise_callback = get_clockwise
-            self.set_clockwise = set_clockwise
+            self.on_update = on_update
 
             self.num_phase_changes = 0
             self.phase_change_index = 0
             self.clockwise = False
 
-            # we always read the phase-a pin
+        def start(
+                self
+        ):
+            """
+            Start the interface.
+            """
+
             gpio.setup(self.phase_a_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
-            self.phase_a_high = gpio.input(self.phase_a_pin) == gpio.HIGH
+            gpio.setup(self.phase_b_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
 
             if self.phase_change_mode == RotaryEncoder.PhaseChangeMode.TWO_SIGNAL_TWO_EDGE:
 
@@ -1437,16 +1430,14 @@ class RotaryEncoder(Component):
                 gpio.add_event_detect(
                     self.phase_a_pin,
                     gpio.BOTH,
-                    callback=lambda channel: self.biphase_a_changed(gpio.input(self.phase_a_pin) == gpio.HIGH)
+                    callback=lambda channel: self.a_changed(gpio.input(self.phase_a_pin) == gpio.HIGH)
                 )
 
                 # detect rising and falling of the phase-b signal
-                gpio.setup(self.phase_b_pin, gpio.IN, pull_up_down=gpio.PUD_UP)
-                self.phase_b_high = gpio.input(self.phase_b_pin) == gpio.HIGH
                 gpio.add_event_detect(
                     self.phase_b_pin,
                     gpio.BOTH,
-                    callback=lambda channel: self.biphase_b_changed(gpio.input(self.phase_b_pin) == gpio.HIGH)
+                    callback=lambda channel: self.b_changed(gpio.input(self.phase_b_pin) == gpio.HIGH)
                 )
 
             elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_TWO_EDGE:
@@ -1455,7 +1446,7 @@ class RotaryEncoder(Component):
                 gpio.add_event_detect(
                     self.phase_a_pin,
                     gpio.BOTH,
-                    callback=lambda channel: self.uniphase_a_changed(gpio.input(self.phase_a_pin) == gpio.HIGH)
+                    callback=lambda channel: self.a_changed(gpio.input(self.phase_a_pin) == gpio.HIGH)
                 )
 
             elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_ONE_EDGE:
@@ -1464,13 +1455,13 @@ class RotaryEncoder(Component):
                 gpio.add_event_detect(
                     self.phase_a_pin,
                     gpio.RISING,
-                    callback=lambda channel: self.uniphase_a_up()
+                    callback=lambda channel: self.a_changed(True)
                 )
 
             else:
                 raise ValueError(f'Unknown phase-change mode:  {self.phase_change_mode}')
 
-        def biphase_a_changed(
+        def a_changed(
                 self,
                 high: bool
         ):
@@ -1480,9 +1471,7 @@ class RotaryEncoder(Component):
             :param high: Whether phase-a is high (True) or low (False).
             """
 
-            self.phase_a_high = high
-
-            if self.phase_a_high == self.phase_b_high:
+            if high == gpio.input(self.phase_b_pin):
                 self.phase_change_index = self.phase_change_index - 1
                 self.clockwise = False
             else:
@@ -1491,9 +1480,10 @@ class RotaryEncoder(Component):
 
             self.num_phase_changes += 1
 
-            self.run_callbacks()
+            if self.on_update is not None:
+                self.on_update(self.num_phase_changes, self.phase_change_index, self.clockwise)
 
-        def biphase_b_changed(
+        def b_changed(
                 self,
                 high: bool
         ):
@@ -1503,9 +1493,7 @@ class RotaryEncoder(Component):
             :param high: Whether phase-b is high (True) or low (False).
             """
 
-            self.phase_b_high = high
-
-            if self.phase_b_high == self.phase_a_high:
+            if high == gpio.input(self.phase_a_pin):
                 self.phase_change_index = self.phase_change_index + 1
                 self.clockwise = True
             else:
@@ -1514,64 +1502,8 @@ class RotaryEncoder(Component):
 
             self.num_phase_changes += 1
 
-            self.run_callbacks()
-
-        def uniphase_a_changed(
-                self,
-                high: bool
-        ):
-            """
-            Phase-a has changed.
-
-            :param high: Whether phase-a is high (True) or low (False).
-            """
-
-            self.phase_a_high = high
-            self.clockwise = self.get_clockwise_callback()
-
-            if self.clockwise:
-                self.phase_change_index = self.phase_change_index + 1
-            else:
-                self.phase_change_index = self.phase_change_index - 1
-
-            self.num_phase_changes += 1
-
-            self.run_callbacks()
-
-        def uniphase_a_up(
-                self
-        ):
-            """
-            Phase-a has risen.
-            """
-
-            self.phase_a_high = True
-            self.clockwise = self.get_clockwise_callback()
-
-            if self.clockwise:
-                self.phase_change_index = self.phase_change_index + 1
-            else:
-                self.phase_change_index = self.phase_change_index - 1
-
-            self.num_phase_changes += 1
-
-            self.run_callbacks()
-
-        def run_callbacks(
-                self
-        ):
-            """
-            Run callbacks.
-            """
-
-            if self.set_num_phase_changes is not None:
-                self.set_num_phase_changes(self.num_phase_changes)
-
-            if self.set_phase_change_index is not None:
-                self.set_phase_change_index(self.phase_change_index)
-
-            if self.set_clockwise is not None:
-                self.set_clockwise(self.clockwise)
+            if self.on_update is not None:
+                self.on_update(self.num_phase_changes, self.phase_change_index, self.clockwise)
 
         def get_num_phase_changes(
                 self
@@ -1614,15 +1546,10 @@ class RotaryEncoder(Component):
             Clean up resources.
             """
 
+            gpio.remove_event_detect(self.phase_a_pin)
+
             if self.phase_change_mode == RotaryEncoder.PhaseChangeMode.TWO_SIGNAL_TWO_EDGE:
-                gpio.remove_event_detect(self.phase_a_pin)
                 gpio.remove_event_detect(self.phase_b_pin)
-            elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_TWO_EDGE:
-                gpio.remove_event_detect(self.phase_a_pin)
-            elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_ONE_EDGE:
-                gpio.remove_event_detect(self.phase_a_pin)
-            else:
-                raise ValueError(f'Unknown phase-change mode:  {self.phase_change_mode}')
 
     class PiMultiprocess(Interface):
         """
@@ -1720,26 +1647,38 @@ class RotaryEncoder(Component):
             :param command_pipe: Command pipe that the command loop will use to receive commands and send return values.
             """
 
-            def set_num_phase_changes(value: int): num_phase_changes.value = value
-            def set_phase_change_index(value: int): phase_change_index.value = value
-            def get_clockwise() -> bool: return clockwise.value
-            def set_clockwise(value: bool): clockwise.value = value
+            def update(
+                    new_num_phase_changes: int,
+                    new_phase_change_index: int,
+                    new_clockwise: bool
+            ):
+                """
+                Update the shared-memory values with new rotary encoder state values.
 
+                :param new_num_phase_changes: Number of phase changes.
+                :param new_phase_change_index: Phase-change index.
+                :param new_clockwise: Clockwise.
+                """
+
+                num_phase_changes.value = new_num_phase_changes
+                phase_change_index.value = new_phase_change_index
+                clockwise.value = new_clockwise
+
+            # run the rotary encoder in the present process and update the shared-memory values back to the parent. the
+            # rotary encoder parameters (changes per rotation and step sizes) don't matter here, since we're only using
+            # this rotary encoder to obtain the shared-memory values for the present interface.
             rotary_encoder = RotaryEncoder(
                 RotaryEncoder.PiGPIO(
                     phase_change_mode=phase_change_mode,
                     phase_a_pin=phase_a_pin,
                     phase_b_pin=phase_b_pin,
-                    set_num_phase_changes=set_num_phase_changes,
-                    set_phase_change_index=set_phase_change_index,
-                    get_clockwise=get_clockwise,
-                    set_clockwise=set_clockwise
+                    on_update=update
                 ),
                 1,  # unused
-                phase_change_mode,
                 1.0,  # unused
                 1.0  # unused
             )
+            rotary_encoder.start()
 
             break_value = False
             while not break_value:
@@ -1750,31 +1689,25 @@ class RotaryEncoder(Component):
         def __init__(
                 self,
                 phase_a_pin: CkPin,
-                phase_b_pin: Optional[CkPin],
-                phase_change_mode: 'RotaryEncoder.PhaseChangeMode',
-                clockwise: Optional[Value] = None
+                phase_b_pin: CkPin,
+                phase_change_mode: 'RotaryEncoder.PhaseChangeMode'
         ):
             """
-            Initialize the multiprocess rotary encoder.
+            Initialize the multiprocess rotary encoder interface.
 
             :param phase_a_pin: Phase-a pin.
-            :param phase_b_pin: Phase-b pin. Only used when phase-change mode is `TWO_SIGNAL_TWO_EDGE`.
+            :param phase_b_pin: Phase-b pin.
             :param phase_change_mode: Phase-change mode.
-            :param clockwise: Clockwise value in shared memory. When `phase_change_mode` is `TWO_SIGNAL_TWO_EDGE`, then this
-            value will be set internally to reflect the current direction of the rotary encoder. This is possible because
-            both signals of the rotary encoder are being read, which allows the direction to be detected. When
-            `phase_change_mode` is `ONE_SIGNAL_TWO_EDGE` or `ONE_SIGNAL_ONE_EDGE`, then this value must be set externally to
-            tell the internal logic of this class which direction the rotary encoder is turning.
             """
 
-            if clockwise is None:
-                clockwise = Value('i', 0)
+            super().__init__(
+                phase_change_mode=phase_change_mode
+            )
 
             self.num_phase_changes = Value('i', 0)
             self.phase_change_index = Value('i', 0)
-            self.clockwise = clockwise
+            self.clockwise = Value('i', 0)
             self.parent_connection, self.child_connection = Pipe()
-
             self.process = Process(
                 target=self.run_command_loop,
                 args=(
@@ -1788,11 +1721,11 @@ class RotaryEncoder(Component):
                 )
             )
 
-        def wait_for_startup(
+        def start(
                 self
         ):
             """
-            Wait for startup. May raise errors if interprocess communication fails.
+            Start the interface.
             """
 
             self.process.start()
@@ -1802,11 +1735,43 @@ class RotaryEncoder(Component):
             return_value = self.parent_connection.recv()
             assert return_value is None
 
-        def wait_for_termination(
+        def get_num_phase_changes(
                 self
-        ):
+        ) -> int:
             """
-            Wait for termination. May raise errors if interprocess communication fails.
+            Get total number of phase changes.
+
+            :return: Number of phase changes, which is always positive. A phase change in either direction counts toward
+            this value.
+            """
+
+            return self.num_phase_changes.value
+
+        def get_phase_change_index(
+                self
+        ) -> int:
+            """
+            Get phase change index, which can be negative or positive depending on the direction of rotation.
+
+            :return: Phase change index.
+            """
+
+            return self.phase_change_index.value
+
+        def get_clockwise(
+                self
+        ) -> bool:
+            """
+            Get clockwise value.
+
+            :return: Clockwise.
+            """
+
+            return bool(self.clockwise.value)
+
+        def cleanup(self):
+            """
+            Clean up resources held by the interface.
             """
 
             self.parent_connection.send(
@@ -1815,6 +1780,32 @@ class RotaryEncoder(Component):
             return_value = self.parent_connection.recv()
             assert return_value is None
             self.process.join()
+
+    class Arduino(Interface):
+        """
+        Interface to the rotary encoder via serial connection to an Arduino board.
+        """
+
+        def __init__(
+                self,
+                phase_change_mode: 'RotaryEncoder.PhaseChangeMode'
+        ):
+            """
+            Initialize the interface.
+
+            :param phase_change_mode: Phase-change mode.
+            """
+
+            super().__init__(
+                phase_change_mode=phase_change_mode
+            )
+
+        def start(
+                self
+        ):
+            """
+            Start the interface.
+            """
 
         def get_num_phase_changes(self) -> int:
             pass
@@ -1826,19 +1817,12 @@ class RotaryEncoder(Component):
             pass
 
         def cleanup(self):
-            self.wait_for_termination()
-
-    class Arduino(Interface):
-        """
-        Interface to the rotary encoder via serial connection to an Arduino board.
-        """
-        pass
+            pass
 
     def __init__(
             self,
             interface: Interface,
             phase_changes_per_rotation: int,
-            phase_change_mode: 'RotaryEncoder.PhaseChangeMode',
             angular_velocity_step_size: float,
             angular_acceleration_step_size: float
     ):
@@ -1848,7 +1832,6 @@ class RotaryEncoder(Component):
         :param interface: Circuit interface.
         :param phase_changes_per_rotation: Number of phase changes per rotation. This is for a single signal (e.g.,
         only the phase-a signal).
-        :param phase_change_mode: Phase change mode.
         :param angular_velocity_step_size: Step size for angular velocity smoothing.
         :param angular_acceleration_step_size: Step size for angular acceleration smoothing.
         """
@@ -1863,13 +1846,12 @@ class RotaryEncoder(Component):
 
         self.interface = interface
         self.phase_changes_per_rotation = phase_changes_per_rotation
-        self.phase_change_mode = phase_change_mode
         self.angular_velocity_step_size = angular_velocity_step_size
         self.angular_acceleration_step_size = angular_acceleration_step_size
 
         self.phase_changes_per_degree = RotaryEncoder.get_phase_changes_per_degree(
             phase_changes_per_rotation=self.phase_changes_per_rotation,
-            phase_change_mode=self.phase_change_mode
+            phase_change_mode=self.interface.phase_change_mode
         )
         self.previous_state_time_epoch = None
         self.angular_velocity = IncrementalSampleAverager(
@@ -1880,6 +1862,15 @@ class RotaryEncoder(Component):
             0.0,
             self.angular_acceleration_step_size
         )
+
+    def start(
+            self
+    ):
+        """
+        Start the rotary encoder.
+        """
+
+        self.interface.start()
 
     def wait_for_stationarity(
             self,
@@ -2042,117 +2033,3 @@ class RotaryEncoder(Component):
         """
 
         self.interface.cleanup()
-
-
-# class DualMultiprocessRotaryEncoder(Component):
-#     """
-#     A two-process arrangement of monitoring for a rotary encoder that confers the benefits of two-signal direction
-#     detection with single-signal measurement accuracy.
-#     """
-#
-#     def __init__(
-#             self,
-#             speed_phase_a_pin: CkPin,
-#             direction_phase_a_pin: CkPin,
-#             direction_phase_b_pin: CkPin,
-#             phase_changes_per_rotation: int,
-#             angular_velocity_step_size: float,
-#             angular_acceleration_step_size: float
-#     ):
-#         """
-#         Initialize the rotary encoder.
-#
-#         :param speed_phase_a_pin: Phase-a pin for speed monitoring.
-#         :param direction_phase_a_pin: Phase-a pin for direction monitoring.
-#         :param direction_phase_b_pin: Phase-b pin for direction monitoring.
-#         :param phase_changes_per_rotation: Number of phase changes per rotation. This is for a single signal (e.g.,
-#         only the phase-a signal).
-#         :param angular_velocity_step_size: Step size for angular velocity smoothing.
-#         :param angular_acceleration_step_size: Step size for angular acceleration smoothing.
-#         """
-#
-#         super().__init__(
-#             MultiprocessRotaryEncoder.State(
-#                 0.0,
-#                 0.0,
-#                 0.0,
-#                 0.0,
-#                 False
-#             )
-#         )
-#
-#         self.speed_phase_a_pin = speed_phase_a_pin
-#         self.direction_phase_a_pin = direction_phase_a_pin
-#         self.direction_phase_b_pin = direction_phase_b_pin
-#         self.phase_changes_per_rotation = phase_changes_per_rotation
-#         self.angular_velocity_step_size = angular_velocity_step_size
-#         self.angular_acceleration_step_size = angular_acceleration_step_size
-#
-#         self.speed_encoder = MultiprocessRotaryEncoder(
-#             phase_a_pin=self.speed_phase_a_pin,
-#             phase_b_pin=None,
-#             phase_changes_per_rotation=self.phase_changes_per_rotation,
-#             phase_change_mode=RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_TWO_EDGE,
-#             angular_velocity_step_size=self.angular_velocity_step_size,
-#             angular_acceleration_step_size=self.angular_acceleration_step_size
-#         )
-#
-#         # link the encoder monitoring processes via the clockwise shared-memory indicator. the following rotary encoder
-#         # will set the clockwise value, which will be reflected in the measurements obtained by the previous rotary
-#         # encoder to measure speed.
-#         self.direction_encoder = MultiprocessRotaryEncoder(
-#             phase_a_pin=self.direction_phase_a_pin,
-#             phase_b_pin=self.direction_phase_b_pin,
-#             phase_changes_per_rotation=self.phase_changes_per_rotation,
-#             phase_change_mode=RotaryEncoder.PhaseChangeMode.TWO_SIGNAL_TWO_EDGE,
-#             angular_velocity_step_size=1.0,  # no effect. we only use the clockwise value from this rotary encoder.
-#             clockwise=self.speed_encoder.clockwise,
-#             angular_acceleration_step_size=1.0  # no effect. we only use the clockwise value from this rotary encoder.
-#         )
-#
-#     def wait_for_startup(
-#             self
-#     ):
-#         """
-#         Wait for startup. May raise errors if interprocess communication fails.
-#         """
-#
-#         self.speed_encoder.wait_for_startup()
-#         self.direction_encoder.wait_for_startup()
-#
-#     def update_state(
-#             self,
-#             update_velocity_and_acceleration: bool
-#     ):
-#         """
-#         Update state, giving positional information.
-#
-#         :param update_velocity_and_acceleration: Whether to update velocity and acceleration estimates.
-#         """
-#
-#         self.speed_encoder.update_state(update_velocity_and_acceleration)
-#         self.set_state(self.speed_encoder.state)
-#
-#     def wait_for_termination(
-#             self
-#     ):
-#         """
-#         Wait for termination. May raise errors if interprocess communication fails.
-#         """
-#
-#         error = None
-#
-#         # noinspection PyBroadException
-#         try:
-#             self.speed_encoder.wait_for_termination()
-#         except Exception as e:
-#             error = e
-#
-#         # noinspection PyBroadException
-#         try:
-#             self.direction_encoder.wait_for_termination()
-#         except Exception as e:
-#             error = e
-#
-#         if error is not None:
-#             raise error
