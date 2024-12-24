@@ -1,20 +1,30 @@
 import time
 
-from raspberry_py.gpio import CkPin, setup, cleanup
+import serial
+from serial import Serial
+
+from raspberry_py.gpio import setup, cleanup
 from raspberry_py.gpio.sensors import RotaryEncoder
 
 
 def main():
     """
-    Example of using a direct GPIO interface to a rotary encoder.
+    Example of using an Arduino interface to a rotary encoder.
     """
 
     setup()
+    ser = Serial(
+        port='/dev/serial0',
+        baudrate=9600,
+        parity=serial.PARITY_NONE,
+        stopbits=serial.STOPBITS_ONE,
+        bytesize=serial.EIGHTBITS
+    )
     encoder = RotaryEncoder(
-        RotaryEncoder.PiGPIO(
-            phase_change_mode=RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_ONE_EDGE,
-            phase_a_pin=CkPin.GPIO17,
-            phase_b_pin=CkPin.GPIO27
+        RotaryEncoder.Arduino(
+            phase_change_mode=RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_TWO_EDGE,
+            serial=ser,
+            identifier=1
         ),
         phase_changes_per_rotation=1200,
         angular_velocity_step_size=1.0,
@@ -35,6 +45,7 @@ def main():
     except KeyboardInterrupt:
         pass
     encoder.cleanup()
+    ser.close()
     cleanup()
 
 

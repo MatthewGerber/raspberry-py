@@ -7,7 +7,7 @@ import signal
 import subprocess
 import time
 from abc import abstractmethod, ABC
-from enum import Enum, auto
+from enum import Enum, auto, IntEnum
 from multiprocessing import Value, Process, Pipe
 # noinspection PyProtectedMember
 from multiprocessing.connection import Connection
@@ -17,6 +17,7 @@ from typing import Optional, List, Callable, Tuple, Any
 import RPi.GPIO as gpio
 import cv2
 import numpy as np
+from serial import Serial
 
 from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.adc import AdcDevice
@@ -1340,34 +1341,14 @@ class RotaryEncoder(Component):
             """
 
         @abstractmethod
-        def get_num_phase_changes(
+        def get_state(
                 self
-        ) -> int:
+        ) -> Tuple[int, int, bool]:
             """
-            Get total number of phase changes.
+            Get state.
 
-            :return: Number of phase changes, which is always positive. A phase change in either direction counts toward
-            this value.
-            """
-
-        @abstractmethod
-        def get_phase_change_index(
-                self
-        ) -> int:
-            """
-            Get phase change index, which can be negative or positive depending on the direction of rotation.
-
-            :return: Phase change index.
-            """
-
-        @abstractmethod
-        def get_clockwise(
-                self
-        ) -> bool:
-            """
-            Get clockwise value.
-
-            :return: Clockwise.
+            :return: 3-tuple of (1) number of phase changes, which is always positive, (2) phase change index, which can
+            be negative or positive depending on the direction of rotation, and (3) clockwise indicator.
             """
 
         @abstractmethod
@@ -1505,39 +1486,17 @@ class RotaryEncoder(Component):
             if self.on_update is not None:
                 self.on_update(self.num_phase_changes, self.phase_change_index, self.clockwise)
 
-        def get_num_phase_changes(
+        def get_state(
                 self
-        ) -> int:
+        ) -> Tuple[int, int, bool]:
             """
-            Get total number of phase changes.
+            Get state.
 
-            :return: Number of phase changes, which is always positive. A phase change in either direction counts toward
-            this value.
-            """
-
-            return self.num_phase_changes
-
-        def get_phase_change_index(
-                self
-        ) -> int:
-            """
-            Get phase change index.
-
-            :return: Phase change index.
+            :return: 3-tuple of (1) number of phase changes, which is always positive, (2) phase change index, which can
+            be negative or positive depending on the direction of rotation, and (3) clockwise indicator.
             """
 
-            return self.phase_change_index
-
-        def get_clockwise(
-                self
-        ) -> bool:
-            """
-            Get clockwise value.
-
-            :return: Clockwise.
-            """
-
-            return self.clockwise
+            return self.num_phase_changes, self.phase_change_index, self.clockwise
 
         def cleanup(
                 self
@@ -1735,39 +1694,17 @@ class RotaryEncoder(Component):
             return_value = self.parent_connection.recv()
             assert return_value is None
 
-        def get_num_phase_changes(
+        def get_state(
                 self
-        ) -> int:
+        ) -> Tuple[int, int, bool]:
             """
-            Get total number of phase changes.
+            Get state.
 
-            :return: Number of phase changes, which is always positive. A phase change in either direction counts toward
-            this value.
-            """
-
-            return self.num_phase_changes.value
-
-        def get_phase_change_index(
-                self
-        ) -> int:
-            """
-            Get phase change index, which can be negative or positive depending on the direction of rotation.
-
-            :return: Phase change index.
+            :return: 3-tuple of (1) number of phase changes, which is always positive, (2) phase change index, which can
+            be negative or positive depending on the direction of rotation, and (3) clockwise indicator.
             """
 
-            return self.phase_change_index.value
-
-        def get_clockwise(
-                self
-        ) -> bool:
-            """
-            Get clockwise value.
-
-            :return: Clockwise.
-            """
-
-            return bool(self.clockwise.value)
+            return self.num_phase_changes.value, self.phase_change_index.value, bool(self.clockwise.value)
 
         def cleanup(self):
             """
@@ -1786,19 +1723,35 @@ class RotaryEncoder(Component):
         Interface to the rotary encoder via serial connection to an Arduino board.
         """
 
+        class Command(IntEnum):
+            """
+            Commands that can be sent to the Arduino.
+            """
+
+            START_INTERRUPTS = 0
+            GET_STATE = 1
+            STOP_INTERRUPTS = 2
+
         def __init__(
                 self,
-                phase_change_mode: 'RotaryEncoder.PhaseChangeMode'
+                phase_change_mode: 'RotaryEncoder.PhaseChangeMode',
+                serial: Serial,
+                identifier: int
         ):
             """
             Initialize the interface.
 
             :param phase_change_mode: Phase-change mode.
+            :param serial: Serial connection to the Arduino.
+            :param identifier: Identifier associated with the rotary encoder on the Pi and Arduino.
             """
 
             super().__init__(
                 phase_change_mode=phase_change_mode
             )
+
+            self.serial = serial
+            self.identifier = identifier
 
         def start(
                 self
@@ -1807,17 +1760,35 @@ class RotaryEncoder(Component):
             Start the interface.
             """
 
-        def get_num_phase_changes(self) -> int:
-            pass
+            self.serial.write(RotaryEncoder.Arduino.Command.START_INTERRUPTS.to_bytes() + self.identifier.to_bytes())
 
-        def get_phase_change_index(self) -> int:
-            pass
+        def get_state(
+                self
+        ) -> Tuple[int, int, bool]:
+            """
+            Get state.
 
-        def get_clockwise(self) -> bool:
-            pass
+            :return: 3-tuple of (1) number of phase changes, which is always positive, (2) phase change index, which can
+            be negative or positive depending on the direction of rotation, and (3) clockwise indicator.
+            """
 
-        def cleanup(self):
-            pass
+            self.serial.write(RotaryEncoder.Arduino.Command.GET_STATE.to_bytes() + self.identifier.to_bytes())
+            state_bytes = self.serial.read(9)
+            num_phase_changes = int.from_bytes(state_bytes[0:4], signed=False)
+            phase_change_index = int.from_bytes(state_bytes[4:8], signed=True)
+            clockwise = bool(int.from_bytes(state_bytes[8:9], signed=False))
+
+            return num_phase_changes, phase_change_index, clockwise
+
+        def cleanup(
+                self
+        ):
+            """
+            Clean up resources held by the interface.
+            """
+
+            command = RotaryEncoder.Arduino.Command.STOP_INTERRUPTS.to_bytes() + self.identifier.to_bytes()
+            self.serial.write(command)
 
     def __init__(
             self,
@@ -1883,11 +1854,11 @@ class RotaryEncoder(Component):
         """
 
         logging.info('Waiting for stationarity.')
-        previous_num_phase_changes = self.interface.get_num_phase_changes()
+        previous_num_phase_changes = self.interface.get_state()[0]
         time.sleep(wait_interval_seconds)
-        while self.interface.get_num_phase_changes() != previous_num_phase_changes:
+        while self.interface.get_state()[0] != previous_num_phase_changes:
             logging.debug('Waiting for stationarity.')
-            previous_num_phase_changes = self.interface.get_num_phase_changes()
+            previous_num_phase_changes = self.interface.get_state()[0]
             time.sleep(wait_interval_seconds)
 
         logging.info('Stationary.')
@@ -1906,9 +1877,9 @@ class RotaryEncoder(Component):
         :param update_velocity_and_acceleration: Whether to update velocity and acceleration estimates.
         """
 
-        net_total_degrees = self.interface.get_phase_change_index() / self.phase_changes_per_degree
+        _, phase_change_index, clockwise = self.interface.get_state()
+        net_total_degrees = phase_change_index / self.phase_changes_per_degree
         degrees = net_total_degrees % 360.0
-        clockwise = bool(self.interface.get_clockwise())
 
         if update_velocity_and_acceleration:
 
