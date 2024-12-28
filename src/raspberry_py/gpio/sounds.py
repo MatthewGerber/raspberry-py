@@ -25,7 +25,7 @@ class ActiveBuzzer(Component):
             """
             Initialize the state.
 
-            :param on: Whether or not the buzzer is on.
+            :param on: Whether the buzzer is on.
             """
 
             self.on = on

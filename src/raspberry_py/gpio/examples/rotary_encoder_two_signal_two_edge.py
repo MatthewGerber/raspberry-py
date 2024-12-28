@@ -12,13 +12,13 @@ def main():
     setup()
     encoder = RotaryEncoder(
         RotaryEncoder.PiGPIO(
+            phase_a_pin=CkPin.GPIO22,
+            phase_b_pin=CkPin.GPIO5,
+            phase_changes_per_rotation=1200,
             phase_change_mode=RotaryEncoder.PhaseChangeMode.TWO_SIGNAL_TWO_EDGE,
-            phase_a_pin=CkPin.GPIO17,
-            phase_b_pin=CkPin.GPIO27
-        ),
-        phase_changes_per_rotation=1200,
-        angular_velocity_step_size=1.0,
-        angular_acceleration_step_size=1.0
+            angular_velocity_step_size=1.0,
+            angular_acceleration_step_size=1.0
+        )
     )
     encoder.start()
     try:
@@ -29,6 +29,7 @@ def main():
             print(
                 f'Clockwise:  {state.clockwise}\n'
                 f'Degrees:  {state.degrees}\n'
+                f'Net degrees:  {state.net_total_degrees}\n'
                 f'Velocity:  {state.angular_velocity} deg/s\n'
                 f'Acceleration:  {state.angular_acceleration} deg/s^2\n'
             )
