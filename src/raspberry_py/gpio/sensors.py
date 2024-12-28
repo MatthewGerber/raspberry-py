@@ -1630,7 +1630,8 @@ class RotaryEncoder(Component):
                 angular_velocity_step_size: float,
                 angular_acceleration_step_size: float,
                 serial: Serial,
-                identifier: int
+                identifier: int,
+                state_update_hz: int
         ):
             """
             Initialize the interface.
@@ -1638,6 +1639,7 @@ class RotaryEncoder(Component):
             :param phase_change_mode: Phase-change mode.
             :param serial: Serial connection to the Arduino.
             :param identifier: Identifier associated with the rotary encoder on the Pi and Arduino.
+            :param state_update_hz: State updates per second.
             """
 
             super().__init__(
@@ -1651,6 +1653,7 @@ class RotaryEncoder(Component):
 
             self.serial = serial
             self.identifier = identifier
+            self.state_update_hz = state_update_hz
 
         def start(
                 self
@@ -1667,7 +1670,8 @@ class RotaryEncoder(Component):
                 self.phase_changes_per_rotation.to_bytes(2) +
                 self.phase_change_mode.value.to_bytes(1) +
                 struct.pack('f', self.angular_velocity_step_size) +
-                struct.pack('f', self.angular_acceleration_step_size)
+                struct.pack('f', self.angular_acceleration_step_size) +
+                self.state_update_hz.to_bytes(1)
             )
 
         def wait_for_stationarity(
@@ -1700,8 +1704,7 @@ class RotaryEncoder(Component):
 
             self.serial.write(
                 RotaryEncoder.Arduino.Command.GET_STATE.to_bytes(1) +
-                self.identifier.to_bytes(1) +
-                int(update_velocity_and_acceleration).to_bytes(1)
+                self.identifier.to_bytes(1)
             )
 
             state_bytes = self.serial.read(17)
