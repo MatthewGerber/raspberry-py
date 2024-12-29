@@ -1321,8 +1321,8 @@ class RotaryEncoder(Component):
 
         def __init__(
                 self,
-                phase_a_pin: CkPin,
-                phase_b_pin: CkPin,
+                phase_a_pin: int,
+                phase_b_pin: int,
                 phase_changes_per_rotation: int,
                 phase_change_mode: 'RotaryEncoder.PhaseChangeMode',
                 angular_velocity_step_size: float,
@@ -1419,8 +1419,8 @@ class RotaryEncoder(Component):
             """
 
             super().__init__(
-                phase_a_pin=phase_a_pin,
-                phase_b_pin=phase_b_pin,
+                phase_a_pin=phase_a_pin.value,
+                phase_b_pin=phase_b_pin.value,
                 phase_changes_per_rotation=phase_changes_per_rotation,
                 phase_change_mode=phase_change_mode,
                 angular_velocity_step_size=angular_velocity_step_size,
@@ -1623,8 +1623,8 @@ class RotaryEncoder(Component):
 
         def __init__(
                 self,
-                phase_a_pin: CkPin,
-                phase_b_pin: CkPin,
+                phase_a_pin: int,
+                phase_b_pin: int,
                 phase_changes_per_rotation: int,
                 phase_change_mode: 'RotaryEncoder.PhaseChangeMode',
                 angular_velocity_step_size: float,
@@ -1665,8 +1665,8 @@ class RotaryEncoder(Component):
             self.serial.write(
                 RotaryEncoder.Arduino.Command.START.to_bytes(1) +
                 self.identifier.to_bytes(1) +
-                self.phase_a_pin.value.to_bytes(1) +
-                self.phase_b_pin.value.to_bytes(1) +
+                self.phase_a_pin.to_bytes(1) +
+                self.phase_b_pin.to_bytes(1) +
                 self.phase_changes_per_rotation.to_bytes(2) +
                 self.phase_change_mode.value.to_bytes(1) +
                 struct.pack('f', self.angular_velocity_step_size) +
@@ -1707,14 +1707,17 @@ class RotaryEncoder(Component):
                 self.identifier.to_bytes(1)
             )
 
-            state_bytes = self.serial.read(17)
+            state_bytes = self.serial.read(13)
+
+            net_total_degrees = struct.unpack('f', state_bytes[0:4])[0]
+            degrees = net_total_degrees % 360.0
 
             return RotaryEncoder.State(
-                net_total_degrees=int.from_bytes(state_bytes[0:4], signed=True),
-                degrees=struct.unpack('f', state_bytes[4:8])[0],
-                angular_velocity=struct.unpack('f', state_bytes[8:12])[0],
-                angular_acceleration=struct.unpack('f', state_bytes[12:16])[0],
-                clockwise=bool(int.from_bytes(state_bytes[16:17], signed=False))
+                net_total_degrees=net_total_degrees,
+                degrees=degrees,
+                angular_velocity=struct.unpack('f', state_bytes[4:8])[0],
+                angular_acceleration=struct.unpack('f', state_bytes[8:12])[0],
+                clockwise=bool(int.from_bytes(state_bytes[12:13], signed=False))
             )
 
         def cleanup(
