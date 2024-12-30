@@ -13,12 +13,14 @@ def main():
     """
 
     setup()
-    ser = Serial(
-        port='/dev/serial0',
-        baudrate=9600,
-        parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
-        bytesize=serial.EIGHTBITS
+    locking_serial = RotaryEncoder.Arduino.LockingSerial(
+        connection=Serial(
+            port='/dev/serial0',
+            baudrate=9600,
+            parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_ONE,
+            bytesize=serial.EIGHTBITS
+        )
     )
     arduino_interface = RotaryEncoder.Arduino(
         phase_a_pin=3,
@@ -27,7 +29,7 @@ def main():
         phase_change_mode=RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_TWO_EDGE,
         angular_velocity_step_size=1.0,
         angular_acceleration_step_size=1.0,
-        serial=ser,
+        serial=locking_serial,
         identifier=1,
         state_update_hz=20
     )
@@ -36,7 +38,7 @@ def main():
     try:
         while True:
             time.sleep(1.0 / arduino_interface.state_update_hz)
-            encoder.update_state(True)
+            encoder.update_state()
             state: RotaryEncoder.State = encoder.get_state()
             print(
                 f'Net total degrees:  {state.net_total_degrees}\n'
@@ -48,7 +50,7 @@ def main():
     except KeyboardInterrupt:
         pass
     encoder.cleanup()
-    ser.close()
+    locking_serial.connection.close()
     cleanup()
 
 

@@ -1361,25 +1361,25 @@ class RotaryEncoder(Component):
             """
 
         @abstractmethod
-        def wait_for_stationarity(
-                self,
-                wait_interval_seconds: float
-        ):
-            """
-            Wait for the rotary encoder to become stationary.
-
-            :param wait_interval_seconds: Wait interval (seconds).
-            """
-
-        @abstractmethod
         def get_state(
                 self,
-                update_velocity_and_acceleration: bool
+                update_velocity_and_acceleration: bool = True
         ) -> 'RotaryEncoder.State':
             """
             Get state.
 
             :param update_velocity_and_acceleration: Whether to update velocity and acceleration estimates.
+            """
+
+        @abstractmethod
+        def set_net_total_degrees(
+                self,
+                net_total_degrees: float
+        ):
+            """
+            Set net total degrees.
+
+            :param net_total_degrees: Net total degrees.
             """
 
         @abstractmethod
@@ -1431,7 +1431,6 @@ class RotaryEncoder(Component):
             self.clockwise = False
             self.previous_state_time_epoch = None
             self.net_total_degrees = 0.0
-            self.degrees = 0.0
             self.angular_velocity = IncrementalSampleAverager(
                 0.0,
                 self.angular_velocity_step_size
@@ -1522,32 +1521,9 @@ class RotaryEncoder(Component):
                 self.phase_change_index = self.phase_change_index - 1
                 self.clockwise = False
 
-        def wait_for_stationarity(
-                self,
-                wait_interval_seconds: float
-        ):
-            """
-            Wait for the rotary encoder to become stationary.
-
-            :param wait_interval_seconds: Wait interval (seconds).
-            """
-
-            logging.info('Waiting for stationarity.')
-            net_total_degrees = None
-            while (new_net_total_degrees := self.get_state(False).net_total_degrees) != net_total_degrees:
-                net_total_degrees = new_net_total_degrees
-                logging.debug('Waiting for stationarity.')
-                time.sleep(wait_interval_seconds)
-
-            logging.info('Stationary.')
-
-            self.angular_velocity.reset()
-            self.angular_acceleration.reset()
-            self.previous_state_time_epoch = None
-
         def get_state(
                 self,
-                update_velocity_and_acceleration: bool
+                update_velocity_and_acceleration: bool = True
         ) -> 'RotaryEncoder.State':
             """
             Get state.
@@ -1584,15 +1560,26 @@ class RotaryEncoder(Component):
                 self.previous_state_time_epoch = current_state_time_epoch
 
             self.net_total_degrees = net_total_degrees
-            self.degrees = self.net_total_degrees % 360.0
 
             return RotaryEncoder.State(
                 net_total_degrees=self.net_total_degrees,
-                degrees=self.degrees,
+                degrees=self.net_total_degrees % 360.0,
                 angular_velocity=self.angular_velocity.get_value(),
                 angular_acceleration=self.angular_acceleration.get_value(),
                 clockwise=self.clockwise
             )
+
+        def set_net_total_degrees(
+                self,
+                net_total_degrees: float
+        ):
+            """
+            Set net total degrees.
+
+            :param net_total_degrees: Net total degrees.
+            """
+
+            self.net_total_degrees = net_total_degrees
 
         def cleanup(
                 self
@@ -1611,6 +1598,25 @@ class RotaryEncoder(Component):
         Interface to the rotary encoder via serial connection to an Arduino board.
         """
 
+        class LockingSerial:
+            """
+            Serial connection with a lock object for use across multiple rotary encoders.
+            """
+
+            def __init__(
+                    self,
+                    connection: Serial
+            ):
+                """
+                Initialize the serial connection.
+
+                :param connection: Serial connection.
+                """
+
+                self.connection = connection
+
+                self.lock = Lock()
+
         class Command(IntEnum):
             """
             Commands that can be sent to the Arduino.
@@ -1618,7 +1624,7 @@ class RotaryEncoder(Component):
 
             START = 1
             GET_STATE = 2
-            WAIT_FOR_STATIONARITY = 3
+            SET_NET_TOTAL_DEGREES = 3
             STOP = 4
 
         def __init__(
@@ -1629,7 +1635,7 @@ class RotaryEncoder(Component):
                 phase_change_mode: 'RotaryEncoder.PhaseChangeMode',
                 angular_velocity_step_size: float,
                 angular_acceleration_step_size: float,
-                serial: Serial,
+                serial: LockingSerial,
                 identifier: int,
                 state_update_hz: int
         ):
@@ -1655,6 +1661,32 @@ class RotaryEncoder(Component):
             self.identifier = identifier
             self.state_update_hz = state_update_hz
 
+        @staticmethod
+        def get_bytes(
+                value: float
+        ) -> bytes:
+            """
+            Get bytes for a float.
+
+            :param value: Value.
+            :return: Bytes.
+            """
+
+            return struct.pack('f', value)
+
+        @staticmethod
+        def get_float(
+            float_bytes: bytes
+        ) -> float:
+            """
+            Get float for bytes.
+
+            :param float_bytes: Bytes.
+            :return: Float.
+            """
+
+            return struct.unpack('f', float_bytes)[0]
+
         def start(
                 self
         ):
@@ -1662,39 +1694,22 @@ class RotaryEncoder(Component):
             Start the interface.
             """
 
-            self.serial.write(
-                RotaryEncoder.Arduino.Command.START.to_bytes(1) +
-                self.identifier.to_bytes(1) +
-                self.phase_a_pin.to_bytes(1) +
-                self.phase_b_pin.to_bytes(1) +
-                self.phase_changes_per_rotation.to_bytes(2) +
-                self.phase_change_mode.value.to_bytes(1) +
-                struct.pack('f', self.angular_velocity_step_size) +
-                struct.pack('f', self.angular_acceleration_step_size) +
-                self.state_update_hz.to_bytes(1)
-            )
-
-        def wait_for_stationarity(
-                self,
-                wait_interval_seconds: float
-        ):
-            """
-            Wait for the rotary encoder to become stationary.
-
-            :param wait_interval_seconds: Wait interval (seconds).
-            """
-
-            self.serial.write(
-                RotaryEncoder.Arduino.Command.WAIT_FOR_STATIONARITY.to_bytes(1) +
-                self.identifier.to_bytes(1)
-            )
-            stationary = bool(int.from_bytes(self.serial.read(1), signed=False))
-            if not stationary:
-                raise ValueError('Expected stationary to be True.')
+            with self.serial.lock:
+                self.serial.connection.write(
+                    RotaryEncoder.Arduino.Command.START.to_bytes(1) +
+                    self.identifier.to_bytes(1) +
+                    self.phase_a_pin.to_bytes(1) +
+                    self.phase_b_pin.to_bytes(1) +
+                    self.phase_changes_per_rotation.to_bytes(2) +
+                    self.phase_change_mode.value.to_bytes(1) +
+                    RotaryEncoder.Arduino.get_bytes(self.angular_velocity_step_size) +
+                    RotaryEncoder.Arduino.get_bytes(self.angular_acceleration_step_size) +
+                    self.state_update_hz.to_bytes(1)
+                )
 
         def get_state(
                 self,
-                update_velocity_and_acceleration: bool
+                update_velocity_and_acceleration: bool = True
         ) -> 'RotaryEncoder.State':
             """
             Get state.
@@ -1702,22 +1717,38 @@ class RotaryEncoder(Component):
             :param update_velocity_and_acceleration: Whether to update velocity and acceleration estimates.
             """
 
-            self.serial.write(
-                RotaryEncoder.Arduino.Command.GET_STATE.to_bytes(1) +
-                self.identifier.to_bytes(1)
-            )
+            with self.serial.lock:
+                self.serial.connection.write(
+                    RotaryEncoder.Arduino.Command.GET_STATE.to_bytes(1) +
+                    self.identifier.to_bytes(1)
+                )
 
-            state_bytes = self.serial.read(13)
+                state_bytes = self.serial.connection.read(13)
+                net_total_degrees = RotaryEncoder.Arduino.get_float(state_bytes[0:4])
+                degrees = net_total_degrees % 360.0
 
-            net_total_degrees = struct.unpack('f', state_bytes[0:4])[0]
-            degrees = net_total_degrees % 360.0
+                return RotaryEncoder.State(
+                    net_total_degrees=net_total_degrees,
+                    degrees=degrees,
+                    angular_velocity=RotaryEncoder.Arduino.get_float(state_bytes[4:8]),
+                    angular_acceleration=RotaryEncoder.Arduino.get_float(state_bytes[8:12]),
+                    clockwise=bool(int.from_bytes(state_bytes[12:13], signed=False))
+                )
 
-            return RotaryEncoder.State(
-                net_total_degrees=net_total_degrees,
-                degrees=degrees,
-                angular_velocity=struct.unpack('f', state_bytes[4:8])[0],
-                angular_acceleration=struct.unpack('f', state_bytes[8:12])[0],
-                clockwise=bool(int.from_bytes(state_bytes[12:13], signed=False))
+        def set_net_total_degrees(
+                self,
+                net_total_degrees: float
+        ):
+            """
+            Set net total degrees.
+
+            :param net_total_degrees: Net total degrees.
+            """
+
+            self.serial.connection.write(
+                RotaryEncoder.Arduino.Command.SET_NET_TOTAL_DEGREES.to_bytes(1) +
+                self.identifier.to_bytes(1) +
+                RotaryEncoder.Arduino.get_bytes(net_total_degrees)
             )
 
         def cleanup(
@@ -1727,7 +1758,8 @@ class RotaryEncoder(Component):
             Clean up resources held by the interface.
             """
 
-            self.serial.write(RotaryEncoder.Arduino.Command.STOP.to_bytes() + self.identifier.to_bytes())
+            with self.serial.lock:
+                self.serial.connection.write(RotaryEncoder.Arduino.Command.STOP.to_bytes() + self.identifier.to_bytes())
 
     def __init__(
             self,
@@ -1760,7 +1792,7 @@ class RotaryEncoder(Component):
 
     def wait_for_stationarity(
             self,
-            wait_interval_seconds: float
+            wait_interval_seconds: float = 1.0
     ):
         """
         Wait for the rotary encoder to become stationary.
@@ -1768,11 +1800,18 @@ class RotaryEncoder(Component):
         :param wait_interval_seconds: Wait interval (seconds).
         """
 
-        self.interface.wait_for_stationarity(wait_interval_seconds)
+        logging.info('Waiting for stationarity.')
+        net_total_degrees = None
+        while (new_net_total_degrees := self.interface.get_state().net_total_degrees) != net_total_degrees:
+            net_total_degrees = new_net_total_degrees
+            logging.debug('Waiting for stationarity.')
+            time.sleep(wait_interval_seconds)
+
+        logging.info('Stationary.')
 
     def update_state(
             self,
-            update_velocity_and_acceleration: bool
+            update_velocity_and_acceleration: bool = True
     ):
         """
         Update state.
@@ -1782,9 +1821,21 @@ class RotaryEncoder(Component):
 
         self.set_state(self.interface.get_state(update_velocity_and_acceleration))
 
+    def set_net_total_degrees(
+            self,
+            net_total_degrees: float
+    ):
+        """
+        Set net total degrees.
+
+        :param net_total_degrees: Net total degrees.
+        """
+
+        self.interface.set_net_total_degrees(net_total_degrees)
+
     def get_net_total_degrees(
             self,
-            update_velocity_and_acceleration: bool
+            update_velocity_and_acceleration: bool = True
     ) -> float:
         """
         Get net total degrees.
@@ -1800,7 +1851,7 @@ class RotaryEncoder(Component):
 
     def get_degrees(
             self,
-            update_velocity_and_acceleration: bool
+            update_velocity_and_acceleration: bool = True
     ) -> float:
         """
         Get degrees.
@@ -1816,7 +1867,7 @@ class RotaryEncoder(Component):
 
     def get_angular_velocity(
             self,
-            update_velocity_and_acceleration: bool
+            update_velocity_and_acceleration: bool = True
     ) -> float:
         """
         Get angular velocity.
@@ -1832,7 +1883,7 @@ class RotaryEncoder(Component):
 
     def get_angular_acceleration(
             self,
-            update_velocity_and_acceleration: bool
+            update_velocity_and_acceleration: bool = True
     ) -> float:
         """
         Get angular acceleration.
@@ -1848,7 +1899,7 @@ class RotaryEncoder(Component):
 
     def get_clockwise(
             self,
-            update_velocity_and_acceleration: bool
+            update_velocity_and_acceleration: bool = True
     ) -> bool:
         """
         Get clockwise.
@@ -1866,7 +1917,7 @@ class RotaryEncoder(Component):
             self
     ):
         """
-        Release GPIO event detection.
+        Cleanup the interface.
         """
 
         self.interface.cleanup()
