@@ -18,13 +18,13 @@ repository = 'https://github.com/MatthewGerber/raspberry-py'
 [tool.poetry.dependencies]
 python = '>=3.10,<3.13'
 numpy = '~=1.26'
-'RPi.GPIO' = '~=0.7'
 smbus2 = '~=0.4'
 Flask = '~=3.0'
 Flask-Cors = '~=4.0'
 opencv-python = '~=4.8'
 rpi-ws281x = '~=5.0'
 pyserial = "^3.5"
+rpi-lgpio = "^0.6"
 
 [tool.poetry.group.dev.dependencies]
 mypy = '~=1.10'
