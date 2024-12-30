@@ -1254,6 +1254,7 @@ class RotaryEncoder(Component):
 
         def __init__(
                 self,
+                num_phase_changes: int,
                 net_total_degrees: float,
                 degrees: float,
                 angular_velocity: float,
@@ -1263,6 +1264,7 @@ class RotaryEncoder(Component):
             """
             Initialize the state.
 
+            :param num_phase_changes: Number of phase changes, which is unsigned and unbounded.
             :param net_total_degrees: Net total degrees of rotation since the start of tracking. This is signed and
             unbounded. For example, after two full clockwise rotations, this value will be 720. After two clockwise
             rotations following by three counterclockwise rotations, this value will be -360.
@@ -1272,6 +1274,7 @@ class RotaryEncoder(Component):
             :param clockwise: Whether the encoder is turning in a clockwise direction.
             """
 
+            self.num_phase_changes = num_phase_changes
             self.net_total_degrees = net_total_degrees
             self.degrees = degrees
             self.angular_velocity = angular_velocity
@@ -1293,6 +1296,7 @@ class RotaryEncoder(Component):
                 raise ValueError(f'Expected a {RotaryEncoder.State}')
 
             return (
+                self.num_phase_changes == other.num_phase_changes and
                 self.net_total_degrees == other.net_total_degrees and
                 self.degrees == other.degrees and
                 self.angular_velocity == other.angular_velocity and
@@ -1427,6 +1431,7 @@ class RotaryEncoder(Component):
                 angular_acceleration_step_size=angular_acceleration_step_size
             )
 
+            self.num_phase_changes = 0
             self.phase_change_index = 0
             self.clockwise = False
             self.previous_state_time_epoch = None
@@ -1504,6 +1509,8 @@ class RotaryEncoder(Component):
                 self.phase_change_index = self.phase_change_index + 1
                 self.clockwise = True
 
+            self.num_phase_changes += 1
+
         def b_changed(
                 self,
                 high: bool
@@ -1520,6 +1527,8 @@ class RotaryEncoder(Component):
             else:
                 self.phase_change_index = self.phase_change_index - 1
                 self.clockwise = False
+
+            self.num_phase_changes += 1
 
         def get_state(
                 self,
@@ -1562,6 +1571,7 @@ class RotaryEncoder(Component):
             self.net_total_degrees = net_total_degrees
 
             return RotaryEncoder.State(
+                num_phase_changes=self.num_phase_changes,
                 net_total_degrees=self.net_total_degrees,
                 degrees=self.net_total_degrees % 360.0,
                 angular_velocity=self.angular_velocity.get_value(),
@@ -1595,7 +1605,13 @@ class RotaryEncoder(Component):
 
     class Arduino(Interface):
         """
-        Interface to the rotary encoder via serial connection to an Arduino board.
+        Interface to the rotary encoder via serial connection to an Arduino board. To enable UART-based serial
+        communication on the Raspberry Pi:
+
+        1. Disable the serial command line by editing `/boot/firmware/cmdline.txt` to remove `console=serial0,115200`.
+        2. Add `enable_uart=1` to `/boot/firmware/config.txt`.
+        3. Use `sudo raspi-config` to disable the serial shell and enable UART.
+        4. Reboot.
         """
 
         class LockingSerial:
@@ -1723,16 +1739,18 @@ class RotaryEncoder(Component):
                     self.identifier.to_bytes(1)
                 )
 
-                state_bytes = self.serial.connection.read(13)
-                net_total_degrees = RotaryEncoder.Arduino.get_float(state_bytes[0:4])
+                state_bytes = self.serial.connection.read(17)
+                num_phase_changes = int.from_bytes(state_bytes[0:4], signed=False)
+                net_total_degrees = RotaryEncoder.Arduino.get_float(state_bytes[4:8])
                 degrees = net_total_degrees % 360.0
 
                 return RotaryEncoder.State(
+                    num_phase_changes=num_phase_changes,
                     net_total_degrees=net_total_degrees,
                     degrees=degrees,
-                    angular_velocity=RotaryEncoder.Arduino.get_float(state_bytes[4:8]),
-                    angular_acceleration=RotaryEncoder.Arduino.get_float(state_bytes[8:12]),
-                    clockwise=bool(int.from_bytes(state_bytes[12:13], signed=False))
+                    angular_velocity=RotaryEncoder.Arduino.get_float(state_bytes[8:12]),
+                    angular_acceleration=RotaryEncoder.Arduino.get_float(state_bytes[12:16]),
+                    clockwise=bool(int.from_bytes(state_bytes[16:17], signed=False))
                 )
 
         def set_net_total_degrees(
@@ -1772,6 +1790,7 @@ class RotaryEncoder(Component):
         """
 
         super().__init__(RotaryEncoder.State(
+            0,
             0.0,
             0.0,
             0.0,
@@ -1801,9 +1820,9 @@ class RotaryEncoder(Component):
         """
 
         logging.info('Waiting for stationarity.')
-        net_total_degrees = None
-        while (new_net_total_degrees := self.interface.get_state().net_total_degrees) != net_total_degrees:
-            net_total_degrees = new_net_total_degrees
+        num_phase_changes = None
+        while (new_num_phase_changes := self.interface.get_state().num_phase_changes) != num_phase_changes:
+            num_phase_changes = new_num_phase_changes
             logging.debug('Waiting for stationarity.')
             time.sleep(wait_interval_seconds)
 
