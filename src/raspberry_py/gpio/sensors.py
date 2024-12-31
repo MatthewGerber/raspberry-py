@@ -16,10 +16,10 @@ from typing import Optional, List, Callable, Tuple
 import RPi.GPIO as gpio
 import cv2
 import numpy as np
-from serial import Serial
 
 from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.adc import AdcDevice
+from raspberry_py.gpio.communication import LockingSerial
 from raspberry_py.gpio.controls import TwoPoleButton
 from raspberry_py.utils import IncrementalSampleAverager
 
@@ -1614,25 +1614,6 @@ class RotaryEncoder(Component):
         4. Reboot.
         """
 
-        class LockingSerial:
-            """
-            Serial connection with a lock object for use across multiple rotary encoders.
-            """
-
-            def __init__(
-                    self,
-                    connection: Serial
-            ):
-                """
-                Initialize the serial connection.
-
-                :param connection: Serial connection.
-                """
-
-                self.connection = connection
-
-                self.lock = Lock()
-
         class Command(IntEnum):
             """
             Commands that can be sent to the Arduino.
@@ -1710,18 +1691,18 @@ class RotaryEncoder(Component):
             Start the interface.
             """
 
-            with self.serial.lock:
-                self.serial.connection.write(
-                    RotaryEncoder.Arduino.Command.START.to_bytes(1) +
-                    self.identifier.to_bytes(1) +
-                    self.phase_a_pin.to_bytes(1) +
-                    self.phase_b_pin.to_bytes(1) +
-                    self.phase_changes_per_rotation.to_bytes(2) +
-                    self.phase_change_mode.value.to_bytes(1) +
-                    RotaryEncoder.Arduino.get_bytes(self.angular_velocity_step_size) +
-                    RotaryEncoder.Arduino.get_bytes(self.angular_acceleration_step_size) +
-                    self.state_update_hz.to_bytes(1)
-                )
+            self.serial.write_then_read(
+                RotaryEncoder.Arduino.Command.START.to_bytes(1) +
+                self.identifier.to_bytes(1) +
+                self.phase_a_pin.to_bytes(1) +
+                self.phase_b_pin.to_bytes(1) +
+                self.phase_changes_per_rotation.to_bytes(2) +
+                self.phase_change_mode.value.to_bytes(1) +
+                RotaryEncoder.Arduino.get_bytes(self.angular_velocity_step_size) +
+                RotaryEncoder.Arduino.get_bytes(self.angular_acceleration_step_size) +
+                self.state_update_hz.to_bytes(1),
+                0
+            )
 
         def get_state(
                 self,
@@ -1733,25 +1714,22 @@ class RotaryEncoder(Component):
             :param update_velocity_and_acceleration: Whether to update velocity and acceleration estimates.
             """
 
-            with self.serial.lock:
-                self.serial.connection.write(
-                    RotaryEncoder.Arduino.Command.GET_STATE.to_bytes(1) +
-                    self.identifier.to_bytes(1)
-                )
+            state_bytes = self.serial.write_then_read(
+                RotaryEncoder.Arduino.Command.GET_STATE.to_bytes(1) + self.identifier.to_bytes(1),
+                17
+            )
+            num_phase_changes = int.from_bytes(state_bytes[0:4], signed=False)
+            net_total_degrees = RotaryEncoder.Arduino.get_float(state_bytes[4:8])
+            degrees = net_total_degrees % 360.0
 
-                state_bytes = self.serial.connection.read(17)
-                num_phase_changes = int.from_bytes(state_bytes[0:4], signed=False)
-                net_total_degrees = RotaryEncoder.Arduino.get_float(state_bytes[4:8])
-                degrees = net_total_degrees % 360.0
-
-                return RotaryEncoder.State(
-                    num_phase_changes=num_phase_changes,
-                    net_total_degrees=net_total_degrees,
-                    degrees=degrees,
-                    angular_velocity=RotaryEncoder.Arduino.get_float(state_bytes[8:12]),
-                    angular_acceleration=RotaryEncoder.Arduino.get_float(state_bytes[12:16]),
-                    clockwise=bool(int.from_bytes(state_bytes[16:17], signed=False))
-                )
+            return RotaryEncoder.State(
+                num_phase_changes=num_phase_changes,
+                net_total_degrees=net_total_degrees,
+                degrees=degrees,
+                angular_velocity=RotaryEncoder.Arduino.get_float(state_bytes[8:12]),
+                angular_acceleration=RotaryEncoder.Arduino.get_float(state_bytes[12:16]),
+                clockwise=bool(int.from_bytes(state_bytes[16:17], signed=False))
+            )
 
         def set_net_total_degrees(
                 self,
@@ -1763,10 +1741,11 @@ class RotaryEncoder(Component):
             :param net_total_degrees: Net total degrees.
             """
 
-            self.serial.connection.write(
+            self.serial.write_then_read(
                 RotaryEncoder.Arduino.Command.SET_NET_TOTAL_DEGREES.to_bytes(1) +
                 self.identifier.to_bytes(1) +
-                RotaryEncoder.Arduino.get_bytes(net_total_degrees)
+                RotaryEncoder.Arduino.get_bytes(net_total_degrees),
+                0
             )
 
         def cleanup(
@@ -1776,8 +1755,10 @@ class RotaryEncoder(Component):
             Clean up resources held by the interface.
             """
 
-            with self.serial.lock:
-                self.serial.connection.write(RotaryEncoder.Arduino.Command.STOP.to_bytes() + self.identifier.to_bytes())
+            self.serial.write_then_read(
+                RotaryEncoder.Arduino.Command.STOP.to_bytes() + self.identifier.to_bytes(),
+                0
+            )
 
     def __init__(
             self,

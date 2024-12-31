@@ -4,6 +4,7 @@ import serial
 from serial import Serial
 
 from raspberry_py.gpio import setup, cleanup
+from raspberry_py.gpio.communication import LockingSerial
 from raspberry_py.gpio.sensors import RotaryEncoder
 
 
@@ -13,7 +14,7 @@ def main():
     """
 
     setup()
-    locking_serial = RotaryEncoder.Arduino.LockingSerial(
+    locking_serial = LockingSerial(
         connection=Serial(
             port='/dev/serial0',
             baudrate=9600,
