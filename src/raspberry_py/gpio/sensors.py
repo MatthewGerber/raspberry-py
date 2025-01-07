@@ -1259,7 +1259,8 @@ class RotaryEncoder(Component):
                 degrees: float,
                 angular_velocity: float,
                 angular_acceleration: float,
-                clockwise: bool
+                clockwise: bool,
+                epoch_ms: int
         ):
             """
             Initialize the state.
@@ -1272,6 +1273,7 @@ class RotaryEncoder(Component):
             :param angular_velocity: Angular velocity (degrees/second).
             :param angular_acceleration: Angular acceleration (degrees/second^2).
             :param clockwise: Whether the encoder is turning in a clockwise direction.
+            :param epoch_ms: Epoch milliseconds.
             """
 
             self.num_phase_changes = num_phase_changes
@@ -1280,6 +1282,7 @@ class RotaryEncoder(Component):
             self.angular_velocity = angular_velocity
             self.angular_acceleration = angular_acceleration
             self.clockwise = clockwise
+            self.epoch_ms = epoch_ms
 
         def __eq__(
                 self,
@@ -1301,7 +1304,8 @@ class RotaryEncoder(Component):
                 self.degrees == other.degrees and
                 self.angular_velocity == other.angular_velocity and
                 self.angular_acceleration == other.angular_acceleration and
-                self.clockwise == other.clockwise
+                self.clockwise == other.clockwise and
+                self.epoch_ms == other.epoch_ms
             )
 
         def __str__(
@@ -1576,7 +1580,8 @@ class RotaryEncoder(Component):
                 degrees=self.net_total_degrees % 360.0,
                 angular_velocity=self.angular_velocity.get_value(),
                 angular_acceleration=self.angular_acceleration.get_value(),
-                clockwise=self.clockwise
+                clockwise=self.clockwise,
+                epoch_ms=int(time.time())
             )
 
         def set_net_total_degrees(
@@ -1716,7 +1721,7 @@ class RotaryEncoder(Component):
 
             state_bytes = self.serial.write_then_read(
                 RotaryEncoder.Arduino.Command.GET_STATE.to_bytes(1) + self.identifier.to_bytes(1),
-                17
+                21
             )
             num_phase_changes = int.from_bytes(state_bytes[0:4], signed=False)
             net_total_degrees = RotaryEncoder.Arduino.get_float(state_bytes[4:8])
@@ -1728,7 +1733,8 @@ class RotaryEncoder(Component):
                 degrees=degrees,
                 angular_velocity=RotaryEncoder.Arduino.get_float(state_bytes[8:12]),
                 angular_acceleration=RotaryEncoder.Arduino.get_float(state_bytes[12:16]),
-                clockwise=bool(int.from_bytes(state_bytes[16:17], signed=False))
+                clockwise=bool(int.from_bytes(state_bytes[16:17], signed=False)),
+                epoch_ms=int.from_bytes(state_bytes[17:21], signed=False)
             )
 
         def set_net_total_degrees(
@@ -1776,7 +1782,8 @@ class RotaryEncoder(Component):
             0.0,
             0.0,
             0.0,
-            False
+            False,
+            0
         ))
 
         self.interface = interface
