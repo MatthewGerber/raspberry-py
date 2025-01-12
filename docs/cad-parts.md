@@ -23,6 +23,26 @@ but the defaults work quite well. Support structures are effective and efficient
 difficult to choose; however, at under $200 with generally quite positive reviews, it is difficult to get past the
 [Creality Ender-3](https://www.creality.com/products/ender-3-3d-printer). It was simple to assemble and has been 
 cranking out high-quality pieces since the start.
+* Automatic bed leveling: I added the [CR Touch Automatic Leveling Kit](https://www.amazon.com/Creality-Leveling-Compatible-Mainboard-Printer/dp/B098LQ9WPX/ref=sr_1_3?th=1) 
+to my Ender 3. The sensor comes with a mounting bracket for the Ender 3; however, it isn't truly designed for this model,
+and I had previously replaced the hot end with something different. As a result, the sensor was mounted too far above
+the bed, which caused the hot end to drop down into the bed. After much experimenting and searching, I found that the 
+sensor needed to be offset down toward the bed in order for everything to work. I did this by adding spacers as shown
+below:
+  
+  ![cr-touch-spacers](cr-touch-spacers.png)
+
+  The steps for calibrating the leveling probe's z-offset are as follows:
+  1. Auto-home the printer and disable the steppers.
+  2. Move the z-axis to identify appropriate z-offset, using a sheet of A4 paper for thickness. Note this value.
+  3. Auto-home the printer and disable the steppers.
+  4. Set the leveling probe's z-offset to the value noted in (2) and save the configuration settings.
+  5. Level the bed. The hot end should be in the correct position above the bed, with the z-value showing 0.0 on the 
+  printer display. Octoprint has a [bed leveling visualizer plugin](https://plugins.octoprint.org/plugins/bedlevelvisualizer), which 
+  displays the bed mesh as shown below:
+  ![bed-mesh](bed-mesh.png)
+  6. Add `G28 G29` to your slicer's g-code preamble. The `G28` (home) command is probably already present, in which case
+  you just tack on `G29` (level bed).
 * 3D printer web interface:  I use [OctoPrint](https://octoprint.org) with my Raspberry Pi as an efficient and easy way
 to manage print jobs. See [here](octoprint.md) for tips on configuring OctoPrint on the Pi.
 
