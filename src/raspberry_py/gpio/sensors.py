@@ -1624,7 +1624,7 @@ class RotaryEncoder(Component):
             Commands that can be sent to the Arduino.
             """
 
-            START = 1
+            INIT = 1
             GET_STATE = 2
             SET_NET_TOTAL_DEGREES = 3
             STOP = 4
@@ -1697,7 +1697,7 @@ class RotaryEncoder(Component):
             """
 
             self.serial.write_then_read(
-                RotaryEncoder.Arduino.Command.START.to_bytes(1) +
+                RotaryEncoder.Arduino.Command.INIT.to_bytes(1) +
                 self.identifier.to_bytes(1) +
                 self.phase_a_pin.to_bytes(1) +
                 self.phase_b_pin.to_bytes(1) +
