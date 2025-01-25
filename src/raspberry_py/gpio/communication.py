@@ -27,7 +27,7 @@ class LockingSerial:
         self.throughput_step_size = throughput_step_size
 
         self.lock = Lock()
-        self.read_write_timestamp: Optional[float] = None
+        self.throughput_time_epoch_seconds: Optional[float] = None
         self.bytes_read_per_second = 0.0
         self.bytes_written_per_second = 0.0
 
@@ -58,17 +58,17 @@ class LockingSerial:
                 raise ValueError(f'Expected to read {read_length} byte(s) but read {num_bytes_read}.')
 
             # update throughput estimates
-            current_time = time.time()
-            if self.read_write_timestamp is not None:
-                elapsed_time = current_time - self.read_write_timestamp
+            current_time_epoch_seconds = time.time()
+            if self.throughput_time_epoch_seconds is not None:
+                elapsed_seconds = current_time_epoch_seconds - self.throughput_time_epoch_seconds
                 self.bytes_written_per_second = (
                     (1.0 - self.throughput_step_size) * self.bytes_written_per_second +
-                    self.throughput_step_size * (len(data) / elapsed_time)
+                    self.throughput_step_size * (len(data) / elapsed_seconds)
                 )
                 self.bytes_read_per_second = (
                     (1.0 - self.throughput_step_size) * self.bytes_read_per_second +
-                    self.throughput_step_size * (num_bytes_read / elapsed_time)
+                    self.throughput_step_size * (num_bytes_read / elapsed_seconds)
                 )
-            self.read_write_timestamp = current_time
+            self.throughput_time_epoch_seconds = current_time_epoch_seconds
 
             return bytes_read

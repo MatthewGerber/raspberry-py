@@ -247,6 +247,9 @@ class DcMotorDriverIndirectArduino(DcMotorDriver):
         :param new_state: New state.
         """
 
+        new_speed = None
+        promise_ms = None
+
         if not previous_state.on and new_state.on:
             self.serial.write_then_read(
                 DcMotorDriverIndirectArduino.Command.INIT.to_bytes(1) +
@@ -256,17 +259,19 @@ class DcMotorDriverIndirectArduino(DcMotorDriver):
                 0
             )
         elif previous_state.on and not new_state.on:
-            self.serial.write_then_read(
-                DcMotorDriverIndirectArduino.Command.SET_SPEED.to_bytes(1) +
-                (0).to_bytes(2) +
-                (0).to_bytes(0),
-                0
-            )
+            new_speed = 0
+            promise_ms = 0
         else:
+            new_speed = -new_state.speed if self.reverse else new_state.speed
+            promise_ms = self.next_set_speed_promise_ms if self.send_promise else 0
+
+        if new_speed is not None and promise_ms is not None:
             self.serial.write_then_read(
                 DcMotorDriverIndirectArduino.Command.SET_SPEED.to_bytes(1) +
-                (-new_state.speed if self.reverse else new_state.speed).to_bytes(2) +
-                self.next_set_speed_promise_ms.to_bytes(2) if self.send_promise else (0).to_bytes(2),
+                self.identifier.to_bytes(1) +
+                abs(new_speed).to_bytes(2) +
+                bool(new_speed > 0).to_bytes(1) +
+                promise_ms.to_bytes(2),
                 0
             )
 

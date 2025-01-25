@@ -1762,7 +1762,8 @@ class RotaryEncoder(Component):
             """
 
             self.serial.write_then_read(
-                RotaryEncoder.Arduino.Command.STOP.to_bytes() + self.identifier.to_bytes(),
+                RotaryEncoder.Arduino.Command.STOP.to_bytes() +
+                self.identifier.to_bytes(),
                 0
             )
 
