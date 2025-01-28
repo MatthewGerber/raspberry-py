@@ -270,7 +270,7 @@ class DcMotorDriverIndirectArduino(DcMotorDriver):
                 DcMotorDriverIndirectArduino.Command.SET_SPEED.to_bytes(1) +
                 self.identifier.to_bytes(1) +
                 abs(new_speed).to_bytes(2) +
-                bool(new_speed > 0).to_bytes(1) +
+                (new_speed > 0).to_bytes(1) +
                 promise_ms.to_bytes(2),
                 0
             )
