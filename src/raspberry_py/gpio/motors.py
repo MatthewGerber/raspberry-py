@@ -2,12 +2,14 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from datetime import timedelta, datetime
+from enum import IntEnum
 from typing import Optional, Callable
 
 import RPi.GPIO as gpio
 import numpy as np
 
 from raspberry_py.gpio import Component, CkPin
+from raspberry_py.gpio.communication import LockingSerial
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
 
 
@@ -215,6 +217,92 @@ class DcMotorDriverIndirectPCA9685PW(DcMotorDriver):
         self.reverse = reverse
 
         gpio.setup(self.direction_pin, gpio.OUT)
+
+
+class DcMotorDriverIndirectArduino(DcMotorDriver):
+    """
+    Motor driver via serial connection to an Arduino board, which controls the DC motor. This is an indirect driver, in
+    that the outputs go first to the Arduino. How the DC motor is controlled from that point is unspecified. The
+    Arduino might directly control the DC motor with PWM, or it might control it indirectly via a DC motor controller
+    board.
+    """
+
+    class Command(IntEnum):
+        """
+        Commands that can be sent to the Arduino.
+        """
+
+        INIT = 1
+        SET_SPEED = 5
+
+    def change_state(
+            self,
+            previous_state: 'DcMotor.State',
+            new_state: 'DcMotor.State'
+    ):
+        """
+        Change state.
+
+        :param previous_state: Previous state.
+        :param new_state: New state.
+        """
+
+        new_speed = None
+        promise_ms = None
+
+        if not previous_state.on and new_state.on:
+            self.serial.write_then_read(
+                DcMotorDriverIndirectArduino.Command.INIT.to_bytes(1) +
+                self.identifier.to_bytes(1) +
+                self.arduino_direction_pin.to_bytes(1) +
+                self.arduino_pwm_pin.to_bytes(1),
+                0
+            )
+        elif previous_state.on and not new_state.on:
+            new_speed = 0
+            promise_ms = 0
+        else:
+            new_speed = -new_state.speed if self.reverse else new_state.speed
+            promise_ms = self.next_set_speed_promise_ms if self.send_promise else 0
+
+        if new_speed is not None and promise_ms is not None:
+            self.serial.write_then_read(
+                DcMotorDriverIndirectArduino.Command.SET_SPEED.to_bytes(1) +
+                self.identifier.to_bytes(1) +
+                abs(new_speed).to_bytes(2) +
+                (new_speed > 0).to_bytes(1) +
+                promise_ms.to_bytes(2),
+                0
+            )
+
+    def __init__(
+            self,
+            identifier: int,
+            serial: LockingSerial,
+            arduino_direction_pin: int,
+            arduino_pwm_pin: int,
+            next_set_speed_promise_ms: int,
+            reverse: bool = False
+    ):
+        """
+        Initialize the driver.
+
+        :param identifier: Identifier.
+        :param serial: Serial connection to the Arduino.
+        :param arduino_direction_pin: Direction pin on the Arduino.
+        :param arduino_pwm_pin: PWM pin on the Arduino.
+        :param next_set_speed_promise_ms: Milliseconds within which the next speed will be set.
+        :param reverse: Whether to reverse speed upon output.
+        """
+
+        self.identifier = identifier
+        self.serial = serial
+        self.arduino_direction_pin = arduino_direction_pin
+        self.arduino_pwm_pin = arduino_pwm_pin
+        self.next_set_speed_promise_ms = next_set_speed_promise_ms
+        self.reverse = reverse
+
+        self.send_promise = False
 
 
 class DcMotor(Component):

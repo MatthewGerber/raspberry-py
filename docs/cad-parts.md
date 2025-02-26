@@ -31,7 +31,7 @@ sensor needed to be offset down toward the bed in order for everything to work. 
 below:
   
   ![cr-touch-spacers](cr-touch-spacers.png)
- 
+
   After installing the hardware, flash the printer with the correct firmware [here](https://www.creality.com/products/cr-touch-auto-leveling-kit).
 Download the firmware bundle prefixed with the printer name (e.g., "Ender-3 CR Touch Firmware" for an Ender 3 printer, or 
 "Ender-3 V2 CR Touch Firmware" for an Ender 3 V2 printer). Within the bundle, select the board version. Note that 4.2.2 is 
@@ -40,25 +40,45 @@ connection for the probe. Clear an SD card and place the firmware binary onto th
 "firmware.bin", insert the SD card, and turn the printer off/on. The display should indicate that the firmware has been 
 updated. Sometimes this is finicky, and the board doesn't take the firmware. Renaming the file "firmware-123.bin" or 
 "Ender 3 firmware.bin" might work. The steps for calibrating the leveling probe's z-offset are as follows:
-  1. Auto-home the printer and disable the steppers.
-  2. Move the z-axis to identify appropriate z-offset, using a sheet of A4 paper for thickness. Note this value.
-  3. Auto-home the printer and disable the steppers.
-  4. Set the leveling probe's z-offset to the value noted in (2) and save the configuration settings.
-  5. Level the bed. The hot end should be in the correct position above the bed, with the z-value showing 0.0 on the 
-  printer display. Octoprint has a [bed leveling visualizer plugin](https://plugins.octoprint.org/plugins/bedlevelvisualizer), which 
+  1. Auto-home the printer.
+  2. Move the z-axis to identify the appropriate z-offset, using a sheet of A4 paper for thickness. Note the z-offset 
+     that causes the nozzle to just slightly grab the paper. Call this `adjustment`.
+  3. Auto-home the printer.
+  4. Access the leveling probe's z-offset and note its value. Call this `current`. Then set the leveling probe's 
+     z-offset to `current + adjustment`.
+  5. Save the configuration settings.
+  6. Level the bed. The hot end should be in the correct position above the bed, with the z-value showing 0.0 on the 
+  printer display and a very small gap between the nozzle and bed.
+  7. Add `G28 G29` to your slicer's g-code preamble. The `G28` (home) command is probably already present, in which case
+  you just tack on `G29` (level bed).
+  8. Octoprint has a [bed leveling visualizer plugin](https://plugins.octoprint.org/plugins/bedlevelvisualizer), which 
   displays the bed mesh as shown below:
   ![bed-mesh](bed-mesh.png)
-  6. Add `G28 G29` to your slicer's g-code preamble. The `G28` (home) command is probably already present, in which case
+  9. Add `G28 G29` to your slicer's g-code preamble. The `G28` (home) command is probably already present, in which case
   you just tack on `G29` (level bed).
-  
+
   After installing the new firmware, I kept running into underextrusion issues. It took a while to realize that the new 
   firmware was configured with a lower extrusion rate than the stock Ender 3 firmware. The process for calibrating the
   extrusion rate (or e-steps) is as follows:
   1. asdf
-  
+  2. asdf
+
 * 3D printer web interface:  I use [OctoPrint](https://octoprint.org) with my Raspberry Pi as an efficient and easy way
 to manage print jobs. See [here](octoprint.md) for tips on configuring OctoPrint on the Pi.
-
+* Tips for changing the bowden tube and nozzle, particularly when the extruder stepper motor is skipping, the extruder 
+  gear is slipping on the filament, or the printer is under-extruding.
+  1. Remove the nozzle:  The flat end should be clean without any filament sitting on top, which might indicate that the 
+     bowden tube isn't tightly seated against the nozzle entry within the hot end.
+  2. Replace the bowden tube.
+     1. Replace the tube couplings in the extruder and hot end to ensure they will properly grab the new tube.
+     2. Heat the hot end.
+     3. Tighten the nozzle.
+     4. Loosen the nozzle 1/2 a turn.
+     5. Insert the bowden tube firmly and fully into the hot end coupling.
+     6. Tighten the nozzle, which seats the bowden tube firmly against the nozzle.
+     7. Trim the tube to length for the extruder so that it can easily reach all print positions.
+     8. Insert the bowden tube firmly and fully into the extruder coupling.
+     9. Level the bed if needed.
 
 # Robotic Arm
 
