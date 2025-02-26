@@ -31,8 +31,15 @@ sensor needed to be offset down toward the bed in order for everything to work. 
 below:
   
   ![cr-touch-spacers](cr-touch-spacers.png)
-
-  The steps for calibrating the leveling probe's z-offset are as follows:
+ 
+  After installing the hardware, flash the printer with the correct firmware [here](https://www.creality.com/products/cr-touch-auto-leveling-kit).
+Download the firmware bundle prefixed with the printer name (e.g., "Ender-3 CR Touch Firmware" for an Ender 3 printer, or 
+"Ender-3 V2 CR Touch Firmware" for an Ender 3 V2 printer). Within the bundle, select the board version. Note that 4.2.2 is 
+an early board that requires a special adapter to plug the bed leveling probe into, whereas the 4.2.7 board has a direct 
+connection for the probe. Clear an SD card and place the firmware binary onto the card as the only file. Name the file 
+"firmware.bin", insert the SD card, and turn the printer off/on. The display should indicate that the firmware has been 
+updated. Sometimes this is finicky, and the board doesn't take the firmware. Renaming the file "firmware-123.bin" or 
+"Ender 3 firmware.bin" might work. The steps for calibrating the leveling probe's z-offset are as follows:
   1. Auto-home the printer and disable the steppers.
   2. Move the z-axis to identify appropriate z-offset, using a sheet of A4 paper for thickness. Note this value.
   3. Auto-home the printer and disable the steppers.
@@ -43,8 +50,15 @@ below:
   ![bed-mesh](bed-mesh.png)
   6. Add `G28 G29` to your slicer's g-code preamble. The `G28` (home) command is probably already present, in which case
   you just tack on `G29` (level bed).
+  
+  After installing the new firmware, I kept running into underextrusion issues. It took a while to realize that the new 
+  firmware was configured with a lower extrusion rate than the stock Ender 3 firmware. The process for calibrating the
+  extrusion rate (or e-steps) is as follows:
+  1. asdf
+  
 * 3D printer web interface:  I use [OctoPrint](https://octoprint.org) with my Raspberry Pi as an efficient and easy way
 to manage print jobs. See [here](octoprint.md) for tips on configuring OctoPrint on the Pi.
+
 
 # Robotic Arm
 
