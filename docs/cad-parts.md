@@ -57,11 +57,19 @@ updated. Sometimes this is finicky, and the board doesn't take the firmware. Ren
   9. Add `G28 G29` to your slicer's g-code preamble. The `G28` (home) command is probably already present, in which case
   you just tack on `G29` (level bed).
 
-  After installing the new firmware, I kept running into underextrusion issues. It took a while to realize that the new 
+  After installing the new firmware, I kept running into under-extrusion issues. It took a while to realize that the new 
   firmware was configured with a lower extrusion rate than the stock Ender 3 firmware. The process for calibrating the
   extrusion rate (or e-steps) is as follows:
-  1. asdf
-  2. asdf
+  1. Use the menu options to manually extrude 10cm (100mm) of filament.
+  2. Measure how many mm of filament is actually extruded, and call this `actual mm`. If this equals 100mm exactly, then 
+     there is no need to calibrate the e-steps. If `actual mm` does not equal 100mm, then proceed.
+  3. View the extruder's current `steps/mm` value. This is the number of steps that the printer believes it takes to 
+     extrude 1mm of filament. Multiply `steps/mm * 100 mm` to obtain `actual steps`, the number of extruder steps taken 
+     to extrude the length `actual mm`. 
+  4. Calculate `actuals steps / actual mm` to obtain the calibrated steps/mm value. Enter this into the settings. For
+     example:
+       1. Under-extrusion:  (0.81 steps/mm * 100mm intended) / (93mm actual) = 0.87 steps/mm calibrated
+       2. Over-extrusion:  (0.81 steps/mm * 100mm intended) / (117mm actual) = 0.69 steps/mm calibrated
 
 * 3D printer web interface:  I use [OctoPrint](https://octoprint.org) with my Raspberry Pi as an efficient and easy way
 to manage print jobs. See [here](octoprint.md) for tips on configuring OctoPrint on the Pi.
