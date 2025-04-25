@@ -43,18 +43,17 @@ updated. Sometimes this is finicky, and the board doesn't take the firmware. Ren
   1. Auto-home the printer.
   2. Move the z-axis to identify the appropriate z-offset, using a sheet of A4 paper for thickness. Note the z-offset 
      that causes the nozzle to just slightly grab the paper. Call this `adjustment`.
-  3. Auto-home the printer.
-  4. Access the leveling probe's z-offset and note its value. Call this `current`. Then set the leveling probe's 
+  3. Access the leveling probe's z-offset and note its value. Call this `current`. Then set the leveling probe's 
      z-offset to `current + adjustment`.
-  5. Save the configuration settings.
-  6. Level the bed. The hot end should be in the correct position above the bed, with the z-value showing 0.0 on the 
+  4. Save the configuration settings.
+  5. Level the bed. The hot end should be in the correct position above the bed, with the z-value showing 0.0 on the 
   printer display and a very small gap between the nozzle and bed.
-  7. Add `G28 G29` to your slicer's g-code preamble. The `G28` (home) command is probably already present, in which case
+  6. Add `G28 G29` to your slicer's g-code preamble. The `G28` (home) command is probably already present, in which case
   you just tack on `G29` (level bed).
-  8. Octoprint has a [bed leveling visualizer plugin](https://plugins.octoprint.org/plugins/bedlevelvisualizer), which 
+  7. Octoprint has a [bed leveling visualizer plugin](https://plugins.octoprint.org/plugins/bedlevelvisualizer), which 
   displays the bed mesh as shown below:
   ![bed-mesh](bed-mesh.png)
-  9. Add `G28 G29` to your slicer's g-code preamble. The `G28` (home) command is probably already present, in which case
+  8. Add `G28 G29` to your slicer's g-code preamble. The `G28` (home) command is probably already present, in which case
   you just tack on `G29` (level bed).
 
   After installing the new firmware, I kept running into under-extrusion issues. It took a while to realize that the new 
@@ -78,11 +77,11 @@ to manage print jobs. See [here](octoprint.md) for tips on configuring OctoPrint
   1. Remove the nozzle:  The flat end should be clean without any filament sitting on top, which might indicate that the 
      bowden tube isn't tightly seated against the nozzle entry within the hot end.
   2. Replace the bowden tube.
-     1. Replace the tube couplings in the extruder and hot end to ensure they will properly grab the new tube.
-     2. Heat the hot end.
-     3. Tighten the nozzle.
-     4. Loosen the nozzle 1/2 a turn.
-     5. Insert the bowden tube firmly and fully into the hot end coupling.
+     1. Replace the tube couplings in the extruder and hot end to ensure they will properly grab the new tube. 
+     2. Tighten the nozzle.
+     3. Loosen the nozzle 3/4 a turn.
+     4. Insert the bowden tube firmly and fully into the hot end coupling.
+     5. Heat the hot end.
      6. Tighten the nozzle, which seats the bowden tube firmly against the nozzle.
      7. Trim the tube to length for the extruder so that it can easily reach all print positions.
      8. Insert the bowden tube firmly and fully into the extruder coupling.
