@@ -59,16 +59,26 @@ updated. Sometimes this is finicky, and the board doesn't take the firmware. Ren
   After installing the new firmware, I kept running into under-extrusion issues. It took a while to realize that the new 
   firmware was configured with a lower extrusion rate than the stock Ender 3 firmware. The process for calibrating the
   extrusion rate (or e-steps) is as follows:
-  1. Use the menu options to manually extrude 10cm (100mm) of filament.
-  2. Measure how many mm of filament is actually extruded, and call this `actual mm`. If this equals 100mm exactly, then 
-     there is no need to calibrate the e-steps. If `actual mm` does not equal 100mm, then proceed.
-  3. View the extruder's current `steps/mm` value. This is the number of steps that the printer believes it takes to 
-     extrude 1mm of filament. Multiply `steps/mm * 100 mm` to obtain `actual steps`, the number of extruder steps taken 
-     to extrude the length `actual mm`. 
-  4. Calculate `actuals steps / actual mm` to obtain the calibrated steps/mm value. Enter this into the settings. For
+  1. Use the menu options to manually extrude 10cm (100mm) of filament. Here, 100mm is `expected mm`.
+  2. Measure how many mm of filament is actually extruded, and call this `actual mm`. If `actual mm` equals 
+     `expected mm` exactly, then there is no need to calibrate the e-steps. If `actual mm` does not equal `expected mm`, 
+     then proceed.
+  3. View the extruder's current `steps/mm` value. This is the number of steps that the printer expects it takes to 
+     extrude 1mm of filament. Multiply `steps/mm * expected mm` to obtain `steps taken`, the number of steps the 
+     extruder actually took to extrude `actual mm`. 
+  4. Calculate `steps taken / actual mm` to obtain the calibrated steps/mm value. Enter this into the settings. For
      example:
-       1. Under-extrusion:  (0.81 steps/mm * 100mm intended) / (93mm actual) = 0.87 steps/mm calibrated
-       2. Over-extrusion:  (0.81 steps/mm * 100mm intended) / (117mm actual) = 0.69 steps/mm calibrated
+       1. Under-extrusion:  (81 steps/mm * 100mm expected) / (93mm actual) = 87.097 steps/mm calibrated
+       2. Over-extrusion:  (81 steps/mm * 100mm expected) / (117mm actual) = 69.231 steps/mm calibrated
+  5. Python function to obtain the calibrated steps/mm:
+     ```python
+     def calibrate(
+         expected_mm: float, 
+         actual_mm: float, 
+         steps_per_mm: float
+     ) -> float: 
+         return (steps_per_mm * expected_mm) / actual_mm
+     ```
 
 * 3D printer web interface:  I use [OctoPrint](https://octoprint.org) with my Raspberry Pi as an efficient and easy way
 to manage print jobs. See [here](octoprint.md) for tips on configuring OctoPrint on the Pi.
