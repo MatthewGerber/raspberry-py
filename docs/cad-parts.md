@@ -33,7 +33,14 @@ everything to work. I did this by adding spacers as shown below:
   
   ![cr-touch-spacers](cr-touch-spacers.png)
 
-  The steps for calibrating the leveling probe's z-offset are as follows:
+  After installing the hardware, flash the printer with the correct firmware [here](https://www.creality.com/products/cr-touch-auto-leveling-kit).
+Download the firmware bundle prefixed with the printer name (e.g., "Ender-3 CR Touch Firmware" for an Ender 3 printer, or 
+"Ender-3 V2 CR Touch Firmware" for an Ender 3 V2 printer). Within the bundle, select the board version. Note that 4.2.2 is 
+an early board that requires a special adapter to plug the bed leveling probe into, whereas the 4.2.7 board has a direct 
+connection for the probe. Clear an SD card and place the firmware binary onto the card as the only file. Name the file 
+"firmware.bin", insert the SD card, and turn the printer off/on. The display should indicate that the firmware has been 
+updated. Sometimes this is finicky, and the board doesn't take the firmware. Renaming the file "firmware-123.bin" or 
+"Ender 3 firmware.bin" might work. The steps for calibrating the leveling probe's z-offset are as follows:
   1. Auto-home the printer.
   2. Move the z-axis to identify the appropriate z-offset using a sheet of A4 paper for thickness. Note the z-offset 
      that causes the nozzle to just slightly grab the paper. Call this `adjustment`.
@@ -47,9 +54,34 @@ everything to work. I did this by adding spacers as shown below:
   you just tack on `G29` (level bed).
   8. Octoprint has a [bed leveling visualizer plugin](https://plugins.octoprint.org/plugins/bedlevelvisualizer), which 
   displays the bed mesh as shown below:
-  
   ![bed-mesh](bed-mesh.png)
-  
+  9. Add `G28 G29` to your slicer's g-code preamble. The `G28` (home) command is probably already present, in which case
+  you just tack on `G29` (level bed).
+
+  After installing the new firmware, I kept running into under-extrusion issues. It took a while to realize that the new 
+  firmware was configured with a lower extrusion rate than the stock Ender 3 firmware. The process for calibrating the
+  extrusion rate (or e-steps) is as follows:
+  1. Use the menu options to manually extrude 10cm (100mm) of filament. Here, 100mm is `expected mm`.
+  2. Measure how many mm of filament is actually extruded, and call this `actual mm`. If `actual mm` equals 
+     `expected mm` exactly, then there is no need to calibrate the e-steps. If `actual mm` does not equal `expected mm`, 
+     then proceed.
+  3. View the extruder's current `steps/mm` value. This is the number of steps that the printer expects it takes to 
+     extrude 1mm of filament. Multiply `steps/mm * expected mm` to obtain `steps taken`, the number of steps the 
+     extruder actually took to extrude `actual mm`. 
+  4. Calculate `steps taken / actual mm` to obtain the calibrated steps/mm value. Enter this into the settings. For
+     example:
+       1. Under-extrusion:  (81 steps/mm * 100mm expected) / (93mm actual) = 87.097 steps/mm calibrated
+       2. Over-extrusion:  (81 steps/mm * 100mm expected) / (117mm actual) = 69.231 steps/mm calibrated
+  5. Python function to obtain the calibrated steps/mm:
+     ```python
+     def calibrate(
+         expected_mm: float, 
+         actual_mm: float, 
+         steps_per_mm: float
+     ) -> float: 
+         return (steps_per_mm * expected_mm) / actual_mm
+     ```
+
 * 3D printer web interface:  I use [OctoPrint](https://octoprint.org) with my Raspberry Pi as an efficient and easy way
 to manage print jobs. See [here](octoprint.md) for tips on configuring OctoPrint on the Pi.
 * Tips for changing the bowden tube and nozzle, particularly when the extruder stepper motor is skipping, the extruder 
@@ -57,11 +89,11 @@ to manage print jobs. See [here](octoprint.md) for tips on configuring OctoPrint
   1. Remove the nozzle:  The flat end should be clean without any filament sitting on top, which might indicate that the 
      bowden tube isn't tightly seated against the nozzle entry within the hot end.
   2. Replace the bowden tube.
-     1. Replace the tube couplings in the extruder and hot end to ensure they will properly grab the new tube.
-     2. Heat the hot end.
-     3. Tighten the nozzle.
-     4. Loosen the nozzle 1/2 a turn.
-     5. Insert the bowden tube firmly and fully into the hot end coupling.
+     1. Replace the tube couplings in the extruder and hot end to ensure they will properly grab the new tube. 
+     2. Tighten the nozzle.
+     3. Loosen the nozzle 3/4 a turn.
+     4. Insert the bowden tube firmly and fully into the hot end coupling.
+     5. Heat the hot end.
      6. Tighten the nozzle, which seats the bowden tube firmly against the nozzle.
      7. Trim the tube to length for the extruder so that it can easily reach all print positions.
      8. Insert the bowden tube firmly and fully into the extruder coupling.
