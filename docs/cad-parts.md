@@ -17,26 +17,27 @@ a top-notch product. Everything just works. The operations are stunningly intuit
 imagine a reason for looking elsewhere except, of course, for the facts that the free version cannot be used 
 commercially and the commercial version is quite expensive.
 * Mesh slicer:  [UltiMaker Cura](https://ultimaker.com/software/ultimaker-cura) is a simple tool with a single purpose:
-slice the mesh outputs of CAD into horizontal layers that can be 3D printed. The settings are endlessly configurable, 
-but the defaults work quite well. Support structures are effective and efficient, and I haven't had a problem yet.
-* 3D printer:  This is the only item in the list that is not free. With endless options on the market it can be 
-difficult to choose; however, at under $200 with generally quite positive reviews, it is difficult to get past the
-[Creality Ender-3](https://www.creality.com/products/ender-3-3d-printer). It was simple to assemble and has been 
+slice the mesh outputs of a mesh model into horizontal layers of 3D printer instructions. I used Cura successfully for 
+quite a while, but eventually ran into issues with filament stringing. After trying many (many) alternative 
+configurations, I found that the [PrusaSlicer](https://www.prusa3d.com/) default settings are very effective, and I've
+been using this tool ever since.
+* 3D printer:  With endless options on the market it can be difficult to choose; however, at under $200 with generally 
+quite positive reviews, it is difficult to get past the [Creality Ender-3](https://www.creality.com/products/ender-3-3d-printer). It was simple to assemble and has been 
 cranking out high-quality pieces since the start.
 * Automatic bed leveling: I added the [CR Touch Automatic Leveling Kit](https://www.amazon.com/Creality-Leveling-Compatible-Mainboard-Printer/dp/B098LQ9WPX/ref=sr_1_3?th=1) 
-to my Ender 3. The sensor comes with a mounting bracket for the Ender 3; however, it isn't truly designed for this model,
-and I had previously replaced the hot end with something different. As a result, the sensor was mounted too far above
-the bed, which caused the hot end to drop down into the bed. After much experimenting and searching, I found that the 
-sensor needed to be offset down toward the bed in order for everything to work. I did this by adding spacers as shown
-below:
+to my Ender 3. The sensor comes with a mounting bracket for the Ender 3; however, it isn't truly designed for this 
+model, and I had previously replaced the hot end with [something different](https://www.amazon.com/Authentic-Creality-Assembled-Aluminum-Hotend/dp/B082XXRT78/ref=sr_1_2_sspa).
+As a result, the sensor was mounted too far above the bed, which caused the hot end to drop down into the bed. After 
+much experimenting and searching, I found that the sensor needed to be offset down toward the bed in order for 
+everything to work. I did this by adding spacers as shown below:
   
   ![cr-touch-spacers](cr-touch-spacers.png)
 
   The steps for calibrating the leveling probe's z-offset are as follows:
   1. Auto-home the printer.
-  2. Move the z-axis to identify the appropriate z-offset, using a sheet of A4 paper for thickness. Note the z-offset 
+  2. Move the z-axis to identify the appropriate z-offset using a sheet of A4 paper for thickness. Note the z-offset 
      that causes the nozzle to just slightly grab the paper. Call this `adjustment`.
-  3. Auto-home the printer.
+  3. Auto-home the printer again.
   4. Access the leveling probe's z-offset and note its value. Call this `current`. Then set the leveling probe's 
      z-offset to `current + adjustment`.
   5. Save the configuration settings.
@@ -65,6 +66,30 @@ to manage print jobs. See [here](octoprint.md) for tips on configuring OctoPrint
      7. Trim the tube to length for the extruder so that it can easily reach all print positions.
      8. Insert the bowden tube firmly and fully into the extruder coupling.
      9. Level the bed if needed.
+* Perhaps related to the new hot end mentioned above, I started having serious trouble with filament becoming stuck in 
+the heat sink. Forums are littered with discussions of heat creep, with solutions ranging across filament drying, slicer 
+settings (extrusion speeds and distances), cooling fans, and extruder upgrades. In my case, upgrading [the hot-end fan](https://www.amazon.com/dp/B0B1V52WGP?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1) (\$13)
+and [converting the extruder to direct drive](https://www.amazon.com/UniTak3D-Upgrade-Conversion-Compatible-Extruder/dp/B09KG8MMQ2/ref=sr_1_1_sspa) (\$15)
+solved my problems.
+
+# Reinforcement Learning for the Cart-Pole Apparatus
+
+<iframe src="https://gmail3021534.autodesk360.com/shares/public/SH512d4QTec90decfa6e100c90ac15102a61?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
+
+This is not a new concept. If you search for "cart-pole balancing", you'll see that this problem has been solved in a
+variety of ways. However, the details are always interesting, and I was curious whether my [RLAI](https://matthewgerber.github.io/rlai/)
+would find a solution. This is [a work in progress](https://github.com/MatthewGerber/cart-pole).
+
+# H-Gantry
+
+<iframe src="https://gmail3021534.autodesk360.com/shares/public/SH286ddQT78850c0d8a4f16d8ed322db9a1e?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
+
+How to control a two-axis linear gantry system? The simple solution is to [use two stepper motors](https://www.youtube.com/watch?v=uOSCsBbsX4w), 
+one attached to each axis. The harder solution:  Use [two fixed-position stepper motors with a crazy, winding belt](https://www.youtube.com/watch?v=IkM2K7CsiHo).
+There are advantages each way. The former is simpler to design and build; however, the motor mass is attached to each
+axis, which is not ideal when the axes are changing direction quickly. In the latter design, the motors have fixed 
+positions, so the motor mass is not attached to a moving axis. The control is more complicated, but this makes it 
+interesting, which is also an advantage!
 
 # Robotic Arm
 
