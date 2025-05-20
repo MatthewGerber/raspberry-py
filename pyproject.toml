@@ -26,7 +26,7 @@ rpi-ws281x = '~=5.0'
 pyserial = "^3.5"
 
 # raspberry pi os removed sysfs gpio interface with rpi 5. prior to this, it was possible to use the RPi.GPIO package.
-# the rpi-lgpio package might work with the older pi os, but it's untested.
+# the rpi-lgpio package is a drop-in replacement for RPi.GPIO that works with rpi 4 and 5.
 rpi-lgpio = "^0.6"
 
 [tool.poetry.group.dev.dependencies]
