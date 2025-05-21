@@ -966,8 +966,9 @@ class Stepper(Component):
                 break
 
             # drive to next step
+            previous_pin_idx = self.current_driver_pin_idx
             self.current_driver_pin_idx = (self.current_driver_pin_idx + direction) % len(self.driver_pins)
-            self.drive()
+            self.drive(self.driver_pins[previous_pin_idx], self.driver_pins[self.current_driver_pin_idx])
 
             # update state. we do this here (rather than at the end of this function) so that event listeners can react
             # in real time as the stepper moves. update the anticipated time to step with the actual.
@@ -1021,7 +1022,8 @@ class Stepper(Component):
         Start the motor.
         """
 
-        self.drive()
+        self.current_driver_pin_idx = 0
+        self.drive(self.driver_pins[self.current_driver_pin_idx], self.driver_pins[self.current_driver_pin_idx])
 
     def stop(
             self
@@ -1033,15 +1035,20 @@ class Stepper(Component):
         for driver_pin in self.driver_pins:
             gpio.output(driver_pin, gpio.LOW)
 
+    @staticmethod
     def drive(
-            self
+            previous_pin: int,
+            current_pin: int
     ):
         """
-        Drive the motor with the currently selected driver pin.
+        Drive the motor.
+
+        :param previous_pin: Previous pin.
+        :param current_pin: Current pin.
         """
 
-        for i, driver_pin in enumerate(self.driver_pins):
-            gpio.output(driver_pin, gpio.HIGH if i == self.current_driver_pin_idx else gpio.LOW)
+        gpio.output(previous_pin, gpio.LOW)
+        gpio.output(current_pin, gpio.HIGH)
 
     def get_degrees(
             self
