@@ -965,10 +965,12 @@ class Stepper(Component):
                 limited = True
                 break
 
-            # drive to next step
-            previous_pin_idx = self.current_driver_pin_idx
-            self.current_driver_pin_idx = (self.current_driver_pin_idx + direction) % len(self.driver_pins)
-            self.drive(self.driver_pins[previous_pin_idx], self.driver_pins[self.current_driver_pin_idx])
+            # drive to the next half step and wait half the step delay
+            self.drive(direction)
+            time.sleep(delay_seconds_per_step / 2.0)
+
+            # drive to the next half step, achieving the full step
+            self.drive(direction)
 
             # update state. we do this here (rather than at the end of this function) so that event listeners can react
             # in real time as the stepper moves. update the anticipated time to step with the actual.
@@ -977,8 +979,8 @@ class Stepper(Component):
             super().set_state(next_state)
             curr_time = new_time
 
-            # sleep for a bit
-            time.sleep(delay_seconds_per_step)
+            # wait for the half-step delay
+            time.sleep(delay_seconds_per_step / 2.0)
 
         if not limited and self.state.step != state.step:
             raise ValueError(f'Expected stepper state ({self.state.step}) to be {state.step}.')
@@ -1022,8 +1024,7 @@ class Stepper(Component):
         Start the motor.
         """
 
-        self.current_driver_pin_idx = 0
-        self.drive(self.driver_pins[self.current_driver_pin_idx], self.driver_pins[self.current_driver_pin_idx])
+        self.drive(0)
 
     def stop(
             self
@@ -1035,20 +1036,19 @@ class Stepper(Component):
         for driver_pin in self.driver_pins:
             gpio.output(driver_pin, gpio.LOW)
 
-    @staticmethod
     def drive(
-            previous_pin: int,
-            current_pin: int
+            self,
+            direction: int
     ):
         """
         Drive the motor.
 
-        :param previous_pin: Previous pin.
-        :param current_pin: Current pin.
+        :param direction: Direction.
         """
 
-        gpio.output(previous_pin, gpio.LOW)
-        gpio.output(current_pin, gpio.HIGH)
+        self.drive_sequence_idx = (self.drive_sequence_idx + direction) % len(self.drive_sequence)
+        for pin_i, value in enumerate(self.drive_sequence[self.drive_sequence_idx]):
+            gpio.output(self.driver_pins[pin_i], value)
 
     def get_degrees(
             self
@@ -1123,4 +1123,15 @@ class Stepper(Component):
             gpio.setup(driver_pin, gpio.OUT)
             gpio.output(driver_pin, gpio.LOW)
 
-        self.current_driver_pin_idx = 0
+        # use a half-step sequence across the gpio pins
+        self.drive_sequence = [
+            [gpio.HIGH, gpio.LOW, gpio.LOW, gpio.LOW],
+            [gpio.HIGH, gpio.HIGH, gpio.LOW, gpio.LOW],
+            [gpio.LOW, gpio.HIGH, gpio.LOW, gpio.LOW],
+            [gpio.LOW, gpio.HIGH, gpio.HIGH, gpio.LOW],
+            [gpio.LOW, gpio.LOW, gpio.HIGH, gpio.LOW],
+            [gpio.LOW, gpio.LOW, gpio.HIGH, gpio.HIGH],
+            [gpio.LOW, gpio.LOW, gpio.LOW, gpio.HIGH],
+            [gpio.HIGH, gpio.LOW, gpio.LOW, gpio.HIGH],
+        ]
+        self.drive_sequence_idx = 0
