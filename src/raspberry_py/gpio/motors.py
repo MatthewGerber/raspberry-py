@@ -874,6 +874,321 @@ class Servo(Component):
         self.max_degree = max_degree
 
 
+class StepperMotorDriverUln2003(ABC):
+    """
+    Abstract driver for stepper motors controlled by the ULN2003 integrated circuit, which is controlled via four GPIO
+    pins.
+    """
+
+    def __init__(
+            self,
+            driver_pin_1: int,
+            driver_pin_2: int,
+            driver_pin_3: int,
+            driver_pin_4: int
+    ):
+        """
+        Initialize the driver.
+
+        :param driver_pin_1: Driver GPIO pin 1.
+        :param driver_pin_2: Driver GPIO pin 2.
+        :param driver_pin_3: Driver GPIO pin 3.
+        :param driver_pin_4: Driver GPIO pin 4.
+        """
+
+        self.driver_pin_1 = driver_pin_1
+        self.driver_pin_2 = driver_pin_2
+        self.driver_pin_3 = driver_pin_3
+        self.driver_pin_4 = driver_pin_4
+
+        self.driver_pins = [
+            self.driver_pin_1,
+            self.driver_pin_2,
+            self.driver_pin_3,
+            self.driver_pin_4
+        ]
+
+    @abstractmethod
+    def start(
+            self
+    ):
+        """
+        Start the driver.
+        """
+
+    @abstractmethod
+    def step(
+            self,
+            stepper: 'Stepper',
+            num_steps: int,
+            time_to_step: timedelta
+    ) -> bool:
+        """
+        Step the motor.
+
+        :param stepper: Stepper.
+        :param num_steps: Number of steps.
+        :param time_to_step: Time to take.
+        :return: Whether the stepper hit a limiter.
+        """
+
+    @abstractmethod
+    def stop(
+            self
+    ):
+        """
+        Stop the driver.
+        """
+
+
+class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
+    """
+    Stepper motor driver that operates via the ULN2003 integrated circuit, which is directly controlled by four GPIO
+    pins connected to the Raspberry Pi.
+    """
+
+    def __init__(
+            self,
+            driver_pin_1: int,
+            driver_pin_2: int,
+            driver_pin_3: int,
+            driver_pin_4: int,
+            limiter: Optional[Callable[['Stepper.State', 'Stepper.State'], bool]]
+    ):
+        """
+        Initialize the driver.
+
+        :param driver_pin_1: Driver GPIO pin 1.
+        :param driver_pin_2: Driver GPIO pin 2.
+        :param driver_pin_3: Driver GPIO pin 3.
+        :param driver_pin_4: Driver GPIO pin 4.
+        :param limiter: Limiter function, which takes the current stepper state and the next stepper state and returns a
+        bool indicating whether the stepper has reached its limit and should stop stepping in the current direction.
+        """
+
+        super().__init__(
+            driver_pin_1,
+            driver_pin_2,
+            driver_pin_3,
+            driver_pin_4
+        )
+
+        self.limiter = limiter
+
+        for driver_pin in self.driver_pins:
+            gpio.setup(driver_pin, gpio.OUT)
+            gpio.output(driver_pin, gpio.LOW)
+
+        # use a half-step sequence across the gpio pins
+        self.drive_sequence = [
+            [gpio.HIGH, gpio.LOW, gpio.LOW, gpio.LOW],
+            [gpio.HIGH, gpio.HIGH, gpio.LOW, gpio.LOW],
+            [gpio.LOW, gpio.HIGH, gpio.LOW, gpio.LOW],
+            [gpio.LOW, gpio.HIGH, gpio.HIGH, gpio.LOW],
+            [gpio.LOW, gpio.LOW, gpio.HIGH, gpio.LOW],
+            [gpio.LOW, gpio.LOW, gpio.HIGH, gpio.HIGH],
+            [gpio.LOW, gpio.LOW, gpio.LOW, gpio.HIGH],
+            [gpio.HIGH, gpio.LOW, gpio.LOW, gpio.HIGH],
+        ]
+        self.drive_sequence_idx = 0
+
+    def start(
+            self
+    ):
+        """
+        Start the driver.
+        """
+
+        self.drive(0)
+
+    def step(
+            self,
+            stepper: 'Stepper',
+            num_steps: int,
+            time_to_step: timedelta
+    ) -> bool:
+        """
+        Step the motor.
+
+        :param stepper: Stepper.
+        :param num_steps: Number of steps.
+        :param time_to_step: Time to step.
+        :return: Whether the stepper hit a limiter.
+        """
+
+        delay_seconds_per_step = time_to_step.total_seconds() / abs(num_steps)
+
+        # execute steps in the direction indicated
+        direction = np.sign(num_steps)
+        initial_step = stepper.state.step
+        target_step = initial_step + num_steps
+        curr_time = time.time()
+        limited = False
+        for next_step in range(initial_step + direction, target_step + direction, direction):
+
+            # check for limiting. provide the anticipated next state and intended delay.
+            next_state = Stepper.State(next_step, timedelta(seconds=delay_seconds_per_step))
+            if self.limiter is not None and self.limiter(stepper.state, next_state):
+                print(f'Stepper has been limited. Refusing to set state to {next_state} or proceed beyond.')
+                limited = True
+                break
+
+            # drive to the next half step and wait half the step delay
+            self.drive(direction)
+            time.sleep(delay_seconds_per_step / 2.0)
+
+            # drive to the next half step, achieving the full step.
+            self.drive(direction)
+
+            # update state. we do this here (rather than at the end of this function) so that event listeners can react
+            # in real time as the stepper moves. update the anticipated time to step with the actual.
+            new_time = time.time()
+            next_state.time_to_step = timedelta(seconds=new_time - curr_time)
+            super(Stepper, stepper).set_state(next_state)
+            curr_time = new_time
+
+            # wait for the half-step delay
+            time.sleep(delay_seconds_per_step / 2.0)
+
+        return limited
+
+    def drive(
+            self,
+            direction: int
+    ):
+        """
+        Drive the motor.
+
+        :param direction: Direction, which must be -1, 0, or 1.
+        """
+
+        if direction != -1 and direction != 0 and direction != 1:
+            raise ValueError('Invalid direction.')
+
+        self.drive_sequence_idx = (self.drive_sequence_idx + direction) % len(self.drive_sequence)
+
+        for pin_i, value in enumerate(self.drive_sequence[self.drive_sequence_idx]):
+            gpio.output(self.driver_pins[pin_i], value)
+
+    def stop(
+            self
+    ):
+        """
+        Stop the driver.
+        """
+
+        for driver_pin in self.driver_pins:
+            gpio.output(driver_pin, gpio.LOW)
+
+
+class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
+    """
+    Stepper motor driver that operates via serial connection to an Arduino board, which controls the stepper motor via
+    ULN2003 integrated circuit.
+    """
+
+    class Command(IntEnum):
+        """
+        Commands that can be sent to the Arduino.
+        """
+
+        INIT = 1
+        STEP = 2
+
+    def __init__(
+            self,
+            driver_pin_1: int,
+            driver_pin_2: int,
+            driver_pin_3: int,
+            driver_pin_4: int,
+            identifier: int,
+            serial: LockingSerial
+    ):
+        """
+        Initialize the driver.
+
+        :param driver_pin_1: Driver GPIO pin 1.
+        :param driver_pin_2: Driver GPIO pin 2.
+        :param driver_pin_3: Driver GPIO pin 3.
+        :param driver_pin_4: Driver GPIO pin 4.
+        :param identifier: Identifier.
+        :param serial: Serial connection to the Arduino.
+        """
+        super().__init__(
+            driver_pin_1,
+            driver_pin_2,
+            driver_pin_3,
+            driver_pin_4
+        )
+
+        self.identifier = identifier
+        self.serial = serial
+
+    def start(self):
+        """
+        Start the driver.
+        """
+
+        self.serial.write_then_read(
+            StepperMotorDriverArduinoUln2003.Command.INIT.to_bytes(1) +
+            self.identifier.to_bytes(1) +
+            self.driver_pin_1.to_bytes(1) +
+            self.driver_pin_2.to_bytes(1) +
+            self.driver_pin_3.to_bytes(1) +
+            self.driver_pin_4.to_bytes(1),
+            0
+        )
+
+    def step(
+            self,
+            stepper: 'Stepper',
+            num_steps: int,
+            time_to_step: timedelta
+    ) -> bool:
+        """
+        Step the motor.
+
+        :param stepper: Stepper.
+        :param num_steps: Number of steps.
+        :param time_to_step: Time to take.
+        :return: Whether the stepper hit a limiter.
+        """
+
+        max_unsigned_two_byte_int_value = 2 ** 16 - 1
+
+        abs_num_steps = abs(num_steps)
+        if abs_num_steps > max_unsigned_two_byte_int_value:
+            raise ValueError(f'Maximum number of steps:  {max_unsigned_two_byte_int_value}')
+
+        ms_to_step = int(time_to_step.total_seconds() * 1000)
+        if ms_to_step > max_unsigned_two_byte_int_value:
+            raise ValueError(f'Maximum time (ms) to step:  {max_unsigned_two_byte_int_value}')
+
+        start_time = time.time()
+        self.serial.write_then_read(
+            StepperMotorDriverArduinoUln2003.Command.STEP.to_bytes(1) +
+            self.identifier.to_bytes(1) +
+            abs_num_steps.to_bytes(2) +
+            (num_steps > 0).to_bytes(1) +
+            ms_to_step.to_bytes(2),
+            0
+        )
+        end_time = time.time()
+
+        super(Stepper, stepper).set_state(
+            Stepper.State(
+                stepper.state.step + num_steps,
+                timedelta(seconds=end_time - start_time)
+            )
+        )
+
+    def stop(self):
+        """
+        Stop the driver.
+        """
+        pass
+
+
 class Stepper(Component):
     """
     Stepper motor.
@@ -943,7 +1258,6 @@ class Stepper(Component):
         self.state: Stepper.State
 
         initial_step = self.state.step
-        curr_time = datetime.now()
 
         # get number of steps to move and how long to take for each step
         num_steps = state.step - initial_step
@@ -951,36 +1265,7 @@ class Stepper(Component):
             print(f'Stepper is already at step {state.step}. Nothing to do.')
             return
 
-        delay_seconds_per_step = state.time_to_step.total_seconds() / abs(num_steps)
-
-        # execute steps in the direction indicated
-        direction = np.sign(num_steps)
-        limited = False
-        for next_step in range(initial_step + direction, state.step + direction, direction):
-
-            # check for limiting. provide the anticipated next state.
-            next_state = Stepper.State(next_step, timedelta(seconds=delay_seconds_per_step))
-            if self.limiter is not None and self.limiter(self.state, next_state):
-                print(f'Stepper has been limited. Refusing to set state to {next_state} or proceed beyond.')
-                limited = True
-                break
-
-            # drive to the next half step and wait half the step delay
-            self.drive(direction)
-            time.sleep(delay_seconds_per_step / 2.0)
-
-            # drive to the next half step, achieving the full step
-            self.drive(direction)
-
-            # update state. we do this here (rather than at the end of this function) so that event listeners can react
-            # in real time as the stepper moves. update the anticipated time to step with the actual.
-            new_time = datetime.now()
-            next_state.time_to_step = new_time - curr_time
-            super().set_state(next_state)
-            curr_time = new_time
-
-            # wait for the half-step delay
-            time.sleep(delay_seconds_per_step / 2.0)
+        limited = self.driver.step(self, num_steps, state.time_to_step)
 
         if not limited and self.state.step != state.step:
             raise ValueError(f'Expected stepper state ({self.state.step}) to be {state.step}.')
@@ -999,6 +1284,9 @@ class Stepper(Component):
 
         self.state: Stepper.State
 
+        if self.reverse:
+            steps = -steps
+
         self.set_state(Stepper.State(self.state.step + steps, time_to_step))
 
     def step_degrees(
@@ -1013,9 +1301,7 @@ class Stepper(Component):
         :param time_to_step: Amount of time to take.
         """
 
-        self.state: Stepper.State
-
-        self.set_state(Stepper.State(self.state.step + round(degrees * self.steps_per_degree), time_to_step))
+        self.step(round(degrees * self.steps_per_degree), time_to_step)
 
     def start(
             self
@@ -1024,7 +1310,7 @@ class Stepper(Component):
         Start the motor.
         """
 
-        self.drive(0)
+        self.driver.start()
 
     def stop(
             self
@@ -1033,22 +1319,7 @@ class Stepper(Component):
         Stop the motor.
         """
 
-        for driver_pin in self.driver_pins:
-            gpio.output(driver_pin, gpio.LOW)
-
-    def drive(
-            self,
-            direction: int
-    ):
-        """
-        Drive the motor.
-
-        :param direction: Direction.
-        """
-
-        self.drive_sequence_idx = (self.drive_sequence_idx + direction) % len(self.drive_sequence)
-        for pin_i, value in enumerate(self.drive_sequence[self.drive_sequence_idx]):
-            gpio.output(self.driver_pins[pin_i], value)
+        self.driver.stop()
 
     def get_degrees(
             self
@@ -1080,11 +1351,8 @@ class Stepper(Component):
             self,
             poles: int,
             output_rotor_ratio: float,
-            driver_pin_1: int,
-            driver_pin_2: int,
-            driver_pin_3: int,
-            driver_pin_4: int,
-            limiter: Optional[Callable[['Stepper.State', 'Stepper.State'], bool]] = None
+            driver: StepperMotorDriverUln2003,
+            reverse: bool
     ):
         """
         Initialize the motor.
@@ -1092,46 +1360,15 @@ class Stepper(Component):
         :param poles: Number of poles in the stepper.
         :param output_rotor_ratio: Rotor/output ratio (e.g., if the output shaft rotates one time per 100 rotations of
         the internal rotor, then this value would be 1/100).
-        :param driver_pin_1: Driver GPIO pin 1.
-        :param driver_pin_2: Driver GPIO pin 2.
-        :param driver_pin_3: Driver GPIO pin 3.
-        :param driver_pin_4: Driver GPIO pin 4.
-        :param limiter: Limiter function, which takes the current stepper state and the next stepper state and returns a
-        bool indicating whether the stepper has reached its limit and should stop.
+        :param driver: Stepper motor driver.
+        :param reverse: Whether to reverse the stepper.
         """
 
         super().__init__(Stepper.State(0, timedelta(seconds=0)))
 
         self.poles = poles
         self.output_rotor_ratio = output_rotor_ratio
-        self.driver_pin_1 = driver_pin_1
-        self.driver_pin_2 = driver_pin_2
-        self.driver_pin_3 = driver_pin_3
-        self.driver_pin_4 = driver_pin_4
-        self.limiter = limiter
+        self.driver = driver
+        self.reverse = reverse
 
         self.steps_per_degree = (poles / output_rotor_ratio) / 360.0
-
-        self.driver_pins = [
-            self.driver_pin_1,
-            self.driver_pin_2,
-            self.driver_pin_3,
-            self.driver_pin_4
-        ]
-
-        for driver_pin in self.driver_pins:
-            gpio.setup(driver_pin, gpio.OUT)
-            gpio.output(driver_pin, gpio.LOW)
-
-        # use a half-step sequence across the gpio pins
-        self.drive_sequence = [
-            [gpio.HIGH, gpio.LOW, gpio.LOW, gpio.LOW],
-            [gpio.HIGH, gpio.HIGH, gpio.LOW, gpio.LOW],
-            [gpio.LOW, gpio.HIGH, gpio.LOW, gpio.LOW],
-            [gpio.LOW, gpio.HIGH, gpio.HIGH, gpio.LOW],
-            [gpio.LOW, gpio.LOW, gpio.HIGH, gpio.LOW],
-            [gpio.LOW, gpio.LOW, gpio.HIGH, gpio.HIGH],
-            [gpio.LOW, gpio.LOW, gpio.LOW, gpio.HIGH],
-            [gpio.HIGH, gpio.LOW, gpio.LOW, gpio.HIGH],
-        ]
-        self.drive_sequence_idx = 0
