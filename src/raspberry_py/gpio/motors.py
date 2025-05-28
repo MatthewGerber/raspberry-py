@@ -1,7 +1,7 @@
 import logging
 import time
 from abc import ABC, abstractmethod
-from datetime import timedelta, datetime
+from datetime import timedelta
 from enum import IntEnum
 from typing import Optional, Callable
 
@@ -402,8 +402,8 @@ class DcMotor(Component):
         Start the motor at the current speed.
         """
 
-        self.state: DcMotor.State
-        self.set_state(DcMotor.State(on=True, speed=self.state.speed))
+        state: DcMotor.State = self.state
+        self.set_state(DcMotor.State(on=True, speed=state.speed))
 
     def stop(
             self
@@ -412,8 +412,8 @@ class DcMotor(Component):
         Stop the motor.
         """
 
-        self.state: DcMotor.State
-        self.set_state(DcMotor.State(on=False, speed=self.state.speed))
+        state: DcMotor.State = self.state
+        self.set_state(DcMotor.State(on=False, speed=state.speed))
 
     def set_speed(
             self,
@@ -425,8 +425,8 @@ class DcMotor(Component):
         :param speed: Speed in [-100,+100].
         """
 
-        self.state: DcMotor.State
-        self.set_state(DcMotor.State(on=self.state.on, speed=speed))
+        state: DcMotor.State = self.state
+        self.set_state(DcMotor.State(on=state.on, speed=speed))
 
     def get_speed(
             self
@@ -437,9 +437,9 @@ class DcMotor(Component):
         :return: Current speed in [-100,+100].
         """
 
-        self.state: DcMotor.State
+        state: DcMotor.State = self.state
 
-        return self.state.speed
+        return state.speed
 
     def __init__(
             self,
@@ -801,7 +801,7 @@ class Servo(Component):
         change as quickly as possible).
         """
 
-        self.state: Servo.State
+        state: Servo.State = self.state
 
         if interval is not None:
             start_degrees = self.get_degrees()
@@ -810,10 +810,10 @@ class Servo(Component):
             degrees_per_step = (degrees - start_degrees) / num_steps
             for step in range(num_steps):
                 step_degrees = start_degrees + step * degrees_per_step
-                self.set_state(Servo.State(on=self.state.on, degrees=step_degrees))
+                self.set_state(Servo.State(on=state.on, degrees=step_degrees))
                 time.sleep(seconds_per_step)
 
-        self.set_state(Servo.State(on=self.state.on, degrees=degrees))
+        self.set_state(Servo.State(on=state.on, degrees=degrees))
 
     def get_degrees(
             self
@@ -824,9 +824,9 @@ class Servo(Component):
         :return: Degrees.
         """
 
-        self.state: Servo.State
+        state: Servo.State = self.state
 
-        return self.state.degrees
+        return state.degrees
 
     def start(
             self
@@ -835,8 +835,8 @@ class Servo(Component):
         Start the servo at its current rotation.
         """
 
-        self.state: Servo.State
-        self.set_state(Servo.State(on=True, degrees=self.state.degrees))
+        state: Servo.State = self.state
+        self.set_state(Servo.State(on=True, degrees=state.degrees))
 
     def stop(
             self
@@ -845,8 +845,8 @@ class Servo(Component):
         Stop the servo.
         """
 
-        self.state: Servo.State
-        self.set_state(Servo.State(on=False, degrees=self.state.degrees))
+        state: Servo.State = self.state
+        self.set_state(Servo.State(on=False, degrees=state.degrees))
 
     def __init__(
             self,
@@ -1017,10 +1017,11 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
         """
 
         delay_seconds_per_step = time_to_step.total_seconds() / abs(num_steps)
+        state: Stepper.State = stepper.state
 
         # execute steps in the direction indicated
         direction = np.sign(num_steps)
-        initial_step = stepper.state.step
+        initial_step = state.step
         target_step = initial_step + num_steps
         curr_time = time.time()
         limited = False
@@ -1165,22 +1166,25 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             raise ValueError(f'Maximum time (ms) to step:  {max_unsigned_two_byte_int_value}')
 
         start_time = time.time()
-        self.serial.write_then_read(
+        limited = bool(self.serial.write_then_read(
             StepperMotorDriverArduinoUln2003.Command.STEP.to_bytes(1) +
             self.identifier.to_bytes(1) +
             abs_num_steps.to_bytes(2) +
             (num_steps > 0).to_bytes(1) +
             ms_to_step.to_bytes(2),
-            0
-        )
+            1
+        ))
         end_time = time.time()
 
+        state: Stepper.State = stepper.state
         super(Stepper, stepper).set_state(
             Stepper.State(
-                stepper.state.step + num_steps,
+                state.step + num_steps,
                 timedelta(seconds=end_time - start_time)
             )
         )
+
+        return limited
 
     def stop(self):
         """
@@ -1255,9 +1259,9 @@ class Stepper(Component):
             raise ValueError(f'Expected a {Stepper.State}')
 
         state: Stepper.State
-        self.state: Stepper.State
 
-        initial_step = self.state.step
+        initial_state: Stepper.State = self.state
+        initial_step = initial_state.step
 
         # get number of steps to move and how long to take for each step
         num_steps = state.step - initial_step
@@ -1267,8 +1271,9 @@ class Stepper(Component):
 
         limited = self.driver.step(self, num_steps, state.time_to_step)
 
-        if not limited and self.state.step != state.step:
-            raise ValueError(f'Expected stepper state ({self.state.step}) to be {state.step}.')
+        result_state: Stepper.State = self.state
+        if not limited and result_state.step != state.step:
+            raise ValueError(f'Expected stepper state ({result_state.step}) to be goal state ({state.step}).')
 
     def step(
             self,
@@ -1282,12 +1287,12 @@ class Stepper(Component):
         :param time_to_step: Amount of time to take.
         """
 
-        self.state: Stepper.State
+        state: Stepper.State = self.state
 
         if self.reverse:
             steps = -steps
 
-        self.set_state(Stepper.State(self.state.step + steps, time_to_step))
+        self.set_state(Stepper.State(state.step + steps, time_to_step))
 
     def step_degrees(
             self,
@@ -1330,9 +1335,9 @@ class Stepper(Component):
         :return: Degrees.
         """
 
-        self.state: Stepper.State
+        state: Stepper.State = self.state
 
-        return (self.state.step / self.steps_per_degree) % 360.0
+        return (state.step / self.steps_per_degree) % 360.0
 
     def get_step(
             self
@@ -1343,9 +1348,9 @@ class Stepper(Component):
         :return: Step.
         """
 
-        self.state: Stepper.State
+        state: Stepper.State = self.state
 
-        return self.state.step
+        return state.step
 
     def __init__(
             self,
