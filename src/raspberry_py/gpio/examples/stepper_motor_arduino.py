@@ -53,7 +53,7 @@ def main():
 
     # rotate -190 degrees in 5 seconds
     start = datetime.now()
-    stepper.step_degrees(-190, timedelta(seconds=5))
+    stepper.step_degrees(-180, timedelta(seconds=5))
     print(f'Rotated to {stepper.get_degrees():.1f} degrees in {(datetime.now() - start).total_seconds():.1f} seconds.')
 
     # clean up

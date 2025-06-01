@@ -59,7 +59,7 @@ class LockingSerial:
                     bytes_read = self.connection.read(read_length)
 
             num_bytes_read = len(bytes_read)
-            if num_bytes_read != read_length:
+            if read_length != -1 and num_bytes_read != read_length:
                 raise ValueError(f'Expected to read {read_length} byte(s) but read {num_bytes_read}.')
 
             # update throughput estimates
