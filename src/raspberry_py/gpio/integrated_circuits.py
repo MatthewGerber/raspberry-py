@@ -119,8 +119,8 @@ class ShiftRegister74HC595(Component):
         Enable the shift register.
         """
 
-        self.state: ShiftRegister74HC595.State
-        self.set_state(ShiftRegister74HC595.State(True, self.state.x))
+        state: ShiftRegister74HC595.State = self.state
+        self.set_state(ShiftRegister74HC595.State(True, state.x))
 
     def disable(
             self
@@ -129,8 +129,8 @@ class ShiftRegister74HC595(Component):
         Disable the shift register.
         """
 
-        self.state: ShiftRegister74HC595.State
-        self.set_state(ShiftRegister74HC595.State(False, self.state.x))
+        state: ShiftRegister74HC595.State = self.state
+        self.set_state(ShiftRegister74HC595.State(False, state.x))
 
     def write(
             self,
@@ -142,8 +142,8 @@ class ShiftRegister74HC595(Component):
         :param x: Value(s).
         """
 
-        self.state: ShiftRegister74HC595.State
-        self.set_state(ShiftRegister74HC595.State(self.state.enabled, x))
+        state: ShiftRegister74HC595.State = self.state
+        self.set_state(ShiftRegister74HC595.State(state.enabled, x))
 
     def clear(
             self
@@ -152,7 +152,6 @@ class ShiftRegister74HC595(Component):
         Clear the shift register.
         """
 
-        self.state: ShiftRegister74HC595.State
         self.set_state(ShiftRegister74HC595.State(True, 0))
 
     def __init__(

@@ -803,7 +803,7 @@ class Camera(Component):
 
         # encode as jpg -> base64 string, and strip the leading b' and trailing '
         image_jpg_bytes = cv2.imencode('.jpg', image_bytes)[1]
-        base_64_string_jpg = str(base64.b64encode(image_jpg_bytes))[2:-1]
+        base_64_string_jpg = str(base64.b64encode(image_jpg_bytes))[2:-1]  # type: ignore
 
         return base_64_string_jpg
 
@@ -1017,12 +1017,12 @@ class MjpgStreamer(Component):
         """
 
         state: MjpgStreamer.State
-        self.state: MjpgStreamer.State
+        curr_state: MjpgStreamer.State = self.state
 
-        if state.on and not self.state.on:
+        if state.on and not curr_state.on:
             args = shlex.split(f'./mjpg_streamer -i "input_uvc.so -d {self.device} -fps {self.fps} -r {self.width}x{self.height} -q {self.quality}" -o "output_http.so -p {self.port} -w ./www"')
             self.process = subprocess.Popen(args, cwd=os.getenv('MJPG_STREAMER_HOME'))
-        elif not state.on and self.state.on:
+        elif not state.on and curr_state.on:
             os.kill(self.process.pid, signal.SIGTERM)
             while self.process.poll() is None:
                 time.sleep(1)
@@ -1141,9 +1141,9 @@ class Tachometer(Component):
         :return: RPS.
         """
 
-        self.state: Tachometer.State
+        state: Tachometer.State = self.state
 
-        return self.state.rotations_per_second
+        return state.rotations_per_second
 
     def __init__(
             self,
@@ -1706,7 +1706,8 @@ class RotaryEncoder(Component):
                 RotaryEncoder.Arduino.get_bytes(self.angular_velocity_step_size) +
                 RotaryEncoder.Arduino.get_bytes(self.angular_acceleration_step_size) +
                 self.state_update_hz.to_bytes(1),
-                0
+                0,
+                False
             )
 
         def get_state(
@@ -1721,7 +1722,8 @@ class RotaryEncoder(Component):
 
             state_bytes = self.serial.write_then_read(
                 RotaryEncoder.Arduino.Command.GET_STATE.to_bytes(1) + self.identifier.to_bytes(1),
-                21
+                21,
+                False
             )
             num_phase_changes = int.from_bytes(state_bytes[0:4], signed=False)
             net_total_degrees = RotaryEncoder.Arduino.get_float(state_bytes[4:8])
@@ -1751,7 +1753,8 @@ class RotaryEncoder(Component):
                 RotaryEncoder.Arduino.Command.SET_NET_TOTAL_DEGREES.to_bytes(1) +
                 self.identifier.to_bytes(1) +
                 RotaryEncoder.Arduino.get_bytes(net_total_degrees),
-                0
+                0,
+                False
             )
 
         def cleanup(
@@ -1764,7 +1767,8 @@ class RotaryEncoder(Component):
             self.serial.write_then_read(
                 RotaryEncoder.Arduino.Command.STOP.to_bytes() +
                 self.identifier.to_bytes(),
-                0
+                0,
+                False
             )
 
     def __init__(

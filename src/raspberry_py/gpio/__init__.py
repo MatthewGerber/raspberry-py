@@ -396,7 +396,8 @@ class Clock(Component):
         self.state: Clock.State
 
         with self.state_lock:
-            if self.state.running:
+            state: Clock.State = self.state
+            if state.running:
                 logging.warning('Attempted to start clock that is running.')
             else:
                 self.run_thread = Thread(target=self.__run__)
@@ -469,7 +470,8 @@ class Clock(Component):
 
             # watch out for race condition on the running value. only set state if we're still running.
             with self.state_lock:
-                if self.state.running:
+                state: Clock.State = self.state
+                if state.running:
                     new_state = deepcopy(self.state)
                     new_state.tick += 1
                     self.set_state(new_state)

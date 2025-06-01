@@ -231,7 +231,7 @@ export async function is_checked(element) {
 
             if component.connection_blackout_tolerance_seconds is not None:
                 blackout_id, blackout_element = RpyFlask.get_repeater(component.id, component.connection_heartbeat, timedelta(seconds=component.connection_blackout_tolerance_seconds / 4.0))
-                elements.append(((blackout_id, 'js'), blackout_element))
+                elements.append(((blackout_id, 'js'), blackout_element))  # type: ignore
 
         elif isinstance(component, RaspberryPyArm):
             elements = [

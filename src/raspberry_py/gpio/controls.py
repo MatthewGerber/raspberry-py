@@ -66,9 +66,9 @@ class TwoPoleButton(Component):
         :return: True if pressed and False otherwise.
         """
 
-        self.state: TwoPoleButton.State
+        state: TwoPoleButton.State = self.state
 
-        return self.state.pressed
+        return state.pressed
 
     def __init__(
             self,
@@ -176,9 +176,9 @@ class LimitSwitch(Component):
         :return: True if pressed and False otherwise.
         """
 
-        self.state: LimitSwitch.State
+        state: LimitSwitch.State = self.state
 
-        return self.state.pressed
+        return state.pressed
 
     def __init__(
             self,

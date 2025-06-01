@@ -2,7 +2,7 @@ import time
 from datetime import timedelta, datetime
 
 from raspberry_py.gpio import setup, cleanup, CkPin
-from raspberry_py.gpio.motors import Stepper
+from raspberry_py.gpio.motors import Stepper, StepperMotorDriverDirectUln2003
 
 
 def main():
@@ -16,10 +16,14 @@ def main():
     stepper = Stepper(
         poles=32,
         output_rotor_ratio=1/64.0,
-        driver_pin_1=CkPin.GPIO18,
-        driver_pin_2=CkPin.GPIO23,
-        driver_pin_3=CkPin.GPIO24,
-        driver_pin_4=CkPin.GPIO25
+        driver=StepperMotorDriverDirectUln2003(
+            driver_pin_1=CkPin.GPIO18,
+            driver_pin_2=CkPin.GPIO23,
+            driver_pin_3=CkPin.GPIO24,
+            driver_pin_4=CkPin.GPIO25,
+            limiter=None
+        ),
+        reverse=False
     )
 
     stepper.start()

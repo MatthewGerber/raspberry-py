@@ -18,7 +18,7 @@ def main():
 
     locking_serial = LockingSerial(
         connection=Serial(
-            port='/dev/ttyS0',
+            port='/dev/serial0',
             baudrate=115200,
             parity=serial.PARITY_NONE,
             stopbits=serial.STOPBITS_ONE,

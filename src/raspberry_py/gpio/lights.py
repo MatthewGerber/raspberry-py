@@ -110,9 +110,9 @@ class LED(Component):
         :return: True if on and False otherwise.
         """
 
-        self.state: LED.State
+        state: LED.State = self.state
 
-        return self.state.on
+        return state.on
 
     def is_off(
             self
@@ -697,8 +697,6 @@ class FourDigitSevenSegmentLED(Component):
         Cycles the transistor base pins to display the current state.
         """
 
-        self.state: FourDigitSevenSegmentLED.State
-
         led = 0
         while self.run_display_thread:
 
@@ -711,7 +709,8 @@ class FourDigitSevenSegmentLED(Component):
                     gpio.output(pin, gpio.HIGH)
 
             # display the current led's character and decimal point via the shift register
-            self.led_shift_register.display(*self.state.get(led))
+            state: FourDigitSevenSegmentLED.State = self.state
+            self.led_shift_register.display(*state.get(led))
 
             # hold the current led for a duration
             time.sleep(self.led_display_time.total_seconds())
@@ -867,7 +866,7 @@ class LedMatrix(Component):
             if not isinstance(other, LedMatrix.State):
                 raise ValueError(f'Expected a {LedMatrix.State}')
 
-            return np.all(self.frame == other.frame)
+            return bool(np.all(self.frame == other.frame))
 
         def __str__(
                 self
@@ -909,9 +908,8 @@ class LedMatrix(Component):
         Cycles over columns and displays each in turn.
         """
 
-        self.state: LedMatrix.State
-
-        num_cols = self.state.frame.shape[1]
+        state: LedMatrix.State = self.state
+        num_cols = state.frame.shape[1]
         while self.run_display_thread:
 
             # scan across columns, displaying each in turn for the given delay.
@@ -923,7 +921,7 @@ class LedMatrix(Component):
 
                 # build binary string that sets the current column's rows to high (on) or low (low) according to the
                 # frame. convert the binary string to an integer for input to the shift register.
-                row_value = int(''.join(str(int(v)) for v in self.state.frame[:, col]), 2)
+                row_value = int(''.join(str(int(v)) for v in state.frame[:, col]), 2)
 
                 # write the row then the column. the circuit contains two shift registers in series. the first value
                 # (row) will end up in the second shift register, and the second (column) will end up in the first shift

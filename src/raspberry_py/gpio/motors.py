@@ -256,7 +256,8 @@ class DcMotorDriverIndirectArduino(DcMotorDriver):
                 self.identifier.to_bytes(1) +
                 self.arduino_direction_pin.to_bytes(1) +
                 self.arduino_pwm_pin.to_bytes(1),
-                0
+                0,
+                False
             )
         elif previous_state.on and not new_state.on:
             new_speed = 0
@@ -272,7 +273,8 @@ class DcMotorDriverIndirectArduino(DcMotorDriver):
                 abs(new_speed).to_bytes(2) +
                 (new_speed > 0).to_bytes(1) +
                 promise_ms.to_bytes(2),
-                0
+                0,
+                False
             )
 
     def __init__(
@@ -1130,15 +1132,18 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         Start the driver.
         """
 
-        self.serial.write_then_read(
+        success = bool(self.serial.write_then_read(
             StepperMotorDriverArduinoUln2003.Command.INIT.to_bytes(1) +
             self.identifier.to_bytes(1) +
             self.driver_pin_1.to_bytes(1) +
             self.driver_pin_2.to_bytes(1) +
             self.driver_pin_3.to_bytes(1) +
             self.driver_pin_4.to_bytes(1),
-            0
-        )
+            1,
+            False
+        ))
+        if not success:
+            raise ValueError('Failed to initialize.')
 
     def step(
             self,
@@ -1166,14 +1171,16 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             raise ValueError(f'Maximum time (ms) to step:  {max_unsigned_two_byte_int_value}')
 
         start_time = time.time()
-        limited = bool(self.serial.write_then_read(
+        result = self.serial.write_then_read(
             StepperMotorDriverArduinoUln2003.Command.STEP.to_bytes(1) +
             self.identifier.to_bytes(1) +
             abs_num_steps.to_bytes(2) +
             (num_steps > 0).to_bytes(1) +
             ms_to_step.to_bytes(2),
-            1
-        ))
+            -1,
+            True
+        )
+        limited = bool(result[1])
         end_time = time.time()
 
         state: Stepper.State = stepper.state
