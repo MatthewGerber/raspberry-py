@@ -1105,7 +1105,8 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             driver_pin_3: int,
             driver_pin_4: int,
             identifier: int,
-            serial: LockingSerial
+            serial: LockingSerial,
+            asynchronous: bool
     ):
         """
         Initialize the driver.
@@ -1116,7 +1117,9 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         :param driver_pin_4: Driver GPIO pin 4.
         :param identifier: Identifier.
         :param serial: Serial connection to the Arduino.
+        :param asynchronous: Whether the driver should operate asynchronously.
         """
+
         super().__init__(
             driver_pin_1,
             driver_pin_2,
@@ -1126,6 +1129,7 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
 
         self.identifier = identifier
         self.serial = serial
+        self.asynchronous = asynchronous
 
     def start(self):
         """
@@ -1170,17 +1174,21 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         if ms_to_step > max_unsigned_two_byte_int_value:
             raise ValueError(f'Maximum time (ms) to step:  {max_unsigned_two_byte_int_value}')
 
-        start_time = time.time()
-        result = self.serial.write_then_read(
+        bytes_to_write = (
             StepperMotorDriverArduinoUln2003.Command.STEP.to_bytes(1) +
             self.identifier.to_bytes(1) +
             abs_num_steps.to_bytes(2) +
             (num_steps > 0).to_bytes(1) +
-            ms_to_step.to_bytes(2),
-            -1,
-            True
+            ms_to_step.to_bytes(2)
         )
-        limited = bool(result[1])
+
+        start_time = time.time()
+        if self.asynchronous:
+            self.serial.write_then_read(bytes_to_write, 0, False)
+            limited = False
+        else:
+            result = self.serial.write_then_read(bytes_to_write, -1, True)
+            limited = bool(result[1])
         end_time = time.time()
 
         state: Stepper.State = stepper.state

@@ -37,7 +37,8 @@ def main():
             driver_pin_3=7,
             driver_pin_4=8,
             identifier=0,
-            serial=locking_serial
+            serial=locking_serial,
+            asynchronous=False
         ),
         reverse=False
     )

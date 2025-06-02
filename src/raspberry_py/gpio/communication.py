@@ -41,7 +41,8 @@ class LockingSerial:
         Write bytes and then read response.
 
         :param data: Bytes to write.
-        :param read_length: Number of bytes to read (use -1 for readline to read up to newline).
+        :param read_length: Number of bytes to read (use -1 when `readline` is True to read up to newline). Must be >=
+        0 if `readline` is False.
         :param readline: Whether to read a line of string content.
         :return: Bytes that were read.
         """
@@ -56,7 +57,10 @@ class LockingSerial:
                 if readline:
                     bytes_read = self.connection.readline(read_length)
                 else:
-                    bytes_read = self.connection.read(read_length)
+                    if read_length < 0:
+                        raise ValueError(f'Invalid read length:  {read_length}')
+                    else:
+                        bytes_read = self.connection.read(read_length)
 
             num_bytes_read = len(bytes_read)
             if read_length != -1 and num_bytes_read != read_length:
