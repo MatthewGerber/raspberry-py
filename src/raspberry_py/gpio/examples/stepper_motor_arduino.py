@@ -27,19 +27,21 @@ def main():
         throughput_step_size=0.05
     )
 
+    driver = StepperMotorDriverArduinoUln2003(
+        driver_pin_1=5,
+        driver_pin_2=6,
+        driver_pin_3=7,
+        driver_pin_4=8,
+        identifier=1,
+        serial=locking_serial,
+        asynchronous=True
+    )
+
     # create/start stepper
     stepper = Stepper(
         poles=32,
         output_rotor_ratio=1/64.0,
-        driver=StepperMotorDriverArduinoUln2003(
-            driver_pin_1=5,
-            driver_pin_2=6,
-            driver_pin_3=7,
-            driver_pin_4=8,
-            identifier=0,
-            serial=locking_serial,
-            asynchronous=False
-        ),
+        driver=driver,
         reverse=False
     )
 
@@ -47,14 +49,19 @@ def main():
 
     # rotate 45 degrees in 1 second
     start = datetime.now()
-    stepper.step_degrees(45, timedelta(seconds=1))
+    stepper.step_degrees(45, timedelta(seconds=0.25))
+    print('Waiting for async result...')
+    result = driver.wait_for_async_result()
+    print(f'Received async result:  {result}')
     print(f'Rotated to {stepper.get_degrees():.1f} degrees in {(datetime.now() - start).total_seconds():.1f} seconds.')
-
     time.sleep(1)
 
     # rotate -190 degrees in 5 seconds
     start = datetime.now()
     stepper.step_degrees(-180, timedelta(seconds=5))
+    print('Waiting for async result...')
+    result = driver.wait_for_async_result()
+    print(f'Received async result:  {result}')
     print(f'Rotated to {stepper.get_degrees():.1f} degrees in {(datetime.now() - start).total_seconds():.1f} seconds.')
 
     # clean up

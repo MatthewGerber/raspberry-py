@@ -924,14 +924,14 @@ class StepperMotorDriverUln2003(ABC):
             stepper: 'Stepper',
             num_steps: int,
             time_to_step: timedelta
-    ) -> bool:
+    ) -> Optional[bool]:
         """
         Step the motor.
 
         :param stepper: Stepper.
         :param num_steps: Number of steps.
         :param time_to_step: Time to take.
-        :return: Whether the stepper hit a limiter.
+        :return: Whether the stepper hit a limiter. Will always be None if operating asynchronously.
         """
 
     @abstractmethod
@@ -1008,14 +1008,14 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
             stepper: 'Stepper',
             num_steps: int,
             time_to_step: timedelta
-    ) -> bool:
+    ) -> Optional[bool]:
         """
         Step the motor.
 
         :param stepper: Stepper.
         :param num_steps: Number of steps.
         :param time_to_step: Time to step.
-        :return: Whether the stepper hit a limiter.
+        :return: Whether the stepper hit a limiter. Will always be non-None.
         """
 
         delay_seconds_per_step = time_to_step.total_seconds() / abs(num_steps)
@@ -1154,14 +1154,14 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             stepper: 'Stepper',
             num_steps: int,
             time_to_step: timedelta
-    ) -> bool:
+    ) -> Optional[bool]:
         """
         Step the motor.
 
         :param stepper: Stepper.
         :param num_steps: Number of steps.
         :param time_to_step: Time to take.
-        :return: Whether the stepper hit a limiter.
+        :return: Whether the stepper hit a limiter. Will always be None if operating asynchronously.
         """
 
         max_unsigned_two_byte_int_value = 2 ** 16 - 1
@@ -1183,11 +1183,11 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         )
 
         start_time = time.time()
+        self.serial.write_then_read(bytes_to_write, 0, False)
         if self.asynchronous:
-            self.serial.write_then_read(bytes_to_write, 0, False)
-            limited = False
+            limited = None
         else:
-            result = self.serial.write_then_read(bytes_to_write, -1, True)
+            result = self.wait_for_async_result()
             limited = bool(result[1])
         end_time = time.time()
 
@@ -1200,6 +1200,17 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         )
 
         return limited
+
+    def wait_for_async_result(
+            self
+    ) -> str:
+        """
+        Wait for asynchronous result.
+
+        :return: Asynchronous result.
+        """
+
+        return self.serial.connection.readline().strip().decode()
 
     def stop(self):
         """
@@ -1287,7 +1298,7 @@ class Stepper(Component):
         limited = self.driver.step(self, num_steps, state.time_to_step)
 
         result_state: Stepper.State = self.state
-        if not limited and result_state.step != state.step:
+        if limited is not None and not limited and result_state.step != state.step:
             raise ValueError(f'Expected stepper state ({result_state.step}) to be goal state ({state.step}).')
 
     def step(
