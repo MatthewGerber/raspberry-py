@@ -3,7 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from enum import IntEnum
-from typing import Optional, Callable
+from typing import Optional, Callable, Any
 
 import RPi.GPIO as gpio
 import numpy as np
@@ -924,14 +924,14 @@ class StepperMotorDriverUln2003(ABC):
             stepper: 'Stepper',
             num_steps: int,
             time_to_step: timedelta
-    ) -> Optional[bool]:
+    ) -> Any:
         """
         Step the motor.
 
         :param stepper: Stepper.
         :param num_steps: Number of steps.
         :param time_to_step: Time to take.
-        :return: Whether the stepper hit a limiter. Will always be None if operating asynchronously.
+        :return: Return value from the driver.
         """
 
     @abstractmethod
@@ -955,7 +955,7 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
             driver_pin_2: int,
             driver_pin_3: int,
             driver_pin_4: int,
-            limiter: Optional[Callable[['Stepper.State', 'Stepper.State'], bool]]
+            limiter: Optional[Callable[[int], bool]]
     ):
         """
         Initialize the driver.
@@ -964,8 +964,8 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
         :param driver_pin_2: Driver GPIO pin 2.
         :param driver_pin_3: Driver GPIO pin 3.
         :param driver_pin_4: Driver GPIO pin 4.
-        :param limiter: Limiter function, which takes the current stepper state and the next stepper state and returns a
-        bool indicating whether the stepper has reached its limit and should stop stepping in the current direction.
+        :param limiter: Limiter function, which takes the stepping direction and returns a bool indicating whether the
+        stepper has reached its limit and should stop stepping in the current direction.
         """
 
         super().__init__(
@@ -1008,33 +1008,26 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
             stepper: 'Stepper',
             num_steps: int,
             time_to_step: timedelta
-    ) -> Optional[bool]:
+    ) -> Any:
         """
         Step the motor.
 
         :param stepper: Stepper.
         :param num_steps: Number of steps.
         :param time_to_step: Time to step.
-        :return: Whether the stepper hit a limiter. Will always be non-None.
+        :return: Whether the stepper hit a limiter.
         """
 
         delay_seconds_per_step = time_to_step.total_seconds() / abs(num_steps)
-        state: Stepper.State = stepper.state
 
         # execute steps in the direction indicated
         direction = np.sign(num_steps)
-        initial_step = state.step
+        initial_state: Stepper.State = stepper.state
+        initial_step = initial_state.step
         target_step = initial_step + num_steps
         curr_time = time.time()
         limited = False
         for next_step in range(initial_step + direction, target_step + direction, direction):
-
-            # check for limiting. provide the anticipated next state and intended delay.
-            next_state = Stepper.State(next_step, timedelta(seconds=delay_seconds_per_step))
-            if self.limiter is not None and self.limiter(stepper.state, next_state):
-                print(f'Stepper has been limited. Refusing to set state to {next_state} or proceed beyond.')
-                limited = True
-                break
 
             # drive to the next half step and wait half the step delay
             self.drive(direction)
@@ -1043,15 +1036,31 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
             # drive to the next half step, achieving the full step.
             self.drive(direction)
 
-            # update state. we do this here (rather than at the end of this function) so that event listeners can react
-            # in real time as the stepper moves. update the anticipated time to step with the actual.
-            new_time = time.time()
-            next_state.time_to_step = timedelta(seconds=new_time - curr_time)
-            super(Stepper, stepper).set_state(next_state)
-            curr_time = new_time
+            # check for limiting
+            if self.limiter is not None and self.limiter(direction):
+                print(f'Stepper has been limited.')
+                limited = True
 
-            # wait for the half-step delay
+            # update state. we do this at each step so that event listeners can react in real time as the stepper moves.
+            new_time = time.time()
+            new_state = Stepper.State(
+                next_step,
+                timedelta(seconds=new_time - curr_time),
+                limited
+            )
+            super(Stepper, stepper).set_state(new_state)
+
+            # stop moving if we've been limited
+            if limited:
+                break
+
+            # mark new current time wait for the half-step delay
+            curr_time = new_time
             time.sleep(delay_seconds_per_step / 2.0)
+
+        result_state: Stepper.State = stepper.state
+        if not limited and result_state.step != target_step:
+            raise ValueError(f'Expected stepper state ({result_state.step}) to be goal state ({target_step}).')
 
         return limited
 
@@ -1154,14 +1163,15 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             stepper: 'Stepper',
             num_steps: int,
             time_to_step: timedelta
-    ) -> Optional[bool]:
+    ) -> Any:
         """
         Step the motor.
 
         :param stepper: Stepper.
         :param num_steps: Number of steps.
         :param time_to_step: Time to take.
-        :return: Whether the stepper hit a limiter. Will always be None if operating asynchronously.
+        :return: If operating synchronously, a boolean value indicating whether the stepper hit a limiter. If
+        operating asynchronously, a function that can be called to wait for the return value.
         """
 
         max_unsigned_two_byte_int_value = 2 ** 16 - 1
@@ -1185,21 +1195,22 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         start_time = time.time()
         self.serial.write_then_read(bytes_to_write, 0, False)
         if self.asynchronous:
-            limited = None
+            return_value = lambda: self.wait_for_async_result()
         else:
             result = self.wait_for_async_result()
-            limited = bool(result[1])
+            return_value = bool(result[1])  # format is "XY" where X is the stepper id and Y is a limited boolean
         end_time = time.time()
 
         state: Stepper.State = stepper.state
         super(Stepper, stepper).set_state(
             Stepper.State(
                 state.step + num_steps,
-                timedelta(seconds=end_time - start_time)
+                timedelta(seconds=end_time - start_time),
+                return_value
             )
         )
 
-        return limited
+        return return_value
 
     def wait_for_async_result(
             self
@@ -1232,17 +1243,20 @@ class Stepper(Component):
         def __init__(
                 self,
                 step: int,
-                time_to_step: timedelta
+                time_to_step: timedelta,
+                driver_return_value: Any
         ):
             """
             Initialize the state.
 
             :param step: Step to position at.
             :param time_to_step: Amount of time to take to position at step.
+            :param driver_return_value: Driver return value.
             """
 
             self.step = step
             self.time_to_step = time_to_step
+            self.driver_return_value = driver_return_value
 
         def __eq__(
                 self,
@@ -1295,44 +1309,44 @@ class Stepper(Component):
             print(f'Stepper is already at step {state.step}. Nothing to do.')
             return
 
-        limited = self.driver.step(self, num_steps, state.time_to_step)
-
-        result_state: Stepper.State = self.state
-        if limited is not None and not limited and result_state.step != state.step:
-            raise ValueError(f'Expected stepper state ({result_state.step}) to be goal state ({state.step}).')
+        self.driver.step(self, num_steps, state.time_to_step)
 
     def step(
             self,
             steps: int,
             time_to_step: timedelta
-    ):
+    ) -> Any:
         """
         Step the motor a number of steps.
 
         :param steps:  Number of steps.
         :param time_to_step: Amount of time to take.
+        :return: Driver return value.
         """
-
-        state: Stepper.State = self.state
 
         if self.reverse:
             steps = -steps
 
-        self.set_state(Stepper.State(state.step + steps, time_to_step))
+        initial_state: Stepper.State = self.state
+        self.set_state(Stepper.State(initial_state.step + steps, time_to_step, None))
+
+        resulting_state: Stepper.State = self.state
+        return resulting_state.driver_return_value
 
     def step_degrees(
             self,
             degrees: float,
             time_to_step: timedelta
-    ):
+    ) -> Any:
         """
         Step the motor a number of degrees.
 
         :param degrees:  Number of degrees.
         :param time_to_step: Amount of time to take.
+        :return: Driver return value.
         """
 
-        self.step(round(degrees * self.steps_per_degree), time_to_step)
+        return self.step(round(degrees * self.steps_per_degree), time_to_step)
 
     def start(
             self
@@ -1395,7 +1409,7 @@ class Stepper(Component):
         :param reverse: Whether to reverse the stepper.
         """
 
-        super().__init__(Stepper.State(0, timedelta(seconds=0)))
+        super().__init__(Stepper.State(0, timedelta(seconds=0), None))
 
         self.poles = poles
         self.output_rotor_ratio = output_rotor_ratio

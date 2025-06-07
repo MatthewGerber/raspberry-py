@@ -501,18 +501,18 @@ class RaspberryPyElevator(Component):
 
     def platform_has_reached_limit(
             self,
-            current_state: Stepper.State,
-            next_state: Stepper.State
+            direction: int
     ) -> bool:
         """
         Check whether the platform has reached a limit.
 
+        :param direction: Direction.
         :return: True if the platform has reached a limit.
         """
 
         return (
-            (self.bottom_limit_switch.is_pressed() and next_state.step < current_state.step) or
-            (self.top_limit_switch.is_pressed() and next_state.step > current_state.step)
+            (self.bottom_limit_switch.is_pressed() and direction < 0) or
+            (self.top_limit_switch.is_pressed() and direction > 0)
         )
 
     def align_gears_and_mount(
