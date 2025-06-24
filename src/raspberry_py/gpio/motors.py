@@ -1106,6 +1106,7 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
 
         INIT = 1
         STEP = 2
+        STOP = 3
 
     def __init__(
             self,
@@ -1227,7 +1228,15 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         """
         Stop the driver.
         """
-        pass
+
+        success = bool(self.serial.write_then_read(
+            StepperMotorDriverArduinoUln2003.Command.STOP.to_bytes(1) +
+            self.identifier.to_bytes(1),
+            1,
+            False
+        ))
+        if not success:
+            raise ValueError('Failed to stop.')
 
 
 class Stepper(Component):
