@@ -3,7 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from enum import IntEnum
-from typing import Optional, Callable, Any
+from typing import Optional, Callable, Any, Tuple
 
 import RPi.GPIO as gpio
 import numpy as np
@@ -11,6 +11,7 @@ import numpy as np
 from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.communication import LockingSerial
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
+from raspberry_py.utils import get_float
 
 
 class DcMotorDriver(ABC):
@@ -1099,6 +1100,9 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
     ULN2003 integrated circuit.
     """
 
+    # Maximum number of steps is the maximum two-byte unsigned integer.
+    MAX_TWO_BYTE_UNSIGNED_INT = 2 ** 16 - 1
+
     class Command(IntEnum):
         """
         Commands that can be sent to the Arduino.
@@ -1171,19 +1175,18 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         :param stepper: Stepper.
         :param num_steps: Number of steps.
         :param time_to_step: Time to take.
-        :return: If operating synchronously, a boolean value indicating whether the stepper hit a limiter. If
-        operating asynchronously, a function that can be called to wait for the return value.
+        :return: If operating synchronously, a float value indicating the number of steps skipped due to limiting. If
+        operating asynchronously, a function that can be called to wait for the return value, which will be the stepper
+        identifier and the number of steps skipped due to limiting.
         """
 
-        max_unsigned_two_byte_int_value = 2 ** 16 - 1
-
         abs_num_steps = abs(num_steps)
-        if abs_num_steps > max_unsigned_two_byte_int_value:
-            raise ValueError(f'Maximum number of steps:  {max_unsigned_two_byte_int_value}')
+        if abs_num_steps > StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT:
+            raise ValueError(f'Maximum number of steps:  {StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT}')
 
         ms_to_step = int(time_to_step.total_seconds() * 1000)
-        if ms_to_step > max_unsigned_two_byte_int_value:
-            raise ValueError(f'Maximum time (ms) to step:  {max_unsigned_two_byte_int_value}')
+        if ms_to_step > StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT:
+            raise ValueError(f'Maximum time (ms) to step:  {StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT}')
 
         bytes_to_write = (
             StepperMotorDriverArduinoUln2003.Command.STEP.to_bytes(1) +
@@ -1198,8 +1201,7 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         if self.asynchronous:
             return_value = lambda: self.wait_for_async_result()
         else:
-            result = self.wait_for_async_result()
-            return_value = bool(result[1])  # format is "XY" where X is the stepper id and Y is a limited boolean
+            _, return_value = self.wait_for_async_result()
         end_time = time.time()
 
         state: Stepper.State = stepper.state
@@ -1215,14 +1217,18 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
 
     def wait_for_async_result(
             self
-    ) -> str:
+    ) -> Tuple[int, float]:
         """
         Wait for asynchronous result.
 
-        :return: Asynchronous result.
+        :return: 2-tuple of the stepper id and skipped steps.
         """
 
-        return self.serial.connection.readline().strip().decode()
+        result_bytes = self.serial.connection.read(5)
+        stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
+        skipped_steps = get_float(result_bytes[1:5])
+
+        return stepper_id, skipped_steps
 
     def stop(self):
         """

@@ -1,3 +1,4 @@
+import struct
 from typing import Optional
 
 
@@ -234,3 +235,29 @@ class IncrementalSampleAverager:
 
         # noinspection PyStringFormat
         return f'{{:{format_spec}}}'.format(self.get_value())
+
+
+def get_bytes(
+        value: float
+) -> bytes:
+    """
+    Get bytes for a float.
+
+    :param value: Value.
+    :return: Bytes.
+    """
+
+    return struct.pack('f', value)
+
+
+def get_float(
+    float_bytes: bytes
+) -> float:
+    """
+    Get float for bytes.
+
+    :param float_bytes: Bytes.
+    :return: Float.
+    """
+
+    return struct.unpack('f', float_bytes)[0]
