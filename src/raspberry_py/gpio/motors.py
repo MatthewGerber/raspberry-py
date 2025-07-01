@@ -1161,7 +1161,7 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             False
         ))
         if not success:
-            raise ValueError('Failed to initialize.')
+            raise ValueError('Failed to initialize Arduino stepper motor driver.')
 
     def step(
             self,
@@ -1242,7 +1242,7 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             False
         ))
         if not success:
-            raise ValueError('Failed to stop.')
+            raise ValueError('Failed to stop Arduino stepper motor driver.')
 
 
 class Stepper(Component):
