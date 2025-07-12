@@ -4,7 +4,7 @@ from typing import List
 
 import RPi.GPIO as gpio
 
-from raspberry_py.gpio import Component
+from raspberry_py.gpio import Component, Clock
 from raspberry_py.gpio.adc import AdcDevice
 
 
@@ -244,9 +244,9 @@ class Joystick(Component):
             """
             Initialize the state.
 
-            :param x: Left-right position [-1.0, 1.0].
-            :param y: Up-down position [-1.0, 1.0]
-            :param z: Whether or not the joystick is depressed.
+            :param x: Left-right position [-1.0, 1.0] (or another range if the ADC is rescaled).
+            :param y: Up-down position [-1.0, 1.0] (or another range if the ADC is rescaled).
+            :param z: Whether the joystick is depressed.
             """
 
             self.x = x
@@ -280,56 +280,6 @@ class Joystick(Component):
 
             return f'x: {self.x}, y: {self.y}, z: {self.z}'
 
-    def update_state(
-            self
-    ):
-        """
-        Update state.
-        """
-
-        self.adc.update_state()
-
-    def get_x(
-            self
-    ) -> float:
-        """
-        Get x-position of joystick.
-
-        :return: x position.
-        """
-
-        self.update_state()
-
-        state: Joystick.State = self.get_state()
-
-        return state.x
-
-    def get_y(
-            self
-    ) -> float:
-        """
-        Get y-position of joystick.
-
-        :return: y position.
-        """
-
-        self.update_state()
-
-        state: Joystick.State = self.get_state()
-
-        return state.y
-
-    def is_pressed(
-            self
-    ) -> bool:
-        """
-        Check whether the button is currently pressed.
-
-        :return: True if pressed and False otherwise.
-        """
-
-        return self.button.is_pressed()
-
     def __init__(
             self,
             adc: AdcDevice,
@@ -340,12 +290,12 @@ class Joystick(Component):
     ):
         """
         Initialize the joystick.
-        
+
         :param adc: Analog-to-digital converter.
         :param x_channel: Analog-to-digital channel on which to monitor x values.
         :param y_channel: Analog-to-digital channel on which to monitor y values.
         :param z_pin: GPIO pin used for z-axis switch.
-        :param invert_y: Whether or not to invert y-axis values. If True, pushing the joystick forward will increase
+        :param invert_y: Whether to invert y-axis values. If True, pushing the joystick forward will increase
         values and pulling it back will decrease values. If False, then the opposite will happen.
         """
 
@@ -392,6 +342,82 @@ class Joystick(Component):
                 )
             )
         )
+
+        # set up a clock and update the adc each tick
+        self.update_state_clock = Clock(tick_interval_seconds=0.5)
+        self.update_state_clock.event(lambda _: adc.update_state())
+
+    def update_state(
+            self
+    ):
+        """
+        Update state.
+        """
+
+        self.adc.update_state()
+
+    def start_updating_state(
+            self,
+            interval_seconds: float
+    ):
+        """
+        Start updating the joystick state.
+
+        :param interval_seconds:  State update interval.
+        """
+
+        self.update_state_clock.tick_interval_seconds = interval_seconds
+        self.update_state_clock.start()
+
+    def stop_updating_state(
+            self
+    ):
+        """
+        Stop updating the joystick state.
+        """
+
+        self.update_state_clock.stop()
+
+    def get_x(
+            self
+    ) -> float:
+        """
+        Get x-position of joystick.
+
+        :return: x position.
+        """
+
+        self.update_state()
+
+        state: Joystick.State = self.get_state()
+
+        return state.x
+
+    def get_y(
+            self
+    ) -> float:
+        """
+        Get y-position of joystick.
+
+        :return: y position.
+        """
+
+        self.update_state()
+
+        state: Joystick.State = self.get_state()
+
+        return state.y
+
+    def is_pressed(
+            self
+    ) -> bool:
+        """
+        Check whether the button is currently pressed.
+
+        :return: True if pressed and False otherwise.
+        """
+
+        return self.button.is_pressed()
 
 
 class MatrixKeypad(Component):
