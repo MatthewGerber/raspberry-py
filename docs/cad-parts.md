@@ -143,7 +143,7 @@ one attached to each axis. The harder solution:  Use [two fixed-position stepper
 There are advantages each way. The former is simpler to design and build; however, the motor mass is attached to each
 axis, which is not ideal when the axes are changing direction quickly. In the latter design, the motors have fixed 
 positions, so the motor mass is not attached to a moving axis. The control is more complicated, but this makes it 
-interesting, which is also an advantage!
+interesting, which is also an advantage! The software is [here](https://github.com/MatthewGerber/h-gantry).
 
 # Robotic Arm
 
