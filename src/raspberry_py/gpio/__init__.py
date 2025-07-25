@@ -265,7 +265,7 @@ class Component(ABC):
         """
 
         with self.state_lock:
-            if state == self.state:
+            if self.only_report_state_changes and state == self.state:
                 logging.debug(f'State of {self} is already {state}. Not setting state or triggering events.')
             else:
                 logging.debug(f'Setting state of {self} to {state}.')
@@ -292,6 +292,7 @@ class Component(ABC):
         self.events: List[Event] = []
         self.state_lock = RLock()
         self.id = str(uuid.uuid4())
+        self.only_report_state_changes = True
 
     def __getstate__(
             self
