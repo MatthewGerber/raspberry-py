@@ -19,6 +19,7 @@ commercially and the commercial version is quite expensive.
 * Mesh slicer:  [UltiMaker Cura](https://ultimaker.com/software/ultimaker-cura) is a simple tool with a single purpose:
 slice the mesh outputs of CAD into horizontal layers that can be 3D printed. The settings are endlessly configurable, 
 but the defaults work quite well. Support structures are effective and efficient, and I haven't had a problem yet.
+Currently, I'm using [PrusaSlicer]()
 * 3D printer:  This is the only item in the list that is not free. With endless options on the market it can be 
 difficult to choose; however, at under $200 with generally quite positive reviews, it is difficult to get past the
 [Creality Ender-3](https://www.creality.com/products/ender-3-3d-printer). It was simple to assemble and has been 
@@ -55,8 +56,7 @@ updated. Sometimes this is finicky, and the board doesn't take the firmware. Ren
   ![bed-mesh](bed-mesh.png)
   8. Add `G28 G29` to your slicer's g-code preamble. The `G28` (home) command is probably already present, in which case
   you just tack on `G29` (level bed).
-
-  After installing the new firmware, I kept running into under-extrusion issues. It took a while to realize that the new 
+* Extrusion stepper calibration:  I kept running into under-extrusion issues. It took a while to realize that new 
   firmware was configured with a lower extrusion rate than the stock Ender 3 firmware. The process for calibrating the
   extrusion rate (or e-steps) is as follows:
   1. Use the menu options to manually extrude 10cm (100mm) of filament. Here, 100mm is `expected mm`.
@@ -79,7 +79,17 @@ updated. Sometimes this is finicky, and the board doesn't take the firmware. Ren
      ) -> float: 
          return (steps_per_mm * expected_mm) / actual_mm
      ```
-
+* Bed update with direct-drive extrusion:  In the end, the automatic bed leveling update did not work very well. Some 
+  prints did okay, but others had issues when printing over the entire print bed. I ended up reverting back to the stock 
+  Ender 3 firmware as follows:
+  1. Visit the Creality Cloud [firmware site](https://www.crealitycloud.com/downloads/firmware/ender-series/ender-3)
+  2. Download `Ender-3Marlin2.0.6HW4.2.2 GD Version firmware`, as my Ender 3 has the 4.2.2 mainboard with the GD chip.
+  3. After flashing the firmware, the default language is Chinese. The language menu is second from bottom in the main
+     interface.
+  4. Recalibrate the extrusion stepper motor (see above).
+  I updated to [a glass bed](https://www.amazon.com/Creality-Ender-Glass-Upgraded-235x235x4mm/dp/B07RD6D2ZQ/), which is
+  very flat, and also to [a direct-drive](https://www.amazon.com/dp/B09KG8MMQ2) adapter for the extrusion motor. This
+  has been working well. 
 * 3D printer web interface:  I use [OctoPrint](https://octoprint.org) with my Raspberry Pi as an efficient and easy way
 to manage print jobs. See [here](octoprint.md) for tips on configuring OctoPrint on the Pi.
 * Tips for changing the bowden tube and nozzle, particularly when the extruder stepper motor is skipping, the extruder 
