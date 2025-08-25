@@ -265,7 +265,7 @@ class Component(ABC):
         """
 
         with self.state_lock:
-            if state == self.state:
+            if self.only_report_state_changes and state == self.state:
                 logging.debug(f'State of {self} is already {state}. Not setting state or triggering events.')
             else:
                 logging.debug(f'Setting state of {self} to {state}.')
@@ -292,6 +292,7 @@ class Component(ABC):
         self.events: List[Event] = []
         self.state_lock = RLock()
         self.id = str(uuid.uuid4())
+        self.only_report_state_changes = True
 
     def __getstate__(
             self
@@ -396,7 +397,8 @@ class Clock(Component):
         self.state: Clock.State
 
         with self.state_lock:
-            if self.state.running:
+            state: Clock.State = self.state
+            if state.running:
                 logging.warning('Attempted to start clock that is running.')
             else:
                 self.run_thread = Thread(target=self.__run__)
@@ -469,7 +471,8 @@ class Clock(Component):
 
             # watch out for race condition on the running value. only set state if we're still running.
             with self.state_lock:
-                if self.state.running:
+                state: Clock.State = self.state
+                if state.running:
                     new_state = deepcopy(self.state)
                     new_state.tick += 1
                     self.set_state(new_state)

@@ -34,13 +34,16 @@ class LockingSerial:
     def write_then_read(
             self,
             data: bytes,
-            read_length: int
+            read_length: int,
+            readline: bool
     ) -> bytes:
         """
         Write bytes and then read response.
 
         :param data: Bytes to write.
-        :param read_length: Number of bytes to read.
+        :param read_length: Number of bytes to read (use -1 when `readline` is True to read up to newline). Must be >=
+        0 if `readline` is False.
+        :param readline: Whether to read a line of string content.
         :return: Bytes that were read.
         """
 
@@ -51,10 +54,16 @@ class LockingSerial:
             if read_length == 0:
                 bytes_read = bytes()
             else:
-                bytes_read = self.connection.read(read_length)
+                if readline:
+                    bytes_read = self.connection.readline(read_length)
+                else:
+                    if read_length < 0:
+                        raise ValueError(f'Invalid read length:  {read_length}')
+                    else:
+                        bytes_read = self.connection.read(read_length)
 
             num_bytes_read = len(bytes_read)
-            if num_bytes_read != read_length:
+            if read_length != -1 and num_bytes_read != read_length:
                 raise ValueError(f'Expected to read {read_length} byte(s) but read {num_bytes_read}.')
 
             # update throughput estimates

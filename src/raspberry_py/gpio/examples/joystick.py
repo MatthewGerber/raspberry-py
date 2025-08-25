@@ -31,24 +31,23 @@ def main():
             joystick_x_ad_channel: (-1.0, 1.0)
         }
     )
+    adc.only_report_state_changes = False
 
     # create a joystick. invert the y-axis values so that pushing forward increases them.
     joystick = Joystick(
         adc=adc,
         x_channel=joystick_x_ad_channel,
         y_channel=joystick_y_ad_channel,
-        z_pin=CkPin.GPIO18,
+        z_pin=CkPin.GPIO17,
         invert_y=True
     )
+    joystick.only_report_state_changes = False
 
     joystick.event(lambda s: print(f'{s}'))
 
-    try:
-        while True:
-            joystick.update_state()
-            time.sleep(0.5)
-    except KeyboardInterrupt:
-        pass
+    joystick.start_updating_state(0.1)
+    time.sleep(20.0)
+    joystick.stop_updating_state()
 
     adc.close()
     cleanup()

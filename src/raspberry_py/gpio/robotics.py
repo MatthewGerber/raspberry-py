@@ -5,7 +5,7 @@ from typing import List, Tuple
 from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.controls import LimitSwitch
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
-from raspberry_py.gpio.motors import Servo, Sg90DriverPCA9685PW, Stepper
+from raspberry_py.gpio.motors import Servo, Sg90DriverPCA9685PW, Stepper, StepperMotorDriverDirectUln2003
 
 
 class RaspberryPyArm(Component):
@@ -108,13 +108,13 @@ class RaspberryPyArm(Component):
         :param rotation: Rotation.
         """
 
-        self.state: RaspberryPyArm.State
+        state: RaspberryPyArm.State = self.state
         self.set_state(RaspberryPyArm.State(
             base_rotation=rotation,
-            arm_elevation=self.state.arm_elevation,
-            wrist_elevation=self.state.wrist_elevation,
-            wrist_rotation=self.state.wrist_rotation,
-            pinch=self.state.pinch
+            arm_elevation=state.arm_elevation,
+            wrist_elevation=state.wrist_elevation,
+            wrist_rotation=state.wrist_rotation,
+            pinch=state.pinch
         ))
 
     def set_arm_elevation(
@@ -127,13 +127,13 @@ class RaspberryPyArm(Component):
         :param elevation: Elevation.
         """
 
-        self.state: RaspberryPyArm.State
+        state: RaspberryPyArm.State = self.state
         self.set_state(RaspberryPyArm.State(
-            base_rotation=self.state.base_rotation,
+            base_rotation=state.base_rotation,
             arm_elevation=elevation,
-            wrist_elevation=self.state.wrist_elevation,
-            wrist_rotation=self.state.wrist_rotation,
-            pinch=self.state.pinch
+            wrist_elevation=state.wrist_elevation,
+            wrist_rotation=state.wrist_rotation,
+            pinch=state.pinch
         ))
 
     def set_wrist_elevation(
@@ -146,13 +146,13 @@ class RaspberryPyArm(Component):
         :param elevation: Elevation.
         """
 
-        self.state: RaspberryPyArm.State
+        state: RaspberryPyArm.State = self.state
         self.set_state(RaspberryPyArm.State(
-            base_rotation=self.state.base_rotation,
-            arm_elevation=self.state.arm_elevation,
+            base_rotation=state.base_rotation,
+            arm_elevation=state.arm_elevation,
             wrist_elevation=elevation,
-            wrist_rotation=self.state.wrist_rotation,
-            pinch=self.state.pinch
+            wrist_rotation=state.wrist_rotation,
+            pinch=state.pinch
         ))
 
     def set_wrist_rotation(
@@ -165,13 +165,13 @@ class RaspberryPyArm(Component):
         :param rotation: Rotation.
         """
 
-        self.state: RaspberryPyArm.State
+        state: RaspberryPyArm.State = self.state
         self.set_state(RaspberryPyArm.State(
-            base_rotation=self.state.base_rotation,
-            arm_elevation=self.state.arm_elevation,
-            wrist_elevation=self.state.wrist_elevation,
+            base_rotation=state.base_rotation,
+            arm_elevation=state.arm_elevation,
+            wrist_elevation=state.wrist_elevation,
             wrist_rotation=rotation,
-            pinch=self.state.pinch
+            pinch=state.pinch
         ))
 
     def set_pinch(
@@ -184,12 +184,12 @@ class RaspberryPyArm(Component):
         :param pinch: Pinch.
         """
 
-        self.state: RaspberryPyArm.State
+        state: RaspberryPyArm.State = self.state
         self.set_state(RaspberryPyArm.State(
-            base_rotation=self.state.base_rotation,
-            arm_elevation=self.state.arm_elevation,
-            wrist_elevation=self.state.wrist_elevation,
-            wrist_rotation=self.state.wrist_rotation,
+            base_rotation=state.base_rotation,
+            arm_elevation=state.arm_elevation,
+            wrist_elevation=state.wrist_elevation,
+            wrist_rotation=state.wrist_rotation,
             pinch=pinch
         ))
 
@@ -416,11 +416,11 @@ class RaspberryPyElevator(Component):
         :param time_to_move: Amount of time to take when moving.
         """
 
-        self.state: RaspberryPyElevator.State
+        state: RaspberryPyElevator.State = self.state
 
         steps = round(mm * self.steps_per_mm)
         self.stepper_left.step(steps, time_to_move)
-        self.set_state(RaspberryPyElevator.State(self.state.location_mm + steps))
+        self.set_state(RaspberryPyElevator.State(state.location_mm + steps))
 
     def step_left(
             self,
@@ -501,18 +501,18 @@ class RaspberryPyElevator(Component):
 
     def platform_has_reached_limit(
             self,
-            current_state: Stepper.State,
-            next_state: Stepper.State
+            direction: int
     ) -> bool:
         """
         Check whether the platform has reached a limit.
 
+        :param direction: Direction.
         :return: True if the platform has reached a limit.
         """
 
         return (
-            (self.bottom_limit_switch.is_pressed() and next_state.step < current_state.step) or
-            (self.top_limit_switch.is_pressed() and next_state.step > current_state.step)
+            (self.bottom_limit_switch.is_pressed() and direction < 0) or
+            (self.top_limit_switch.is_pressed() and direction > 0)
         )
 
     def align_gears_and_mount(
@@ -602,11 +602,14 @@ class RaspberryPyElevator(Component):
         self.stepper_left = Stepper(
             poles=32,
             output_rotor_ratio=1 / 64.0,
-            driver_pin_1=left_stepper_pins[0],
-            driver_pin_2=left_stepper_pins[1],
-            driver_pin_3=left_stepper_pins[2],
-            driver_pin_4=left_stepper_pins[3],
-            limiter=self.platform_has_reached_limit
+            driver=StepperMotorDriverDirectUln2003(
+                driver_pin_1=left_stepper_pins[0],
+                driver_pin_2=left_stepper_pins[1],
+                driver_pin_3=left_stepper_pins[2],
+                driver_pin_4=left_stepper_pins[3],
+                limiter=self.platform_has_reached_limit
+            ),
+            reverse=False
         )
 
         if reverse_right_stepper:
@@ -615,10 +618,14 @@ class RaspberryPyElevator(Component):
         self.stepper_right = Stepper(
             poles=32,
             output_rotor_ratio=1 / 64.0,
-            driver_pin_1=right_stepper_pins[0],
-            driver_pin_2=right_stepper_pins[1],
-            driver_pin_3=right_stepper_pins[2],
-            driver_pin_4=right_stepper_pins[3]
+            driver=StepperMotorDriverDirectUln2003(
+                driver_pin_1=right_stepper_pins[0],
+                driver_pin_2=right_stepper_pins[1],
+                driver_pin_3=right_stepper_pins[2],
+                driver_pin_4=right_stepper_pins[3],
+                limiter=None
+            ),
+            reverse=False
         )
 
         self.synchronize_steppers()
