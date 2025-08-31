@@ -3,7 +3,7 @@
 {:toc}
 
 This page documents parts I have designed for 3D printing. See [here](https://github.com/MatthewGerber/3d-printing) for 
-general 3d-printing notes.
+general 3d-printing notes, and [here](https://www.printables.com/@MatthewGerbe_3143168/models) for my model files.
 
 # Reinforcement Learning for the Cart-Pole Apparatus
 
@@ -17,7 +17,7 @@ would find a solution. This is [a work in progress](https://github.com/MatthewGe
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH286ddQT78850c0d8a4f16d8ed322db9a1e?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
-How to control a two-axis linear gantry system? The simple solution is to [use two stepper motors](https://www.youtube.com/watch?v=uOSCsBbsX4w), 
+How do you control a two-axis linear gantry system? The simple solution is to [use two stepper motors](https://www.youtube.com/watch?v=uOSCsBbsX4w), 
 one attached to each axis. The harder solution:  Use [two fixed-position stepper motors with a crazy, winding belt](https://www.youtube.com/watch?v=IkM2K7CsiHo).
 There are advantages each way. The former is simpler to design and build; however, the motor mass is attached to each
 axis, which is not ideal when the axes are changing direction quickly. In the latter design, the motors have fixed 
