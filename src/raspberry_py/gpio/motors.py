@@ -923,6 +923,7 @@ class StepperMotorDriverUln2003(ABC):
     def step(
             self,
             stepper: 'Stepper',
+            step_sequence_idx: int,
             num_steps: int,
             time_to_step: timedelta
     ) -> Any:
@@ -930,6 +931,7 @@ class StepperMotorDriverUln2003(ABC):
         Step the motor.
 
         :param stepper: Stepper.
+        :param step_sequence_idx: Step sequence index, used to coordinate multiple steppers.
         :param num_steps: Number of steps.
         :param time_to_step: Time to take.
         :return: Return value from the driver.
@@ -1007,6 +1009,7 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
     def step(
             self,
             stepper: 'Stepper',
+            step_sequence_idx: int,
             num_steps: int,
             time_to_step: timedelta
     ) -> Any:
@@ -1014,6 +1017,7 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
         Step the motor.
 
         :param stepper: Stepper.
+        :param step_sequence_idx: Step sequence index, used to coordinate multiple steppers.
         :param num_steps: Number of steps.
         :param time_to_step: Time to step.
         :return: Whether the stepper hit a limiter.
@@ -1045,6 +1049,7 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
             # update state. we do this at each step so that event listeners can react in real time as the stepper moves.
             new_time = time.time()
             new_state = Stepper.State(
+                step_sequence_idx,
                 next_step,
                 timedelta(seconds=new_time - curr_time),
                 limited
@@ -1166,6 +1171,7 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
     def step(
             self,
             stepper: 'Stepper',
+            step_sequence_idx: int,
             num_steps: int,
             time_to_step: timedelta
     ) -> Any:
@@ -1173,11 +1179,12 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         Step the motor.
 
         :param stepper: Stepper.
+        :param step_sequence_idx: Step sequence index, used to coordinate multiple steppers.
         :param num_steps: Number of steps.
         :param time_to_step: Time to take.
         :return: If operating synchronously, a float value indicating the number of steps skipped due to limiting. If
-        operating asynchronously, a function that can be called to wait for the return value, which will be the stepper
-        identifier and the number of steps skipped due to limiting.
+        operating asynchronously, a function that can be called to wait for the return value, which will be the stepping
+        sequence identifier, the stepper identifier, and the number of steps skipped due to limiting.
         """
 
         abs_num_steps = abs(num_steps)
@@ -1189,25 +1196,30 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             raise ValueError(f'Maximum time (ms) to step:  {StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT}')
 
         bytes_to_write = (
-            StepperMotorDriverArduinoUln2003.Command.STEP.to_bytes(1) +
-            self.identifier.to_bytes(1) +
-            abs_num_steps.to_bytes(2) +
-            (num_steps > 0).to_bytes(1) +
-            ms_to_step.to_bytes(2)
+                StepperMotorDriverArduinoUln2003.Command.STEP.to_bytes(1) +
+                self.identifier.to_bytes(1) +
+                step_sequence_idx.to_bytes(4) +
+                abs_num_steps.to_bytes(2) +
+                (num_steps > 0).to_bytes(1) +
+                ms_to_step.to_bytes(2)
         )
 
         start_time = time.time()
         self.serial.write_then_read(bytes_to_write, 0, False)
         if self.asynchronous:
             return_value = lambda: self.wait_for_async_result()
+            num_steps_taken = 0
         else:
-            _, return_value = self.wait_for_async_result()
+            _, _, skipped_steps = self.wait_for_async_result()
+            num_steps_taken = round(num_steps - skipped_steps)
+            return_value = skipped_steps
         end_time = time.time()
 
         state: Stepper.State = stepper.state
         super(Stepper, stepper).set_state(
             Stepper.State(
-                state.step + num_steps,
+                step_sequence_idx,
+                state.step + num_steps_taken,
                 timedelta(seconds=end_time - start_time),
                 return_value
             )
@@ -1217,18 +1229,19 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
 
     def wait_for_async_result(
             self
-    ) -> Tuple[int, float]:
+    ) -> Tuple[int, int, float]:
         """
         Wait for asynchronous result.
 
-        :return: 2-tuple of the stepper id and skipped steps.
+        :return: 3-tuple of the step sequence index, stepper id, and skipped steps.
         """
 
-        result_bytes = self.serial.connection.read(5)
-        stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
-        skipped_steps = get_float(result_bytes[1:5])
+        result_bytes = self.serial.connection.read(9)
+        step_sequence_idx = int.from_bytes(result_bytes[0:4], signed=False)
+        stepper_id = int.from_bytes(result_bytes[4:5], signed=False)
+        skipped_steps = get_float(result_bytes[5:9])
 
-        return stepper_id, skipped_steps
+        return step_sequence_idx, stepper_id, skipped_steps
 
     def stop(self):
         """
@@ -1257,6 +1270,7 @@ class Stepper(Component):
 
         def __init__(
                 self,
+                step_sequence_idx: int,
                 step: int,
                 time_to_step: timedelta,
                 driver_return_value: Any
@@ -1264,11 +1278,13 @@ class Stepper(Component):
             """
             Initialize the state.
 
+            :param step_sequence_idx: Step sequence index, used to coordinate multiple steppers.
             :param step: Step to position at.
             :param time_to_step: Amount of time to take to position at step.
             :param driver_return_value: Driver return value.
             """
 
+            self.step_sequence_idx = step_sequence_idx
             self.step = step
             self.time_to_step = time_to_step
             self.driver_return_value = driver_return_value
@@ -1287,7 +1303,7 @@ class Stepper(Component):
             if not isinstance(other, Stepper.State):
                 raise ValueError(f'Expected a {Stepper.State}')
 
-            return self.step == other.step
+            return self.step_sequence_idx == other.step_sequence_idx and self.step == other.step
 
         def __str__(
                 self
@@ -1324,16 +1340,18 @@ class Stepper(Component):
             print(f'Stepper is already at step {state.step}. Nothing to do.')
             return
 
-        self.driver.step(self, num_steps, state.time_to_step)
+        self.driver.step(self, state.step_sequence_idx, num_steps, state.time_to_step)
 
     def step(
             self,
+            step_sequence_idx: int,
             steps: int,
             time_to_step: timedelta
     ) -> Any:
         """
         Step the motor a number of steps.
 
+        :param step_sequence_idx: Step sequence index, used to coordinate multiple steppers.
         :param steps:  Number of steps.
         :param time_to_step: Amount of time to take.
         :return: Driver return value.
@@ -1343,25 +1361,27 @@ class Stepper(Component):
             steps = -steps
 
         initial_state: Stepper.State = self.state
-        self.set_state(Stepper.State(initial_state.step + steps, time_to_step, None))
+        self.set_state(Stepper.State(step_sequence_idx, initial_state.step + steps, time_to_step, None))
 
         resulting_state: Stepper.State = self.state
         return resulting_state.driver_return_value
 
     def step_degrees(
             self,
+            step_sequence_idx: int,
             degrees: float,
             time_to_step: timedelta
     ) -> Any:
         """
         Step the motor a number of degrees.
 
+        :param step_sequence_idx: Step sequence index, used to coordinate multiple steppers.
         :param degrees:  Number of degrees.
         :param time_to_step: Amount of time to take.
         :return: Driver return value.
         """
 
-        return self.step(round(degrees * self.steps_per_degree), time_to_step)
+        return self.step(step_sequence_idx, round(degrees * self.steps_per_degree), time_to_step)
 
     def start(
             self
@@ -1424,7 +1444,7 @@ class Stepper(Component):
         :param reverse: Whether to reverse the stepper.
         """
 
-        super().__init__(Stepper.State(0, timedelta(seconds=0), None))
+        super().__init__(Stepper.State(0, 0, timedelta(seconds=0), None))
 
         self.poles = poles
         self.output_rotor_ratio = output_rotor_ratio
