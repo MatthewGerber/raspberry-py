@@ -48,8 +48,8 @@ Optional but useful:
 
 # Print the Parts
 
-See [here](cad-parts.md) for the 3d-printing tech that I use. Links to part files for particular designs can be 
-found at the bottom of this page. A few printing tips:
+See [here](https://github.com/MatthewGerber/3d-printing) for the 3d-printing tech that I use. Links to part files for 
+particular designs can be found at the bottom of this page. A few printing tips:
 * It's possible to lay out all parts for a single print, as long as your printer's build volume is sufficiently large.
 * The winding holder prints best when it is lying flat with the central rotor hole vertical. To assist with this, I 
   have added a small planar surface that is tangent to the circular holder. This surface is highlighted in green 
