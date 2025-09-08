@@ -343,8 +343,9 @@ class Joystick(Component):
             )
         )
 
-        # set up a clock and update the adc each tick
-        self.update_state_clock = Clock(tick_interval_seconds=0.5)
+        # set up a clock and update the adc each tick. it doesn't matter that we pass None here (max tick rate), since
+        # the caller will need to supply a tick interval when starting updates.
+        self.update_state_clock = Clock(None)
         self.update_state_clock.event(lambda _: adc.update_state())
 
     def update_state(
