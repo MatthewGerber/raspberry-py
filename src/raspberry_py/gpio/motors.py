@@ -1199,7 +1199,7 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         self.serial.write_then_read(bytes_to_write, 0, False)
         if self.asynchronous:
             return_value = lambda: self.wait_for_async_result()
-            num_steps_taken = 0
+            num_steps_taken = num_steps
         else:
             _, skipped_steps = self.wait_for_async_result()
             num_steps_taken = round(num_steps - skipped_steps)
@@ -1320,13 +1320,7 @@ class Stepper(Component):
         initial_state: Stepper.State = self.state
         initial_step = initial_state.step
 
-        # get number of steps to move and how long to take for each step
-        num_steps = state.step - initial_step
-        if num_steps == 0:
-            print(f'Stepper is already at step {state.step}. Nothing to do.')
-            return
-
-        self.driver.step(self, num_steps, state.time_to_step)
+        self.driver.step(self, state.step - initial_step, state.time_to_step)
 
     def step(
             self,
