@@ -1046,8 +1046,7 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
             new_time = time.time()
             new_state = Stepper.State(
                 next_step,
-                timedelta(seconds=new_time - curr_time),
-                limited
+                timedelta(seconds=new_time - curr_time)
             )
             super(Stepper, stepper).set_state(new_state)
 
@@ -1194,26 +1193,12 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             num_steps.to_bytes(2, signed=True) +
             ms_to_step.to_bytes(2)
         )
-
-        start_time = time.time()
         self.serial.write_then_read(bytes_to_write, 0, False)
+
         if self.asynchronous:
             return_value = lambda: self.wait_for_async_result()
-            num_steps_taken = num_steps
         else:
-            _, skipped_steps = self.wait_for_async_result()
-            num_steps_taken = round(num_steps - skipped_steps)
-            return_value = skipped_steps
-        end_time = time.time()
-
-        state: Stepper.State = stepper.state
-        super(Stepper, stepper).set_state(
-            Stepper.State(
-                state.step + num_steps_taken,
-                timedelta(seconds=end_time - start_time),
-                return_value
-            )
-        )
+            _, return_value = self.wait_for_async_result()
 
         return return_value
 
@@ -1260,20 +1245,17 @@ class Stepper(Component):
         def __init__(
                 self,
                 step: int,
-                time_to_step: timedelta,
-                driver_return_value: Any
+                time_to_step: timedelta
         ):
             """
             Initialize the state.
 
             :param step: Step to position at.
             :param time_to_step: Amount of time to take to position at step.
-            :param driver_return_value: Driver return value.
             """
 
             self.step = step
             self.time_to_step = time_to_step
-            self.driver_return_value = driver_return_value
 
         def __eq__(
                 self,
@@ -1316,11 +1298,21 @@ class Stepper(Component):
             raise ValueError(f'Expected a {Stepper.State}')
 
         state: Stepper.State
-
         initial_state: Stepper.State = self.state
-        initial_step = initial_state.step
+        num_steps = state.step - initial_state.step
+        start_time = time.time()
+        self.driver_step_return_value = self.driver.step(self, num_steps, state.time_to_step)
+        end_time = time.time()
 
-        self.driver.step(self, state.step - initial_step, state.time_to_step)
+        # return value will be an integer if the driver is synchronous. we can update the state now.
+        if isinstance(self.driver_step_return_value, int):
+            num_steps_taken = round(num_steps - self.driver_step_return_value)
+            super(Stepper, self).set_state(
+                Stepper.State(
+                    initial_state.step + num_steps_taken,
+                    timedelta(seconds=end_time - start_time)
+                )
+            )
 
     def step(
             self,
@@ -1339,10 +1331,9 @@ class Stepper(Component):
             steps = -steps
 
         initial_state: Stepper.State = self.state
-        self.set_state(Stepper.State(initial_state.step + steps, time_to_step, None))
+        self.set_state(Stepper.State(initial_state.step + steps, time_to_step))
 
-        resulting_state: Stepper.State = self.state
-        return resulting_state.driver_return_value
+        return self.driver_step_return_value
 
     def step_degrees(
             self,
@@ -1420,7 +1411,7 @@ class Stepper(Component):
         :param reverse: Whether to reverse the stepper.
         """
 
-        super().__init__(Stepper.State(0, timedelta(seconds=0), None))
+        super().__init__(Stepper.State(0, timedelta(seconds=0)))
 
         self.poles = poles
         self.output_rotor_ratio = output_rotor_ratio
@@ -1428,3 +1419,4 @@ class Stepper(Component):
         self.reverse = reverse
 
         self.steps_per_degree = (poles / output_rotor_ratio) / 360.0
+        self.driver_step_return_value: Any = None
