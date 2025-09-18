@@ -311,7 +311,7 @@ Common problems:
 The following sections provide CAD viewers, STL file downloads, and advantages and limitations for three alternative 
 motor designs.
 
-## Two-Stator Two-Coil ([Download](https://www.thingiverse.com/thing:6153166))
+## Two-Stator Two-Coil ([Download](https://www.printables.com/model/1390334-brushed-dc-motor-2-coil-2-stator))
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH512d4QTec90decfa6efb2dab18e0c3200b?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
@@ -326,7 +326,7 @@ Limitations:
 * Possibility of shorts:  The commutator segments must be carefully built, since the two brushes are nearby the 
   same commutator segment and may short across the segment.
 
-## Two-Stator Four-Coil ([Download](https://www.thingiverse.com/thing:6305321))
+## Two-Stator Four-Coil ([Download](https://www.printables.com/model/1390333-brushed-dc-motor-4-coil-2-stator))
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH512d4QTec90decfa6ea160e797dbaa221f?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
@@ -341,7 +341,7 @@ Limitations:
 * Heavy rotor assembly
 * Slow rotational speed
 
-## Four-Stator Four-Coil ([Download](https://www.thingiverse.com/thing:6305329))
+## Four-Stator Four-Coil ([Download](https://www.printables.com/model/1390332-brushed-dc-motor-4-coil-4-stator))
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH512d4QTec90decfa6ee884568e9083a6b5?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 

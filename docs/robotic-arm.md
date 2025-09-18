@@ -40,6 +40,6 @@ per 1000 grams ($0.02 per gram) of filament
 
 The complete design image does not show the base rotator, arm base, and arm elevator wheel. The design is symmetric on
 each end of the arm, so it was not necessary to draw these components. The files for
-this design can be downloaded from Thingiverse [here](https://www.thingiverse.com/thing:6153130).
+this design can be downloaded [here](https://www.printables.com/model/1390338-5-dof-robotic-arm).
 
 Other parts can be found [here](cad-parts.md).

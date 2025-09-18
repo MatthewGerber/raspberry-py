@@ -58,7 +58,7 @@ and provide room for front-mounted parts like the robotic arm described above.
 
 <iframe src="https://gmail3021534.autodesk360.com/shares/public/SH35dfcQT936092f0e43a682340dfc199b2c?mode=embed" width="800" height="600" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"  frameborder="0"></iframe>
 
-The files for this design can be downloaded from Thingiverse [here](https://www.thingiverse.com/thing:6153142).
+The files for this design can be downloaded [here](https://www.printables.com/model/1390337-armcamera-mounts-for-freenove-4wd-smart-car).
 
 Related projects:
 

@@ -5,6 +5,6 @@
 This is an elevator designed for the stepper motors found 
 [here](https://www.digikey.com/en/products/detail/adafruit-industries-llc/858/5629414). The elevator operates by the 
 action of the steppers rotating in opposite directions driving gears up the notches of the upright arms. The files for
-this design can be downloaded from Thingiverse [here](https://www.thingiverse.com/thing:6153146).
+this design can be downloaded [here](https://www.printables.com/model/1390336-stepper-motor-elevator).
 
 Other parts can be found [here](cad-parts.md).
