@@ -1016,7 +1016,7 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
         :param stepper: Stepper.
         :param num_steps: Number of steps.
         :param time_to_step: Time to step.
-        :return: Whether the stepper hit a limiter.
+        :return: A boolean indicating whether the stepper hit a limiter.
         """
 
         delay_seconds_per_step = time_to_step.total_seconds() / abs(num_steps)
@@ -1179,9 +1179,8 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         sequence identifier, the stepper identifier, and the number of steps skipped due to limiting.
         """
 
-        abs_num_steps = abs(num_steps)
-        if abs_num_steps * 2.0 > StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT:
-            raise ValueError(f'Maximum number of steps:  {StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT / 2.0}')
+        if not (-32768 <= num_steps <= 32,767):
+            raise ValueError(f'Steps must be in range of two-byte signed integer:  [32768, 32767]')
 
         ms_to_step = int(time_to_step.total_seconds() * 1000.0)
         if ms_to_step > StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT:
@@ -1196,9 +1195,10 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         self.serial.write_then_read(bytes_to_write, 0, False)
 
         if self.asynchronous:
-            return_value = lambda: self.wait_for_async_result()
+            return_value = self.wait_for_async_result
         else:
-            _, return_value = self.wait_for_async_result()
+            identifier, return_value = self.wait_for_async_result()
+            assert identifier == self.identifier
 
         return return_value
 
@@ -1304,10 +1304,10 @@ class Stepper(Component):
         self.driver_step_return_value = self.driver.step(self, num_steps, state.time_to_step)
         end_time = time.time()
 
-        # return value will be an integer if the driver is synchronous. we can update the state now.
+        # return value will be an integer of skipped steps if the driver is synchronous. we can update the state now.
         if isinstance(self.driver_step_return_value, int):
             num_steps_taken = round(num_steps - self.driver_step_return_value)
-            super(Stepper, self).set_state(
+            super().set_state(
                 Stepper.State(
                     initial_state.step + num_steps_taken,
                     timedelta(seconds=end_time - start_time)
