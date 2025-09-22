@@ -53,3 +53,9 @@ ssh -L 59000:localhost:5900 -l USER IP
 ```
 In the above, `USER` is a local account on the Pi, and `IP` is the address of the Pi. Finally, open a VNC client on your 
 remote machine (e.g., RealVNC) and open a connection to `localhost:59000`. Log in with the local account on the Pi.
+
+# Mount Google Drive
+See [here](mount-google-drive.pdf).
+
+# IGT Mania
+See [here](itg-mania.md).
