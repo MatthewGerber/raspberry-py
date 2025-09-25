@@ -8,7 +8,6 @@ import subprocess
 import time
 from abc import abstractmethod, ABC
 from enum import Enum, auto, IntEnum
-# noinspection PyProtectedMember
 from threading import Thread, Lock
 from typing import Optional, List, Callable, Tuple
 
