@@ -34,6 +34,7 @@ class LockingSerial:
     def write_then_read(
             self,
             data: bytes,
+            flush: bool,
             read_length: int,
             readline: bool
     ) -> bytes:
@@ -41,6 +42,7 @@ class LockingSerial:
         Write bytes and then read response.
 
         :param data: Bytes to write.
+        :param flush: Whether to flush the output stream after writing the data.
         :param read_length: Number of bytes to read (use -1 when `readline` is True to read up to newline). Must be >=
         0 if `readline` is False.
         :param readline: Whether to read a line of string content.
@@ -50,6 +52,9 @@ class LockingSerial:
         with self.lock:
 
             self.connection.write(data)
+
+            if flush:
+                self.connection.flush()
 
             if read_length == 0:
                 bytes_read = bytes()

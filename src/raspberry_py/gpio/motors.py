@@ -257,6 +257,7 @@ class DcMotorDriverIndirectArduino(DcMotorDriver):
                 self.identifier.to_bytes(1) +
                 self.arduino_direction_pin.to_bytes(1) +
                 self.arduino_pwm_pin.to_bytes(1),
+                True,
                 0,
                 False
             )
@@ -274,6 +275,7 @@ class DcMotorDriverIndirectArduino(DcMotorDriver):
                 abs(new_speed).to_bytes(2) +
                 (new_speed > 0).to_bytes(1) +
                 promise_ms.to_bytes(2),
+                True,
                 0,
                 False
             )
@@ -1156,6 +1158,7 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             self.driver_pin_2.to_bytes(1) +
             self.driver_pin_3.to_bytes(1) +
             self.driver_pin_4.to_bytes(1),
+            True,
             1,
             False
         ))
@@ -1192,7 +1195,7 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             num_steps.to_bytes(2, signed=True) +
             ms_to_step.to_bytes(2)
         )
-        self.serial.write_then_read(bytes_to_write, 0, False)
+        self.serial.write_then_read(bytes_to_write, True, 0, False)
 
         if self.asynchronous:
             return_value = self.wait_for_async_result
@@ -1212,6 +1215,7 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         """
 
         result_bytes = self.serial.connection.read(5)
+        assert len(result_bytes) == 5
         stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
         skipped_steps = get_float(result_bytes[1:5])
 
@@ -1225,6 +1229,7 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         success = bool(self.serial.write_then_read(
             StepperMotorDriverArduinoUln2003.Command.STOP.to_bytes(1) +
             self.identifier.to_bytes(1),
+            True,
             1,
             False
         ))

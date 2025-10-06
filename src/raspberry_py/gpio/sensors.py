@@ -1678,6 +1678,7 @@ class RotaryEncoder(Component):
                 get_bytes(self.angular_velocity_step_size) +
                 get_bytes(self.angular_acceleration_step_size) +
                 self.state_update_hz.to_bytes(1),
+                True,
                 0,
                 False
             )
@@ -1694,6 +1695,7 @@ class RotaryEncoder(Component):
 
             state_bytes = self.serial.write_then_read(
                 RotaryEncoder.Arduino.Command.GET_STATE.to_bytes(1) + self.identifier.to_bytes(1),
+                True,
                 21,
                 False
             )
@@ -1725,6 +1727,7 @@ class RotaryEncoder(Component):
                 RotaryEncoder.Arduino.Command.SET_NET_TOTAL_DEGREES.to_bytes(1) +
                 self.identifier.to_bytes(1) +
                 get_bytes(net_total_degrees),
+                True,
                 0,
                 False
             )
@@ -1739,6 +1742,7 @@ class RotaryEncoder(Component):
             self.serial.write_then_read(
                 RotaryEncoder.Arduino.Command.STOP.to_bytes() +
                 self.identifier.to_bytes(),
+                True,
                 0,
                 False
             )
