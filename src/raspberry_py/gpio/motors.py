@@ -605,7 +605,8 @@ class ServoDriverSoftwarePWM(ServoDriver):
 class ServoDriverPCA9685PW(ServoDriver):
     """
     Servo driver via PCA9685PW IC (hardware pulse-wave modulator). This is intended for use with servos with angular
-    ranges that correspond to ranges in the PWM pulse width. For example, see the SG90 servo (sg90_servo.pdf).
+    ranges that correspond to ranges in the PWM pulse width. For example, see the SG90 servo
+    (manuals/datasheets/sg90_servo.pdf).
     """
 
     def change_state(
@@ -683,8 +684,8 @@ class ServoDriverPCA9685PW(ServoDriver):
 
 class Sg90DriverPCA9685PW(ServoDriverPCA9685PW):
     """
-    A SG-90 specific servo driver based on the PCA9685PW PWM chip. See manuals/sg90_servo.pdf for details about the
-    servo.
+    A SG-90 specific servo driver based on the PCA9685PW PWM chip. See manuals/datasheets/sg90_servo.pdf for details
+    about the servo.
     """
 
     def __init__(
