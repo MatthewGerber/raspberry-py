@@ -566,6 +566,7 @@ class Car(Component):
         self.camera_pan_servo = Servo(
             driver=Sg90DriverPCA9685PW(
                 pca9685pw=self.pwm,
+                output_disable_pin=None,
                 servo_channel=8,
                 reverse=True,
                 correction_degrees=camera_pan_servo_correction_degrees
@@ -579,6 +580,7 @@ class Car(Component):
         self.camera_tilt_servo = Servo(
             driver=Sg90DriverPCA9685PW(
                 pca9685pw=self.pwm,
+                output_disable_pin=None,
                 servo_channel=9,
                 correction_degrees=camera_tilt_servo_correction_degrees
             ),

@@ -45,6 +45,7 @@ def main():
     servo = Servo(
         driver=Sg90DriverPCA9685PW(
             pca9685pw=pca9685pw,
+            output_disable_pin=None,
             servo_channel=8
         ),
         degrees=0.0,

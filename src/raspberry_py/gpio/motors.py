@@ -621,6 +621,9 @@ class ServoDriverPCA9685PW(ServoDriver):
         :param new_state: New state.
         """
 
+        if self.output_disable_pin is not None:
+            gpio.output(self.output_disable_pin, gpio.LOW if new_state.enabled else gpio.HIGH)
+
         if new_state.on:
 
             # constrain degrees to the specified range
@@ -642,6 +645,7 @@ class ServoDriverPCA9685PW(ServoDriver):
     def __init__(
             self,
             pca9685pw: PulseWaveModulatorPCA9685PW,
+            output_disable_pin: Optional[CkPin],
             servo_channel: int,
             min_degree: float,
             min_degree_pulse_width_ms: float,
@@ -654,6 +658,7 @@ class ServoDriverPCA9685PW(ServoDriver):
         Initialize the driver.
 
         :param pca9685pw: IC.
+        :param output_disable_pin: Output disable GPIO pin, or pass None to always enable PWM output.
         :param servo_channel: Channel of PCA9685PW to which the servo is connected.
         :param min_degree: Minimum degree of the servo.
         :param min_degree_pulse_width_ms: Pulse width (ms) corresponding to the minimum degree.
@@ -673,6 +678,7 @@ class ServoDriverPCA9685PW(ServoDriver):
         )
 
         self.pca9685pw = pca9685pw
+        self.output_disable_pin = output_disable_pin
         self.servo_channel = servo_channel
         self.min_degree_pulse_width_ms = min_degree_pulse_width_ms
         self.max_degree_pulse_width_ms = max_degree_pulse_width_ms
@@ -680,6 +686,9 @@ class ServoDriverPCA9685PW(ServoDriver):
         self.correction_degrees = correction_degrees
 
         self.pulse_width_range = self.max_degree_pulse_width_ms - self.min_degree_pulse_width_ms
+
+        if self.output_disable_pin is not None:
+            gpio.setup(self.output_disable_pin, gpio.OUT)
 
 
 class Sg90DriverPCA9685PW(ServoDriverPCA9685PW):
@@ -691,6 +700,7 @@ class Sg90DriverPCA9685PW(ServoDriverPCA9685PW):
     def __init__(
             self,
             pca9685pw: PulseWaveModulatorPCA9685PW,
+            output_disable_pin: Optional[CkPin],
             servo_channel: int,
             reverse: bool = False,
             correction_degrees: float = 0.0
@@ -699,6 +709,7 @@ class Sg90DriverPCA9685PW(ServoDriverPCA9685PW):
         Initialize the driver.
 
         :param pca9685pw: IC.
+        :param output_disable_pin: Output disable GPIO pin, or pass None to always enable PWM output.
         :param servo_channel: Channel of PCA9685PW to which the servo is connected.
         :param reverse: Whether to reverse the degrees upon output.
         :param correction_degrees: Correction degrees to be added to any requested degrees to account for assembly
@@ -707,6 +718,7 @@ class Sg90DriverPCA9685PW(ServoDriverPCA9685PW):
 
         super().__init__(
             pca9685pw=pca9685pw,
+            output_disable_pin=output_disable_pin,
             servo_channel=servo_channel,
             reverse=reverse,
             min_degree=0.0,
@@ -730,16 +742,19 @@ class Servo(Component):
         def __init__(
                 self,
                 on: bool,
+                enabled: bool,
                 degrees: float
         ):
             """
             Initialize the state.
 
             :param on: Whether servo is on.
+            :param enabled: Whether servo is enabled.
             :param degrees: Degrees of rotation.
             """
 
             self.on = on
+            self.enabled = enabled
             self.degrees = degrees
 
         def __eq__(
@@ -756,7 +771,7 @@ class Servo(Component):
             if not isinstance(other, Servo.State):
                 raise ValueError(f'Expected a {Servo.State}')
 
-            return self.on == other.on and self.degrees == other.degrees
+            return self.on == other.on and self.enabled == other.enabled and self.degrees == other.degrees
 
         def __str__(
                 self
@@ -767,7 +782,7 @@ class Servo(Component):
             :return: String.
             """
 
-            return f'On:  {self.on}, Degrees:  {self.degrees}'
+            return f'On:  {self.on}, Enabled:  {self.enabled}, Degrees:  {self.degrees}'
 
     def set_state(
             self,
@@ -816,10 +831,10 @@ class Servo(Component):
             degrees_per_step = (degrees - start_degrees) / num_steps
             for step in range(num_steps):
                 step_degrees = start_degrees + step * degrees_per_step
-                self.set_state(Servo.State(on=state.on, degrees=step_degrees))
+                self.set_state(Servo.State(on=state.on, enabled=state.enabled, degrees=step_degrees))
                 time.sleep(seconds_per_step)
 
-        self.set_state(Servo.State(on=state.on, degrees=degrees))
+        self.set_state(Servo.State(on=state.on, enabled=state.enabled, degrees=degrees))
 
     def get_degrees(
             self
@@ -834,6 +849,16 @@ class Servo(Component):
 
         return state.degrees
 
+    def enable(
+            self
+    ):
+        """
+        Enable the servo.
+        """
+
+        state: Servo.State = self.state
+        self.set_state(Servo.State(on=state.on, enabled=True, degrees=state.degrees))
+
     def start(
             self
     ):
@@ -842,7 +867,7 @@ class Servo(Component):
         """
 
         state: Servo.State = self.state
-        self.set_state(Servo.State(on=True, degrees=state.degrees))
+        self.set_state(Servo.State(on=True, enabled=state.enabled, degrees=state.degrees))
 
     def stop(
             self
@@ -852,7 +877,18 @@ class Servo(Component):
         """
 
         state: Servo.State = self.state
-        self.set_state(Servo.State(on=False, degrees=state.degrees))
+        self.set_state(Servo.State(on=False, enabled=state.enabled, degrees=state.degrees))
+
+    def disable(
+            self
+    ):
+        """
+        Disable the stepper.
+        """
+
+        state: Servo.State = self.state
+        self.set_state(Servo.State(on=state.on, enabled=False, degrees=state.degrees))
+
 
     def __init__(
             self,
@@ -872,7 +908,7 @@ class Servo(Component):
         constrain the movement of the servo, whereas the latter is used to establish the range of the servo.
         """
 
-        super().__init__(Servo.State(on=False, degrees=degrees))
+        super().__init__(Servo.State(on=False, enabled=False, degrees=degrees))
 
         self.driver = driver
         self.degrees = degrees

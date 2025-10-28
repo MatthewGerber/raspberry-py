@@ -271,6 +271,7 @@ class RaspberryPyArm(Component):
         self.base_rotator_servo = Servo(
             driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
+                output_disable_pin=None,
                 servo_channel=self.base_rotator_channel,
                 reverse=base_rotator_reversed,
                 correction_degrees=base_rotator_correction_degrees
@@ -284,6 +285,7 @@ class RaspberryPyArm(Component):
         self.arm_elevator_servo = Servo(
             driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
+                output_disable_pin=None,
                 servo_channel=self.arm_elevator_channel,
                 reverse=arm_elevator_reversed,
                 correction_degrees=arm_elevator_correction_degrees
@@ -297,6 +299,7 @@ class RaspberryPyArm(Component):
         self.wrist_elevator_servo = Servo(
             driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
+                output_disable_pin=None,
                 servo_channel=self.wrist_elevator_channel,
                 reverse=wrist_elevator_reversed,
                 correction_degrees=wrist_elevator_correction_degrees
@@ -310,6 +313,7 @@ class RaspberryPyArm(Component):
         self.wrist_rotator_servo = Servo(
             driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
+                output_disable_pin=None,
                 servo_channel=self.wrist_rotator_channel,
                 reverse=wrist_rotator_reversed,
                 correction_degrees=wrist_rotator_correction_degrees
@@ -323,6 +327,7 @@ class RaspberryPyArm(Component):
         self.pinch_servo = Servo(
             driver=Sg90DriverPCA9685PW(
                 pca9685pw=pwm,
+                output_disable_pin=None,
                 servo_channel=self.pinch_servo_channel,
                 reverse=pinch_reversed,
                 correction_degrees=pinch_correction_degrees
