@@ -1331,6 +1331,7 @@ class RotaryEncoder(Component):
                 phase_b_pin: int,
                 phase_changes_per_rotation: int,
                 phase_change_mode: 'RotaryEncoder.PhaseChangeMode',
+                angle_step_size: float,
                 angular_velocity_step_size: float,
                 angular_acceleration_step_size: float
         ):
@@ -1342,6 +1343,7 @@ class RotaryEncoder(Component):
             :param phase_changes_per_rotation: Number of phase changes per rotation. This is for a single signal (e.g.,
             only the phase-a signal).
             :param phase_change_mode: Phase-change mode.
+            :param angle_step_size: Step size for angle smoothing.
             :param angular_velocity_step_size: Step size for angular velocity smoothing.
             :param angular_acceleration_step_size: Step size for angular acceleration smoothing.
             """
@@ -1350,6 +1352,7 @@ class RotaryEncoder(Component):
             self.phase_b_pin = phase_b_pin
             self.phase_changes_per_rotation = phase_changes_per_rotation
             self.phase_change_mode = phase_change_mode
+            self.angle_step_size = angle_step_size
             self.angular_velocity_step_size = angular_velocity_step_size
             self.angular_acceleration_step_size = angular_acceleration_step_size
 
@@ -1409,6 +1412,7 @@ class RotaryEncoder(Component):
                 phase_b_pin: CkPin,
                 phase_changes_per_rotation: int,
                 phase_change_mode: 'RotaryEncoder.PhaseChangeMode',
+                angle_step_size: float,
                 angular_velocity_step_size: float,
                 angular_acceleration_step_size: float
         ):
@@ -1420,6 +1424,7 @@ class RotaryEncoder(Component):
             :param phase_changes_per_rotation: Number of phase changes per rotation. This is for a single signal (e.g.,
             only the phase-a signal).
             :param phase_change_mode: Phase-change mode.
+            :param angle_step_size: Step size for angle smoothing.
             :param angular_velocity_step_size: Step size for angular velocity smoothing.
             :param angular_acceleration_step_size: Step size for angular acceleration smoothing.
             """
@@ -1429,6 +1434,7 @@ class RotaryEncoder(Component):
                 phase_b_pin=phase_b_pin.value,
                 phase_changes_per_rotation=phase_changes_per_rotation,
                 phase_change_mode=phase_change_mode,
+                angle_step_size=angle_step_size,
                 angular_velocity_step_size=angular_velocity_step_size,
                 angular_acceleration_step_size=angular_acceleration_step_size
             )
@@ -1437,15 +1443,9 @@ class RotaryEncoder(Component):
             self.phase_change_index = 0
             self.clockwise = False
             self.previous_state_time_epoch = None
-            self.net_total_degrees = 0.0
-            self.angular_velocity = IncrementalSampleAverager(
-                0.0,
-                self.angular_velocity_step_size
-            )
-            self.angular_acceleration = IncrementalSampleAverager(
-                0.0,
-                self.angular_acceleration_step_size
-            )
+            self.net_total_degrees = IncrementalSampleAverager(0.0, self.angle_step_size)
+            self.angular_velocity = IncrementalSampleAverager(0.0, self.angular_velocity_step_size)
+            self.angular_acceleration = IncrementalSampleAverager(0.0, self.angular_acceleration_step_size)
 
         def start(
                 self
@@ -1543,7 +1543,8 @@ class RotaryEncoder(Component):
             :return: State.
             """
 
-            net_total_degrees = self.phase_change_index / self.phase_changes_per_degree
+            previous_net_total_degrees = self.net_total_degrees.get_value()
+            self.net_total_degrees.update(self.phase_change_index / self.phase_changes_per_degree)
 
             if update_velocity_and_acceleration:
 
@@ -1558,24 +1559,20 @@ class RotaryEncoder(Component):
                     # update angular velocity
                     previous_angular_velocity = self.angular_velocity.get_value()
                     self.angular_velocity.update(
-                        (net_total_degrees - self.net_total_degrees) / elapsed_seconds
+                        (self.net_total_degrees.get_value() - previous_net_total_degrees) / elapsed_seconds
                     )
 
                     # update angular acceleration
-                    current_angular_velocity = self.angular_velocity.get_value()
                     self.angular_acceleration.update(
-                        (current_angular_velocity - previous_angular_velocity) /
-                        elapsed_seconds
+                        (self.angular_velocity.get_value() - previous_angular_velocity) / elapsed_seconds
                     )
 
                 self.previous_state_time_epoch = current_state_time_epoch
 
-            self.net_total_degrees = net_total_degrees
-
             return RotaryEncoder.State(
                 num_phase_changes=self.num_phase_changes,
-                net_total_degrees=self.net_total_degrees,
-                degrees=self.net_total_degrees % 360.0,
+                net_total_degrees=self.net_total_degrees.get_value(),
+                degrees=self.net_total_degrees.get_value() % 360.0,
                 angular_velocity=self.angular_velocity.get_value(),
                 angular_acceleration=self.angular_acceleration.get_value(),
                 clockwise=self.clockwise,
@@ -1592,7 +1589,9 @@ class RotaryEncoder(Component):
             :param net_total_degrees: Net total degrees.
             """
 
-            self.net_total_degrees = net_total_degrees
+            self.net_total_degrees = IncrementalSampleAverager(net_total_degrees, self.angle_step_size)
+            self.angular_velocity = IncrementalSampleAverager(0.0, self.angular_velocity_step_size)
+            self.angular_acceleration = IncrementalSampleAverager(0.0, self.angular_acceleration_step_size)
 
         def cleanup(
                 self
@@ -1633,6 +1632,7 @@ class RotaryEncoder(Component):
                 phase_b_pin: int,
                 phase_changes_per_rotation: int,
                 phase_change_mode: 'RotaryEncoder.PhaseChangeMode',
+                angle_step_size: float,
                 angular_velocity_step_size: float,
                 angular_acceleration_step_size: float,
                 serial: LockingSerial,
@@ -1642,7 +1642,14 @@ class RotaryEncoder(Component):
             """
             Initialize the interface.
 
+            :param phase_a_pin: Phase-a pin.
+            :param phase_b_pin: Phase-b pin. Only used when phase-change mode is `TWO_SIGNAL_TWO_EDGE`.
+            :param phase_changes_per_rotation: Number of phase changes per rotation. This is for a single signal (e.g.,
+            only the phase-a signal).
             :param phase_change_mode: Phase-change mode.
+            :param angle_step_size: Step size for angle smoothing.
+            :param angular_velocity_step_size: Step size for angular velocity smoothing.
+            :param angular_acceleration_step_size: Step size for angular acceleration smoothing.
             :param serial: Serial connection to the Arduino.
             :param identifier: Identifier associated with the rotary encoder on the Pi and Arduino.
             :param state_update_hz: State updates per second.
@@ -1653,6 +1660,7 @@ class RotaryEncoder(Component):
                 phase_b_pin=phase_b_pin,
                 phase_changes_per_rotation=phase_changes_per_rotation,
                 phase_change_mode=phase_change_mode,
+                angle_step_size=angle_step_size,
                 angular_velocity_step_size=angular_velocity_step_size,
                 angular_acceleration_step_size=angular_acceleration_step_size
             )
@@ -1675,6 +1683,7 @@ class RotaryEncoder(Component):
                 self.phase_b_pin.to_bytes(1) +
                 self.phase_changes_per_rotation.to_bytes(2) +
                 self.phase_change_mode.value.to_bytes(1) +
+                get_bytes(self.angle_step_size) +
                 get_bytes(self.angular_velocity_step_size) +
                 get_bytes(self.angular_acceleration_step_size) +
                 self.state_update_hz.to_bytes(1),
