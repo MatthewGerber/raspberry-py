@@ -3,14 +3,14 @@ import time
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from enum import IntEnum
-from typing import Optional, Callable, Any, Tuple
+from typing import Optional, Callable, Any, Tuple, List, Union
 
 import RPi.GPIO as gpio
 import numpy as np
-
 from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.communication import LockingSerial
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
+from raspberry_py.rest.application import RpyFlask
 from raspberry_py.utils import get_float
 
 
@@ -445,6 +445,21 @@ class DcMotor(Component):
         state: DcMotor.State = self.state
 
         return state.speed
+
+    def get_ui_elements(
+            self
+    ):
+        """
+        Get UI elements for the current component.
+
+        :return: List of 2-tuples of (1) element key and (2) element content.
+        """
+
+        curr_state: DcMotor.State = self.state
+        return [
+            RpyFlask.get_switch(self.id, self.start, self.stop, None, curr_state.on),
+            RpyFlask.get_range(self.id, self.min_speed, self.max_speed, 1, self.get_speed(), False,False, [], [], [], False, self.set_speed, None, False)
+        ]
 
     def __init__(
             self,
@@ -889,6 +904,20 @@ class Servo(Component):
         state: Servo.State = self.state
         self.set_state(Servo.State(on=state.on, enabled=False, degrees=state.degrees))
 
+    def get_ui_elements(
+            self
+    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
+        """
+        Get UI elements for the current component.
+
+        :return: List of 2-tuples of (1) element key and (2) element content.
+        """
+
+        curr_state: Servo.State = self.state
+        return [
+            RpyFlask.get_switch(self.id, self.start, self.stop, None, curr_state.on),
+            RpyFlask.get_range(self.id, int(self.min_degree), int(self.max_degree), 1, int(self.get_degrees()), False, False, [], [], [], False, self.set_degrees,None, False)
+        ]
 
     def __init__(
             self,
@@ -1435,6 +1464,19 @@ class Stepper(Component):
         state: Stepper.State = self.state
 
         return state.step
+
+    def get_ui_elements(
+            self
+    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
+        """
+        Get UI elements for the current component.
+
+        :return: List of 2-tuples of (1) element key and (2) element content.
+        """
+
+        return [
+            RpyFlask.get_switch(self.id, self.start, self.stop, None, False)
+        ]
 
     def __init__(
             self,

@@ -1,11 +1,12 @@
 import time
 from datetime import timedelta
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.controls import LimitSwitch
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
 from raspberry_py.gpio.motors import Servo, Sg90DriverPCA9685PW, Stepper, StepperMotorDriverDirectUln2003
+from raspberry_py.rest.application import RpyFlask
 
 
 class RaspberryPyArm(Component):
@@ -213,16 +214,33 @@ class RaspberryPyArm(Component):
 
         super().set_state(state)
 
-    def get_components(
+    def get_subcomponents(
             self
     ) -> List[Component]:
         """
-        Get a list of all GPIO circuit components in the arm.
+        Get subcomponents within the current component.
 
         :return: List of components.
         """
 
         return self.servos
+
+    def get_ui_elements(
+            self
+    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
+        """
+        Get UI elements for the current component.
+
+        :return: List of 2-tuples of (1) element key and (2) element content.
+        """
+
+        return [
+            RpyFlask.get_range(self.base_rotator_servo.id, int(self.base_rotator_servo.min_degree), int(self.base_rotator_servo.max_degree), 1, int(self.base_rotator_servo.get_degrees()), False, False, ['j'], ['k'], ['p'], False, self.base_rotator_servo.set_degrees, 'Base', False),
+            RpyFlask.get_range(self.arm_elevator_servo.id, int(self.arm_elevator_servo.min_degree), int(self.arm_elevator_servo.max_degree), 1, int(self.arm_elevator_servo.get_degrees()), False, False, ['u'], ['m'], ['p'], False, self.arm_elevator_servo.set_degrees, 'Arm Elevation', False),
+            RpyFlask.get_range(self.wrist_elevator_servo.id, int(self.wrist_elevator_servo.min_degree), int(self.wrist_elevator_servo.max_degree), 1, int(self.wrist_elevator_servo.get_degrees()), False, False, ['i'], [','], ['p'], False, self.wrist_elevator_servo.set_degrees, 'Wrist Elevation', False),
+            RpyFlask.get_range(self.wrist_rotator_servo.id, int(self.wrist_rotator_servo.min_degree), int(self.wrist_rotator_servo.max_degree), 1, int(self.wrist_rotator_servo.get_degrees()), False, False, ['l'], [';'], ['p'], False, self.wrist_rotator_servo.set_degrees, 'Wrist Rotation', False),
+            RpyFlask.get_range(self.pinch_servo.id, int(self.pinch_servo.min_degree), int(self.pinch_servo.max_degree), 1, int(self.pinch_servo.get_degrees()), False, False, ['.'], ['o'], ['p'], False, self.pinch_servo.set_degrees, 'Pinch', False)
+        ]
 
     def __init__(
             self,
@@ -566,6 +584,20 @@ class RaspberryPyElevator(Component):
                 self.move(-20, timedelta(seconds=5))
         except KeyboardInterrupt:
             pass
+
+    def get_ui_elements(
+            self
+    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
+        """
+        Get UI elements for the current component.
+
+        :return: List of 2-tuples of (1) element key and (2) element content.
+        """
+
+        return [
+            RpyFlask.get_button(self.id, self.move_up_1_mm_1_sec, None, None, None, 'MetaRight', 'Move up'),
+            RpyFlask.get_button(self.id, self.move_down_1_mm_1_sec, None, None, None, 'MetaLeft', 'Move down')
+        ]
 
     def __init__(
             self,

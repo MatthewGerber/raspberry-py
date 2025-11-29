@@ -1,11 +1,11 @@
 import math
 import time
 from datetime import timedelta
-from typing import Optional
+from typing import Optional, List, Tuple, Union
 
 import RPi.GPIO as gpio
-
 from raspberry_py.gpio import Component
+from raspberry_py.rest.application import RpyFlask
 
 
 class ActiveBuzzer(Component):
@@ -103,6 +103,19 @@ class ActiveBuzzer(Component):
         """
 
         self.set_state(ActiveBuzzer.State(on=False))
+
+    def get_ui_elements(
+            self
+    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
+        """
+        Get UI elements for the current component.
+
+        :return: List of 2-tuples of (1) element key and (2) element content.
+        """
+
+        return [
+            RpyFlask.get_button(self.id, self.buzz, None, self.stop, None, None, None)
+        ]
 
     def __init__(
             self,

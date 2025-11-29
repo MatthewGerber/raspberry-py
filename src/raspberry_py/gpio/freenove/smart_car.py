@@ -1,10 +1,8 @@
 import time
+from datetime import timedelta
 from enum import IntEnum
 from threading import RLock, Thread, Lock
-from typing import Optional, List, Union
-
-from rpi_ws281x import Color
-from smbus2 import SMBus
+from typing import Optional, List, Union, Tuple
 
 from raspberry_py.gpio import CkPin
 from raspberry_py.gpio import Component
@@ -14,6 +12,16 @@ from raspberry_py.gpio.lights import LedStrip
 from raspberry_py.gpio.motors import DcMotor, DcMotorDriverPCA9685PW, Servo, Sg90DriverPCA9685PW
 from raspberry_py.gpio.sensors import Camera, UltrasonicRangeFinder, MjpgStreamer
 from raspberry_py.gpio.sounds import ActiveBuzzer
+from raspberry_py.rest.application import (
+    RpyFlask,
+    DOWN_ARROW_KEYS,
+    UP_ARROW_KEYS,
+    SPACE_KEY,
+    RIGHT_ARROW_KEYS,
+    LEFT_ARROW_KEYS
+)
+from rpi_ws281x import Color
+from smbus2 import SMBus
 
 
 class Wheel(IntEnum):
@@ -320,11 +328,11 @@ class Car(Component):
 
             self.set_state(Car.State(on=False))
 
-    def get_components(
+    def get_subcomponents(
             self
     ) -> List[Component]:
         """
-        Get a list of all GPIO circuit components in the car.
+        Get subcomponents within the current component.
 
         :return: List of components.
         """
@@ -449,6 +457,51 @@ class Car(Component):
             )
 
         return voltage_percent
+
+    def get_ui_elements(
+            self
+    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
+        """
+        Get UI elements for the current component.
+
+        :return: List of 2-tuples of (1) element key and (2) element content.
+        """
+
+        power_id, power_element = RpyFlask.get_switch(self.id, self.start, self.stop, 'Power', self.on)
+
+        elements = [
+            RpyFlask.get_range(self.camera_pan_servo.id, int(self.camera_pan_servo.min_degree), int(self.camera_pan_servo.max_degree), 3, int(self.camera_pan_servo.get_degrees()), False, False, ['s'], ['f'], ['r'], False, self.camera_pan_servo.set_degrees, 'Pan', True),
+            RpyFlask.get_range(self.camera_tilt_servo.id, int(self.camera_tilt_servo.min_degree), int(self.camera_tilt_servo.max_degree), 3, int(self.camera_tilt_servo.get_degrees()), False, False, ['d'], ['e'], ['r'], False, self.camera_tilt_servo.set_degrees, 'Tilt', True),
+            RpyFlask.get_range(self.id, self.min_speed, self.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, self.set_speed, '', False),
+            RpyFlask.get_range(self.id, int(self.wheel_min_speed / 2.0), int(self.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, self.set_differential_speed, '', False),
+            RpyFlask.get_label(self.range_finder.id, self.range_finder.measure_distance_once, timedelta(seconds=1), 'Range (cm)', power_id, 1),
+            RpyFlask.get_button(self.buzzer.id, self.buzzer.buzz, None, self.buzzer.stop, None, 'h', 'Horn'),
+            (power_id, power_element),
+            RpyFlask.get_switch(self.id, self.enable_face_tracking, self.disable_face_tracking, 'Face Tracking', self.track_faces),
+            RpyFlask.get_switch(self.id, self.enable_light_tracking, self.disable_light_tracking, 'Light Tracking', self.track_light),
+            RpyFlask.get_label(self.id, self.get_battery_percent, timedelta(seconds=10), 'Battery (%)', power_id, 1)
+        ]
+
+        if isinstance(self.camera, Camera):
+            camera_id, camera_element = RpyFlask.get_image(self.camera.id, self.camera.width, self.camera.capture_image, None, power_id)
+            camera_elements = [
+                (camera_id, camera_element),
+                RpyFlask.get_range_html_attribute(camera_id, 'width', 100, 800, 10, self.camera.width, 'Display Size '),
+                RpyFlask.get_range(self.camera.id, 1, 5, 1, 1, False, False, [], [], [], False, self.camera.multiply_resolution, 'Display Resolution', False),
+                RpyFlask.get_switch(self.camera.id, self.camera.enable_face_detection, self.camera.disable_face_detection, 'Face Detection', self.camera.run_face_detection),
+                RpyFlask.get_switch(self.camera.id, self.camera.enable_face_circles, self.camera.disable_face_circles, 'Face Circles', self.camera.circle_detected_faces)
+            ]
+            elements.extend(camera_elements)
+        elif isinstance(self.camera, MjpgStreamer):
+            elements.append(RpyFlask.get_mjpg_streamer(self.camera.id, self.camera.height, None, power_id, self.camera.port))
+        else:
+            raise ValueError(f'Unknown camera:  {self.camera}')
+
+        if self.connection_blackout_tolerance_seconds is not None:
+            blackout_id, blackout_element = RpyFlask.get_repeater(self.id, self.connection_heartbeat, timedelta(seconds=self.connection_blackout_tolerance_seconds / 4.0))
+            elements.append(((blackout_id, 'js'), blackout_element))  # type: ignore
+
+        return elements
 
     def __init__(
             self,

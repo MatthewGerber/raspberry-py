@@ -24,7 +24,7 @@ car = Car(
     battery_max=83.52941
 )
 car.id = 'car-1'
-app.add_component(car, True)
+app.add_component(car)
 
 arm = RaspberryPyArm(
     pwm=car.pwm,
@@ -41,7 +41,7 @@ arm = RaspberryPyArm(
     pinch_servo_channel=14
 )
 arm.id = 'arm-1'
-app.add_component(arm, True)
+app.add_component(arm)
 car.event(lambda s: arm.start() if s.on else arm.stop())
 
 elevator = RaspberryPyElevator(
@@ -54,5 +54,5 @@ elevator = RaspberryPyElevator(
     reverse_right_stepper=True
 )
 elevator.id = 'elevator-1'
-app.add_component(elevator, True)
+app.add_component(elevator)
 car.event(lambda s: elevator.start() if s.on else elevator.stop())

@@ -11,4 +11,4 @@ motor = DcMotor(
     speed=0
 )
 motor.id = 'motor-1'
-app.add_component(motor, True)
+app.add_component(motor)

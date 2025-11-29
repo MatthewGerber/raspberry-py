@@ -6,10 +6,10 @@ from typing import List, Optional, Union, Dict, Tuple
 
 import RPi.GPIO as gpio
 import numpy as np
-from rpi_ws281x import Adafruit_NeoPixel, Color
-
 from raspberry_py.gpio import Component
 from raspberry_py.gpio.integrated_circuits import ShiftRegister74HC595
+from raspberry_py.rest.application import RpyFlask
+from rpi_ws281x import Adafruit_NeoPixel, Color
 
 
 class LED(Component):
@@ -147,6 +147,19 @@ class LED(Component):
         gpio.setup(self.output_pin, gpio.OUT)
 
         self.set_state(self.state)
+
+    def get_ui_elements(
+            self
+    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
+        """
+        Get UI elements for the current component.
+
+        :return: List of 2-tuples of (1) element key and (2) element content.
+        """
+
+        return [
+            RpyFlask.get_switch(self.id, self.turn_on, self.turn_off, None, self.is_on())
+        ]
 
 
 class LedBar(Component):

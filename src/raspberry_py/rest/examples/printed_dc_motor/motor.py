@@ -7,7 +7,7 @@ power = Relay(
     transistor_base_pin=CkPin.GPIO17
 )
 power.id = 'power-1'
-app.add_component(power, True)
+app.add_component(power)
 
 tachometer = Tachometer(
     reading_pin=CkPin.GPIO27,
@@ -17,4 +17,4 @@ tachometer = Tachometer(
     rotations_per_second_step_size=0.02
 )
 tachometer.id = 'tachometer-1'
-app.add_component(tachometer, True)
+app.add_component(tachometer)

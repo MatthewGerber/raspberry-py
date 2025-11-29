@@ -6,20 +6,12 @@ from argparse import ArgumentParser
 from datetime import timedelta
 from http import HTTPStatus
 from os.path import join, expanduser
-from typing import List, Optional, Tuple, Callable, Any, Union
+from typing import List, Optional, Tuple, Callable, Any
 
 import flask
 from flask import Flask, request, abort, Response
 from flask_cors import CORS
-
 from raspberry_py.gpio import Component, setup
-from raspberry_py.gpio.freenove.smart_car import Car
-from raspberry_py.gpio.lights import LED
-from raspberry_py.gpio.motors import DcMotor, Servo, Stepper
-from raspberry_py.gpio.power import Relay
-from raspberry_py.gpio.robotics import RaspberryPyArm, RaspberryPyElevator
-from raspberry_py.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder, Camera, MjpgStreamer, Tachometer
-from raspberry_py.gpio.sounds import ActiveBuzzer
 
 LEFT_ARROW_KEYS = ['Left', 'ArrowLeft']
 RIGHT_ARROW_KEYS = ['Right', 'ArrowRight']
@@ -35,29 +27,35 @@ class RpyFlask(Flask):
 
     def add_component(
             self,
-            component: Component,
-            write: bool
+            component: Component
     ):
         """
-        Add a component to the app. Any component that needs to be reached via REST API must be added to the app.
+        Add a component to the app. This will recursively add subcomponents of the component.
 
         :param component: Component.
-        :param write: Whether to write component files when write_component_files is called from the command line.
+        """
+
+        self._add_component(component, True)
+
+    def _add_component(
+            self,
+            component: Component,
+            root: bool
+    ):
+        """
+        Internal function for adding a component.
+
+        :param component: Component.
+        :param root: Whether the component is a root component.
         """
 
         self.id_component[component.id] = component
 
-        if write:
-            self.components_to_write.append(component)
+        if root:
+            self.root_components.append(component)
 
-        # add certain components recursively, but do not write the component files for them. the write_component_files
-        # function handles the generation of html/javascript elements for these components in a particular way.
-        if (
-            isinstance(component, Car) or
-            isinstance(component, RaspberryPyArm)
-        ):
-            for component in component.get_components():
-                self.add_component(component, False)
+        for component in component.get_subcomponents():
+            self._add_component(component, False)
 
     def write_component_files(
             self,
@@ -76,8 +74,8 @@ class RpyFlask(Flask):
         if not os.path.exists(dir_path):
             os.mkdir(dir_path)
 
-        for component in self.components_to_write:
-            for element_id, element_content in self.get_ui_elements(component):
+        for component in self.root_components:
+            for element_id, element_content in component.get_ui_elements():
 
                 # element id can be either a string (which is assumed to be html) or a 2-tuple of the id and extension.
                 if isinstance(element_id, str):
@@ -137,120 +135,6 @@ export async function is_checked(element) {
 }
 """)
             print(f'Wrote {utils_path}')
-
-    @staticmethod
-    def get_ui_elements(
-            component: Component
-    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
-        """
-        Get UI elements for a component.
-
-        :param component: Component.
-        :return: List of 2-tuples of (1) element keys and (2) element content for the component.
-        """
-
-        if isinstance(component, LED):
-            elements = [
-                RpyFlask.get_switch(component.id, component.turn_on, component.turn_off, None, component.is_on())
-            ]
-        elif isinstance(component, Relay):
-            elements = [
-                RpyFlask.get_switch(component.id, component.close, component.open, None, False)
-            ]
-        elif isinstance(component, DcMotor):
-            curr_state: DcMotor.State = component.state
-            elements = [
-                RpyFlask.get_switch(component.id, component.start, component.stop, None, curr_state.on),
-                RpyFlask.get_range(component.id, component.min_speed, component.max_speed, 1, component.get_speed(), False, False, [], [], [], False, component.set_speed, None, False)
-            ]
-        elif isinstance(component, Servo):
-            curr_state: Servo.State = component.state
-            elements = [
-                RpyFlask.get_switch(component.id, component.start, component.stop, None, curr_state.on),
-                RpyFlask.get_range(component.id, int(component.min_degree), int(component.max_degree), 1, int(component.get_degrees()), False, False, [], [], [], False, component.set_degrees, None, False)
-            ]
-        elif isinstance(component, Stepper):
-            elements = [
-                RpyFlask.get_switch(component.id, component.start, component.stop, None, False)
-            ]
-        elif isinstance(component, Photoresistor):
-            elements = [
-                RpyFlask.get_label(component.id, component.get_light_level, timedelta(seconds=1), None, None, None)
-            ]
-        elif isinstance(component, Tachometer):
-            elements = [
-                RpyFlask.get_label(component.id, component.get_rps, timedelta(seconds=1), None, None, None)
-            ]
-        elif isinstance(component, Thermistor):
-            elements = [
-                RpyFlask.get_label(component.id, component.get_temperature_f, timedelta(seconds=1), None, None, None)
-            ]
-        elif isinstance(component, UltrasonicRangeFinder):
-            elements = [
-                RpyFlask.get_label(component.id, component.measure_distance_once, timedelta(seconds=1), None, None, None)
-            ]
-        elif isinstance(component, ActiveBuzzer):
-            elements = [
-                RpyFlask.get_button(component.id, component.buzz, None, component.stop, None, None, None)
-            ]
-        elif isinstance(component, Camera):
-            elements = [
-                RpyFlask.get_image(component.id, component.width, component.capture_image, timedelta(seconds=1.0 / component.fps), None)
-            ]
-        elif isinstance(component, Car):
-
-            power_id, power_element = RpyFlask.get_switch(component.id, component.start, component.stop, 'Power', component.on)
-
-            elements = [
-                RpyFlask.get_range(component.camera_pan_servo.id, int(component.camera_pan_servo.min_degree), int(component.camera_pan_servo.max_degree), 3, int(component.camera_pan_servo.get_degrees()), False, False, ['s'], ['f'], ['r'], False, component.camera_pan_servo.set_degrees, 'Pan', True),
-                RpyFlask.get_range(component.camera_tilt_servo.id, int(component.camera_tilt_servo.min_degree), int(component.camera_tilt_servo.max_degree), 3, int(component.camera_tilt_servo.get_degrees()), False, False, ['d'], ['e'], ['r'], False, component.camera_tilt_servo.set_degrees, 'Tilt', True),
-                RpyFlask.get_range(component.id, component.min_speed, component.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, component.set_speed, '', False),
-                RpyFlask.get_range(component.id, int(component.wheel_min_speed / 2.0), int(component.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, component.set_differential_speed, '', False),
-                RpyFlask.get_label(component.range_finder.id, component.range_finder.measure_distance_once, timedelta(seconds=1), 'Range (cm)', power_id, 1),
-                RpyFlask.get_button(component.buzzer.id, component.buzzer.buzz, None, component.buzzer.stop, None, 'h', 'Horn'),
-                (power_id, power_element),
-                RpyFlask.get_switch(component.id, component.enable_face_tracking, component.disable_face_tracking, 'Face Tracking', component.track_faces),
-                RpyFlask.get_switch(component.id, component.enable_light_tracking, component.disable_light_tracking, 'Light Tracking', component.track_light),
-                RpyFlask.get_label(component.id, component.get_battery_percent, timedelta(seconds=10), 'Battery (%)', power_id, 1)
-            ]
-
-            if isinstance(component.camera, Camera):
-                camera_id, camera_element = RpyFlask.get_image(component.camera.id, component.camera.width, component.camera.capture_image, None, power_id)
-                camera_elements = [
-                    (camera_id, camera_element),
-                    RpyFlask.get_range_html_attribute(camera_id, 'width', 100, 800, 10, component.camera.width, 'Display Size '),
-                    RpyFlask.get_range(component.camera.id, 1, 5, 1, 1, False, False, [], [], [], False, component.camera.multiply_resolution, 'Display Resolution', False),
-                    RpyFlask.get_switch(component.camera.id, component.camera.enable_face_detection, component.camera.disable_face_detection, 'Face Detection', component.camera.run_face_detection),
-                    RpyFlask.get_switch(component.camera.id, component.camera.enable_face_circles, component.camera.disable_face_circles, 'Face Circles', component.camera.circle_detected_faces)
-                ]
-                elements.extend(camera_elements)
-            elif isinstance(component.camera, MjpgStreamer):
-                elements.append(RpyFlask.get_mjpg_streamer(component.camera.id, component.camera.height, None, power_id, component.camera.port))
-            else:
-                raise ValueError(f'Unknown camera:  {component.camera}')
-
-            if component.connection_blackout_tolerance_seconds is not None:
-                blackout_id, blackout_element = RpyFlask.get_repeater(component.id, component.connection_heartbeat, timedelta(seconds=component.connection_blackout_tolerance_seconds / 4.0))
-                elements.append(((blackout_id, 'js'), blackout_element))  # type: ignore
-
-        elif isinstance(component, RaspberryPyArm):
-            elements = [
-                RpyFlask.get_range(component.base_rotator_servo.id, int(component.base_rotator_servo.min_degree), int(component.base_rotator_servo.max_degree), 1, int(component.base_rotator_servo.get_degrees()), False, False, ['j'], ['k'], ['p'], False, component.base_rotator_servo.set_degrees, 'Base', False),
-                RpyFlask.get_range(component.arm_elevator_servo.id, int(component.arm_elevator_servo.min_degree), int(component.arm_elevator_servo.max_degree), 1, int(component.arm_elevator_servo.get_degrees()), False, False, ['u'], ['m'], ['p'], False, component.arm_elevator_servo.set_degrees, 'Arm Elevation', False),
-                RpyFlask.get_range(component.wrist_elevator_servo.id, int(component.wrist_elevator_servo.min_degree), int(component.wrist_elevator_servo.max_degree), 1, int(component.wrist_elevator_servo.get_degrees()), False, False, ['i'], [','], ['p'], False, component.wrist_elevator_servo.set_degrees, 'Wrist Elevation', False),
-                RpyFlask.get_range(component.wrist_rotator_servo.id, int(component.wrist_rotator_servo.min_degree), int(component.wrist_rotator_servo.max_degree), 1, int(component.wrist_rotator_servo.get_degrees()), False, False, ['l'], [';'], ['p'], False, component.wrist_rotator_servo.set_degrees, 'Wrist Rotation', False),
-                RpyFlask.get_range(component.pinch_servo.id, int(component.pinch_servo.min_degree), int(component.pinch_servo.max_degree), 1, int(component.pinch_servo.get_degrees()), False, False, ['.'], ['o'], ['p'], False, component.pinch_servo.set_degrees, 'Pinch', False)
-            ]
-
-        elif isinstance(component, RaspberryPyElevator):
-            elements = [
-                RpyFlask.get_button(component.id, component.move_up_1_mm_1_sec, None, None, None, 'MetaRight', 'Move up'),
-                RpyFlask.get_button(component.id, component.move_down_1_mm_1_sec, None, None, None, 'MetaLeft', 'Move down')
-            ]
-        else:
-            raise ValueError(f'Unknown component type:  {type(component)}')
-
-        return elements
 
     @staticmethod
     def get_switch(
@@ -989,7 +873,7 @@ export async function is_checked(element) {
         super().__init__(import_name=import_name)
 
         self.id_component = {}
-        self.components_to_write = []
+        self.root_components = []
 
 
 app = RpyFlask(__name__)

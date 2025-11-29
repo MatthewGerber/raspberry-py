@@ -1,6 +1,8 @@
-import RPi.GPIO as gpio
+from typing import List, Tuple, Union
 
+import RPi.GPIO as gpio
 from raspberry_py.gpio import Component, CkPin
+from raspberry_py.rest.application import RpyFlask
 
 
 class Relay(Component):
@@ -82,6 +84,19 @@ class Relay(Component):
         """
 
         self.set_state(Relay.State(closed=False))
+
+    def get_ui_elements(
+            self
+    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
+        """
+        Get UI elements for the current component.
+
+        :return: List of 2-tuples of (1) element key and (2) element content.
+        """
+
+        return [
+            RpyFlask.get_switch(self.id, self.close, self.open, None, False)
+        ]
 
     def __init__(
             self,

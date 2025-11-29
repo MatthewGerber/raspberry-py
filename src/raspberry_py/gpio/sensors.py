@@ -7,18 +7,19 @@ import signal
 import subprocess
 import time
 from abc import abstractmethod, ABC
+from datetime import timedelta
 from enum import Enum, auto, IntEnum
 from threading import Thread, Lock
-from typing import Optional, List, Callable, Tuple
+from typing import Optional, List, Callable, Tuple, Union
 
 import RPi.GPIO as gpio
 import cv2
 import numpy as np
-
 from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.adc import AdcDevice
 from raspberry_py.gpio.communication import LockingSerial
 from raspberry_py.gpio.controls import TwoPoleButton
+from raspberry_py.rest.application import RpyFlask
 from raspberry_py.utils import IncrementalSampleAverager, get_bytes, get_float
 
 
@@ -94,6 +95,19 @@ class Photoresistor(Component):
         state: Photoresistor.State = self.state
 
         return state.light_level
+
+    def get_ui_elements(
+            self
+    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
+        """
+        Get UI elements for the current component.
+
+        :return: List of 2-tuples of (1) element key and (2) element content.
+        """
+
+        return [
+            RpyFlask.get_label(self.id, self.get_light_level, timedelta(seconds=1), None, None, None)
+        ]
 
     def __init__(
             self,
@@ -214,6 +228,19 @@ class Thermistor(Component):
         state: Thermistor.State = self.state
 
         return state.temperature_f
+
+    def get_ui_elements(
+            self
+    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
+        """
+        Get UI elements for the current component.
+
+        :return: List of 2-tuples of (1) element key and (2) element content.
+        """
+
+        return [
+            RpyFlask.get_label(self.id, self.get_temperature_f, timedelta(seconds=1), None, None, None)
+        ]
 
     def __init__(
             self,
@@ -639,6 +666,19 @@ class UltrasonicRangeFinder(Component):
             self.continue_measuring_distance = False
             self.measure_distance_repeatedly_thread.join()
 
+    def get_ui_elements(
+            self
+    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
+        """
+        Get UI elements for the current component.
+
+        :return: List of 2-tuples of (1) element key and (2) element content.
+        """
+
+        return [
+            RpyFlask.get_label(self.id, self.measure_distance_once, timedelta(seconds=1), None, None, None)
+        ]
+
     def __init__(
             self,
             trigger_pin: int,
@@ -896,6 +936,19 @@ class Camera(Component):
 
         return image_bytes
 
+    def get_ui_elements(
+            self
+    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
+        """
+        Get UI elements for the current component.
+
+        :return: List of 2-tuples of (1) element key and (2) element content.
+        """
+
+        return [
+            RpyFlask.get_image(self.id, self.width, self.capture_image, timedelta(seconds=1.0 / self.fps), None)
+        ]
+
     def __init__(
             self,
             device: str,
@@ -1142,6 +1195,19 @@ class Tachometer(Component):
         state: Tachometer.State = self.state
 
         return state.rotations_per_second
+
+    def get_ui_elements(
+            self
+    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
+        """
+        Get UI elements for the current component.
+
+        :return: List of 2-tuples of (1) element key and (2) element content.
+        """
+
+        return [
+            RpyFlask.get_label(self.id, self.get_rps, timedelta(seconds=1), None, None, None)
+        ]
 
     def __init__(
             self,

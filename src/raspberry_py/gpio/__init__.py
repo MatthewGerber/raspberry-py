@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import IntEnum
 from threading import Thread, RLock
-from typing import List, Callable, Optional, Dict
+from typing import List, Callable, Optional, Dict, Tuple, Union
 
 import RPi.GPIO as gpio
 
@@ -334,6 +334,27 @@ class Component(ABC):
 
         return type(self).__name__
 
+    def get_subcomponents(
+            self
+    ) -> List['Component']:
+        """
+        Get subcomponents within the current component.
+
+        :return: List of components.
+        """
+
+        return []
+
+    def get_ui_elements(
+            self
+    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
+        """
+        Get UI elements for the current component.
+
+        :return: List of 2-tuples of (1) element key and (2) element content.
+        """
+
+        raise NotImplementedError('The current object does not provide UI elements.')
 
 class Clock(Component):
     """
