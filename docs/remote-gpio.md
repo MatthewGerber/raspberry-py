@@ -47,7 +47,7 @@ servo = Servo(
 )
 servo.id = 'servo-1'
 
-app.add_component(servo, True)
+app.add_component(servo)
 ```
 This code specifies an RpyFlask application containing a servo. It is the basis for HTML/JavaScript and REST API 
 generation, which are explained below.

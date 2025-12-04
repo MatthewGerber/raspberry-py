@@ -456,6 +456,7 @@ class DcMotor(Component):
         """
 
         curr_state: DcMotor.State = self.state
+
         return [
             RpyFlask.get_switch(self.id, self.start, self.stop, None, curr_state.on),
             RpyFlask.get_range(self.id, self.min_speed, self.max_speed, 1, self.get_speed(), False,False, [], [], [], False, self.set_speed, None, False)
@@ -914,6 +915,7 @@ class Servo(Component):
         """
 
         curr_state: Servo.State = self.state
+
         return [
             RpyFlask.get_switch(self.id, self.start, self.stop, None, curr_state.on),
             RpyFlask.get_range(self.id, int(self.min_degree), int(self.max_degree), 1, int(self.get_degrees()), False, False, [], [], [], False, self.set_degrees,None, False)

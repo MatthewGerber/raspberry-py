@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 from datetime import timedelta
 from http import HTTPStatus
 from os.path import join, expanduser
-from typing import List, Optional, Tuple, Callable, Any
+from typing import List, Optional, Tuple, Callable, Any, Dict
 
 import flask
 from flask import Flask, request, abort, Response
@@ -30,7 +30,8 @@ class RpyFlask(Flask):
             component: Component
     ):
         """
-        Add a component to the app. This will recursively add subcomponents of the component.
+        Add a component to the app. This will recursively add subcomponents of the component. Any component passed here
+        must implement its `get_ui_elements` function to obtain its UI elements.
 
         :param component: Component.
         """
@@ -43,7 +44,7 @@ class RpyFlask(Flask):
             root: bool
     ):
         """
-        Internal function for adding a component.
+        Internal function for adding a component and recursively adding its subcomponents.
 
         :param component: Component.
         :param root: Whether the component is a root component.
@@ -608,12 +609,33 @@ export async function is_checked(element) {
         )
 
     @staticmethod
+    def get_query(
+            args: Dict[str, Any]
+    ) -> str:
+        """
+        Get query string for a dictionary of arguments.
+
+        :param args: Arguments.
+        :return: Query string.
+        """
+
+        if args is not None and len(args) > 0:
+            query = '&'.join([
+                f'{arg_name}={type(arg_value).__name__}:{arg_value}'
+                for arg_name, arg_value in args.items()
+            ])
+        else:
+            query = ''
+
+        return query
+
+    @staticmethod
     def get_button(
             component_id: str,
-            pressed_function: Optional[Callable[[], Any]],
-            pressed_query: Optional[str],
-            released_function: Optional[Callable[[], Any]],
-            released_query: Optional[str],
+            pressed_function: Optional[Callable[[...], Any]],
+            pressed_args: Optional[Dict[str, Any]],
+            released_function: Optional[Callable[[...], Any]],
+            released_args: Optional[Dict[str, Any]],
             key: Optional[str],
             text: Optional[str]
     ) -> Tuple[str, str]:
@@ -622,9 +644,9 @@ export async function is_checked(element) {
 
         :param component_id: Component id.
         :param pressed_function: Function to call when the button is pressed.
-        :param pressed_query: Query to submit with pressed_function call, or None for no query.
+        :param pressed_args: Dictionary of argument names/values to pass to `pressed_function`.
         :param released_function: Function to call when the button is released.
-        :param released_query: Query to submit with released_function call, or None for no query.
+        :param released_args: Dictionary of argument names/values to pass to `released_function`.
         :param key: Key that, when pressed/released, will trigger the associated functions.
         :param text: Readable text to display.
         :return: 2-tuple of (1) element id and (2) UI element.
@@ -644,22 +666,16 @@ export async function is_checked(element) {
         pressed_function_js = ''
         pressed_events_js = ''
         if pressed_function is not None:
-
-            if pressed_query is not None and len(pressed_query) > 0:
-                pressed_query = f'?{pressed_query}'
-            else:
-                pressed_query = ''
-
+            pressed_args_query = RpyFlask.get_query(pressed_args)
             pressed_function_name_js = f'on_press_{pressed_function_name}'
             pressed_function_js = (
                 f'function {pressed_function_name_js} () {{\n'
                 f'  $.ajax({{\n'
-                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{pressed_function_name}{pressed_query}",\n'
+                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{pressed_function_name}?{pressed_args_query}",\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'}}\n'
             )
-
             pressed_events_js = (
                 f'{element_var}.on("mousedown touchstart", function () {{\n'
                 f'  {pressed_function_name_js}();\n'
@@ -687,22 +703,16 @@ export async function is_checked(element) {
         released_function_js = ''
         released_events_js = ''
         if released_function is not None:
-
-            if released_query is not None and len(released_query) > 0:
-                released_query = f'?{released_query}'
-            else:
-                released_query = ''
-
+            released_args_query = RpyFlask.get_query(released_args)
             released_function_name_js = f'on_release_{released_function_name}'
             released_function_js = (
                 f'function {released_function_name_js} () {{\n'
                 f'  $.ajax({{\n'
-                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{released_function_name}{released_query}",\n'
+                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{released_function_name}?{released_args_query}",\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'}}\n'
             )
-
             released_events_js = (
                 f'{element_var}.on("mouseup touchend", function () {{\n'
                 f'  {released_function_name_js}();\n'
