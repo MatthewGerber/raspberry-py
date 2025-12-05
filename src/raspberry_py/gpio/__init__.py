@@ -440,7 +440,8 @@ class Clock(Component):
             else:
                 logging.warning('Attempted to stop clock that is not running.')
 
-        self.run_thread.join()
+        if self.run_thread is not None:
+            self.run_thread.join()
 
         logging.info('Stopped clock.')
 

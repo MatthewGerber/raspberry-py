@@ -1,3 +1,4 @@
+import atexit
 import importlib
 import inspect
 import os.path
@@ -57,6 +58,29 @@ class RpyFlask(Flask):
 
         for component in component.get_subcomponents():
             self._add_component(component, False)
+
+    def on_exit(
+            self
+    ):
+        """
+        Signal that the process running the app is about to exit.
+        """
+
+        for callback in self.on_exit_callbacks:
+            callback()
+
+    def register_on_exit_callback(
+            self,
+            callback: Callable[[], Any]
+    ):
+        """
+        Register a callback function to be invoked when the application is exiting.
+
+        :param callback: Function.
+        """
+
+        self.on_exit_callbacks.append(callback)
+
 
     def write_component_files(
             self,
@@ -884,12 +908,16 @@ export async function is_checked(element) {
 
         self.id_component = {}
         self.root_components = []
+        self.on_exit_callbacks: List[Callable[[], Any]] = []
 
 
 app = RpyFlask(__name__)
 
 # allow cross-site access from an html front-end
 CORS(app)
+
+# hook atexit to the app's callback
+atexit.register(app.on_exit)
 
 # set up gpio
 setup()
@@ -931,6 +959,7 @@ def call(
         'int': int,
         'str': str,
         'float': float,
+        'bool': bool,
         'days': lambda days: timedelta(days=float(days)),
         'hours': lambda hours: timedelta(hours=float(hours)),
         'minutes': lambda minutes: timedelta(minutes=float(minutes)),
