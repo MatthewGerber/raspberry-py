@@ -12,7 +12,7 @@ from typing import List, Optional, Tuple, Callable, Any, Dict
 import flask
 from flask import Flask, request, abort, Response
 from flask_cors import CORS
-from raspberry_py.gpio import Component, setup
+from raspberry_py.gpio import Component, setup, cleanup
 
 LEFT_ARROW_KEYS = ['Left', 'ArrowLeft']
 RIGHT_ARROW_KEYS = ['Right', 'ArrowRight']
@@ -566,7 +566,7 @@ export async function is_checked(element) {
 
         :param component_id: Component id.
         :param width: Initial width of HTML image.
-        :param function: Function to call to obtain new image.
+        :param function: Function to call to obtain new image as a base-64 encoded byte string.
         :param refresh_interval: How long to wait between refresh calls, or None for no interval.
         :param pause_for_checkbox_id: HTML identifier of checkbox to pause for before capturing image.
         :return: 2-tuple of (1) element id and (2) UI element.
@@ -656,12 +656,13 @@ export async function is_checked(element) {
     @staticmethod
     def get_button(
             component_id: str,
-            pressed_function: Optional[Callable[[...], Any]],
+            pressed_function: Optional[Callable[..., Any]],
             pressed_args: Optional[Dict[str, Any]],
-            released_function: Optional[Callable[[...], Any]],
+            released_function: Optional[Callable[..., Any]],
             released_args: Optional[Dict[str, Any]],
             key: Optional[str],
-            text: Optional[str]
+            text: Optional[str],
+            element_id_suffix: Optional[str] = None
     ) -> Tuple[str, str]:
         """
         Get button.
@@ -673,6 +674,7 @@ export async function is_checked(element) {
         :param released_args: Dictionary of argument names/values to pass to `released_function`.
         :param key: Key that, when pressed/released, will trigger the associated functions.
         :param text: Readable text to display.
+        :param element_id_suffix: Optional element id suffix to differentiate it.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
@@ -684,7 +686,10 @@ export async function is_checked(element) {
 
         pressed_function_name = None if pressed_function is None else pressed_function.__name__
         released_function_name = None if released_function is None else released_function.__name__
-        element_id = '-'.join(filter(None, [component_id, pressed_function_name, released_function_name]))
+        element_id = '-'.join(filter(
+            None,
+            [component_id, pressed_function_name, released_function_name, element_id_suffix]
+        ))
         element_var = element_id.replace('-', '_')
 
         pressed_function_js = ''
@@ -916,8 +921,9 @@ app = RpyFlask(__name__)
 # allow cross-site access from an html front-end
 CORS(app)
 
-# hook atexit to the app's callback
+# hook atexit to the app's callback and to cleanup
 atexit.register(app.on_exit)
+atexit.register(cleanup)
 
 # set up gpio
 setup()
@@ -959,7 +965,7 @@ def call(
         'int': int,
         'str': str,
         'float': float,
-        'bool': bool,
+        'bool': lambda s: s == 'True',
         'days': lambda days: timedelta(days=float(days)),
         'hours': lambda hours: timedelta(hours=float(hours)),
         'minutes': lambda minutes: timedelta(minutes=float(minutes)),
