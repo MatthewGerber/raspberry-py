@@ -6,6 +6,10 @@
   background-color: aliceblue;
 }
 
+.rpy-parent * {
+  padding: 0.25rem;
+}
+
 input[type=range][orient=vertical]
 {
     writing-mode: bt-lr; /* IE */

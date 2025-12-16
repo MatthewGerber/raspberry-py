@@ -475,7 +475,7 @@ class Car(Component):
             RpyFlask.get_range(self.id, self.min_speed, self.max_speed, 1, 0, True, False, DOWN_ARROW_KEYS, UP_ARROW_KEYS, SPACE_KEY, True, self.set_speed, '', False),
             RpyFlask.get_range(self.id, int(self.wheel_min_speed / 2.0), int(self.wheel_max_speed / 2.0), 1, 0, True, True, RIGHT_ARROW_KEYS, LEFT_ARROW_KEYS, SPACE_KEY, True, self.set_differential_speed, '', False),
             RpyFlask.get_label(self.range_finder.id, self.range_finder.measure_distance_once, timedelta(seconds=1), 'Range (cm)', power_id, 1),
-            RpyFlask.get_button(self.buzzer.id, self.buzzer.buzz, None, self.buzzer.stop, None, 'h', 'Horn'),
+            RpyFlask.get_button(self.buzzer.id, self.buzzer.buzz, None, None, self.buzzer.stop, None, 'h', 'Horn'),
             (power_id, power_element),
             RpyFlask.get_switch(self.id, self.enable_face_tracking, self.disable_face_tracking, 'Face Tracking', self.track_faces),
             RpyFlask.get_switch(self.id, self.enable_light_tracking, self.disable_light_tracking, 'Light Tracking', self.track_light),

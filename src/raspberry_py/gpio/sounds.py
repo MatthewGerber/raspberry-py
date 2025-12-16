@@ -114,7 +114,7 @@ class ActiveBuzzer(Component):
         """
 
         return [
-            RpyFlask.get_button(self.id, self.buzz, None, self.stop, None, None, None)
+            RpyFlask.get_button(self.id, self.buzz, None, None, self.stop, None, None, None)
         ]
 
     def __init__(

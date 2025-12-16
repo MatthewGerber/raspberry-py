@@ -595,8 +595,8 @@ class RaspberryPyElevator(Component):
         """
 
         return [
-            RpyFlask.get_button(self.id, self.move_up_1_mm_1_sec, None, None, None, 'MetaRight', 'Move up'),
-            RpyFlask.get_button(self.id, self.move_down_1_mm_1_sec, None, None, None, 'MetaLeft', 'Move down')
+            RpyFlask.get_button(self.id, self.move_up_1_mm_1_sec, None, None, None, None, 'MetaRight', 'Move up'),
+            RpyFlask.get_button(self.id, self.move_down_1_mm_1_sec, None, None, None, None, 'MetaLeft', 'Move down')
         ]
 
     def __init__(

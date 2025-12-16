@@ -636,7 +636,7 @@ export async function is_checked(element) {
 
     @staticmethod
     def get_query(
-            args: Dict[str, Any]
+            args: Optional[Dict[str, Any]]
     ) -> str:
         """
         Get query string for a dictionary of arguments.
@@ -702,7 +702,7 @@ export async function is_checked(element) {
             component_id: str,
             pressed_function: Optional[Callable[..., Any]],
             pressed_args: Optional[Dict[str, Any]],
-            pressed_dyn_arg_name_type_id: Optional[List[Tuple[str, Type, str]]],
+            pressed_dyn_args_name_type_id: Optional[List[Tuple[str, Type, str]]],
             released_function: Optional[Callable[..., Any]],
             released_args: Optional[Dict[str, Any]],
             key: Optional[str],
@@ -715,7 +715,7 @@ export async function is_checked(element) {
         :param component_id: Component id.
         :param pressed_function: Function to call when the button is pressed.
         :param pressed_args: Dictionary of argument names/values to pass to `pressed_function`.
-        :param pressed_dyn_arg_name_type_id: Dynamic arguments that refer to other components whose values are obtained
+        :param pressed_dyn_args_name_type_id: Dynamic arguments that refer to other components whose values are obtained
         at runtime for the query string.
         :param released_function: Function to call when the button is released.
         :param released_args: Dictionary of argument names/values to pass to `released_function`.
@@ -745,18 +745,24 @@ export async function is_checked(element) {
 
             pressed_args_query = RpyFlask.get_query(pressed_args)
 
-            dyn_arg_src = '  let dyn_arg_query = "";\n'
-            if pressed_dyn_arg_name_type_id is not None:
-                for dyn_arg_name, dyn_arg_type, dyn_arg_comp_id in pressed_dyn_arg_name_type_id:
-                    f'  let dyn_arg_value = document.getElementById("{dyn_arg_comp_id}").value;\n'
-                    f'  dyn_arg_query = dyn_arg_query + "{dyn_arg_name}={dyn_arg_type}:" + dyn_arg_value;\n'
+            if pressed_dyn_args_name_type_id is None:
+                pressed_dyn_args_js = '  let dyn_args_query = "";\n'
+            else:
+                pressed_dyn_args_js = f'  let dyn_args_query = "{"" if pressed_args_query == "" else "&"}";\n'
+                pressed_dyn_args_js += ''.join(
+                    (
+                        f'  let dyn_arg_value = document.getElementById("{dyn_arg_comp_id}").value;\n'
+                        f'  dyn_args_query = dyn_args_query + "{dyn_arg_name}={dyn_arg_type.__name__}:" + dyn_arg_value;\n'
+                    )
+                    for dyn_arg_name, dyn_arg_type, dyn_arg_comp_id in pressed_dyn_args_name_type_id
+                )
 
             pressed_function_name_js = f'on_press_{pressed_function_name}'
             pressed_function_js = (
                 f'function {pressed_function_name_js} () {{\n'
-                f'  {dyn_arg_src}'
+                f'{pressed_dyn_args_js}'
                 f'  $.ajax({{\n'
-                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{pressed_function_name}?{pressed_args_query}" + dyn_arg_query,\n'
+                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{pressed_function_name}?{pressed_args_query}" + dyn_args_query,\n'
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'}}\n'
