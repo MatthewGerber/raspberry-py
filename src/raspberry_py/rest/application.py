@@ -691,9 +691,10 @@ export async function is_checked(element) {
         return (
             element_id,
             (
-                f'<md-outlined-text-field '
-                f'type="{textbox_type}" label="{label}" value="{default_text}" id="{element_id}"'
-                f'></md-outlined-text-field>'
+                f'<div class="form-outline" data-mdb-input-init>\n'
+                f'  <input type="{textbox_type}" value="{default_text}" id="{element_id}" class="form-control active"/>\n'
+                f'  <label class="form-label" for="{element_id}">{label}</label>\n'
+                f'</div>'
             )
         )
 
