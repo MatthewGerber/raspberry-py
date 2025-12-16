@@ -195,9 +195,9 @@ export async function is_checked(element) {
         return (
             element_id,
             (
-                f'<div class="form-check form-switch">\n'
-                f'  <label class="form-check-label" for="{element_id}">{text}</label>\n'
+                f'<div class="form-check form-switch switch-container">\n'
                 f'  <input class="form-check-input" type="checkbox" role="switch" id="{element_id}"{checked}/>\n'
+                f'  <label class="form-check-label" for="{element_id}">{text}</label>\n'                
                 f'</div>\n'
                 f'<script type="module">\n'
                 f'import {{rest_host, rest_port}} from "./globals.js";\n'
@@ -753,7 +753,7 @@ export async function is_checked(element) {
                 pressed_dyn_args_js += ''.join(
                     (
                         f'  {"let " if i == 0 else ""}dyn_arg_value = document.getElementById("{dyn_arg_comp_id}").value;\n'
-                        f'  dyn_args_query = dyn_args_query + "{dyn_arg_name}={dyn_arg_type.__name__}:" + dyn_arg_value;\n'
+                        f'  dyn_args_query = dyn_args_query + "{"" if i == 0 else "&"}{dyn_arg_name}={dyn_arg_type.__name__}:" + dyn_arg_value;\n'
                     )
                     for i, (dyn_arg_name, dyn_arg_type, dyn_arg_comp_id) in enumerate(pressed_dyn_args_name_type_id)
                 )

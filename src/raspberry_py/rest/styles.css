@@ -6,8 +6,8 @@
   background-color: aliceblue;
 }
 
-.rpy-parent * {
-  padding: 0.25rem;
+.rpy-margin * {
+  margin: 0.5rem;
 }
 
 input[type=range][orient=vertical]
@@ -17,4 +17,9 @@ input[type=range][orient=vertical]
     width: 8px;
     height: 175px;
     margin: 10px
+}
+
+.switch-container {
+  display: flex;
+  align-items: center; /* Vertically centers the items */
 }
