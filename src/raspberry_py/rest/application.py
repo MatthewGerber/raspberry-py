@@ -752,10 +752,10 @@ export async function is_checked(element) {
                 pressed_dyn_args_js = f'  let dyn_args_query = "{"" if pressed_args_query == "" else "&"}";\n'
                 pressed_dyn_args_js += ''.join(
                     (
-                        f'  let dyn_arg_value = document.getElementById("{dyn_arg_comp_id}").value;\n'
+                        f'  {"let " if i == 0 else ""}dyn_arg_value = document.getElementById("{dyn_arg_comp_id}").value;\n'
                         f'  dyn_args_query = dyn_args_query + "{dyn_arg_name}={dyn_arg_type.__name__}:" + dyn_arg_value;\n'
                     )
-                    for dyn_arg_name, dyn_arg_type, dyn_arg_comp_id in pressed_dyn_args_name_type_id
+                    for i, (dyn_arg_name, dyn_arg_type, dyn_arg_comp_id) in enumerate(pressed_dyn_args_name_type_id)
                 )
 
             pressed_function_name_js = f'on_press_{pressed_function_name}'
