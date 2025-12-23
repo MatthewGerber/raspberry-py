@@ -637,7 +637,7 @@ class RaspberryPyElevator(Component):
 
         # we synchronize from the left stepper to the right, so we only need to put the limiter on the left.
         self.stepper_left = Stepper(
-            poles=32,
+            full_steps_per_revolution=32,
             output_rotor_ratio=1 / 64.0,
             driver=StepperMotorDriverDirectUln2003(
                 driver_pin_1=left_stepper_pins[0],
@@ -653,7 +653,7 @@ class RaspberryPyElevator(Component):
             right_stepper_pins = list(reversed(right_stepper_pins))
 
         self.stepper_right = Stepper(
-            poles=32,
+            full_steps_per_revolution=32,
             output_rotor_ratio=1 / 64.0,
             driver=StepperMotorDriverDirectUln2003(
                 driver_pin_1=right_stepper_pins[0],

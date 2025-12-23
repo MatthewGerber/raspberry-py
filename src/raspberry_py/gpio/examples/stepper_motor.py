@@ -14,7 +14,7 @@ def main():
 
     # create/start stepper
     stepper = Stepper(
-        poles=32,
+        full_steps_per_revolution=32,
         output_rotor_ratio=1/64.0,
         driver=StepperMotorDriverDirectUln2003(
             driver_pin_1=CkPin.GPIO18,

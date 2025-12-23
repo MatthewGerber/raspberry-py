@@ -947,39 +947,10 @@ class Servo(Component):
         self.max_degree = max_degree
 
 
-class StepperMotorDriverUln2003(ABC):
+class StepperMotorDriver(ABC):
     """
-    Abstract driver for stepper motors controlled by the ULN2003 integrated circuit, which is controlled via four GPIO
-    pins.
+    Abstract driver for stepper motors.
     """
-
-    def __init__(
-            self,
-            driver_pin_1: int,
-            driver_pin_2: int,
-            driver_pin_3: int,
-            driver_pin_4: int
-    ):
-        """
-        Initialize the driver.
-
-        :param driver_pin_1: Driver GPIO pin 1.
-        :param driver_pin_2: Driver GPIO pin 2.
-        :param driver_pin_3: Driver GPIO pin 3.
-        :param driver_pin_4: Driver GPIO pin 4.
-        """
-
-        self.driver_pin_1 = driver_pin_1
-        self.driver_pin_2 = driver_pin_2
-        self.driver_pin_3 = driver_pin_3
-        self.driver_pin_4 = driver_pin_4
-
-        self.driver_pins = [
-            self.driver_pin_1,
-            self.driver_pin_2,
-            self.driver_pin_3,
-            self.driver_pin_4
-        ]
 
     @abstractmethod
     def start(
@@ -1012,6 +983,41 @@ class StepperMotorDriverUln2003(ABC):
         """
         Stop the driver.
         """
+
+
+class StepperMotorDriverUln2003(StepperMotorDriver, ABC):
+    """
+    Abstract driver for stepper motors controlled by the ULN2003 integrated circuit, which is controlled via four GPIO
+    pins.
+    """
+
+    def __init__(
+            self,
+            driver_pin_1: int,
+            driver_pin_2: int,
+            driver_pin_3: int,
+            driver_pin_4: int
+    ):
+        """
+        Initialize the driver.
+
+        :param driver_pin_1: Driver GPIO pin 1.
+        :param driver_pin_2: Driver GPIO pin 2.
+        :param driver_pin_3: Driver GPIO pin 3.
+        :param driver_pin_4: Driver GPIO pin 4.
+        """
+
+        self.driver_pin_1 = driver_pin_1
+        self.driver_pin_2 = driver_pin_2
+        self.driver_pin_3 = driver_pin_3
+        self.driver_pin_4 = driver_pin_4
+
+        self.driver_pins = [
+            self.driver_pin_1,
+            self.driver_pin_2,
+            self.driver_pin_3,
+            self.driver_pin_4
+        ]
 
 
 class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
@@ -1225,7 +1231,139 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             self.driver_pin_1.to_bytes(1) +
             self.driver_pin_2.to_bytes(1) +
             self.driver_pin_3.to_bytes(1) +
-            self.driver_pin_4.to_bytes(1),
+            self.driver_pin_4.to_bytes(1) +
+            (-1).to_bytes(2, signed=True),
+            True,
+            1,
+            False
+        ))
+        if not success:
+            raise ValueError('Failed to initialize Arduino stepper motor driver.')
+
+    def step(
+            self,
+            stepper: 'Stepper',
+            num_steps: int,
+            time_to_step: timedelta
+    ) -> Any:
+        """
+        Step the motor.
+
+        :param stepper: Stepper.
+        :param num_steps: Number of steps.
+        :param time_to_step: Time to take.
+        :return: If operating synchronously, a float value indicating the number of steps skipped due to limiting. If
+        operating asynchronously, a function that can be called to wait for the return value, which will be the stepping
+        sequence identifier, the stepper identifier, and the number of steps skipped due to limiting.
+        """
+
+        if not (-32768 <= num_steps <= 32,767):
+            raise ValueError(f'Steps must be in range of two-byte signed integer:  [32768, 32767]')
+
+        ms_to_step = int(time_to_step.total_seconds() * 1000.0)
+        if ms_to_step > StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT:
+            raise ValueError(f'Maximum time (ms) to step:  {StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT}')
+
+        bytes_to_write = (
+            StepperMotorDriverArduinoUln2003.Command.STEP.to_bytes(1) +
+            self.identifier.to_bytes(1) +
+            num_steps.to_bytes(2, signed=True) +
+            ms_to_step.to_bytes(2)
+        )
+        self.serial.write_then_read(bytes_to_write, True, 0, False)
+
+        if self.asynchronous:
+            return_value = self.wait_for_async_result
+        else:
+            identifier, return_value = self.wait_for_async_result()
+            assert identifier == self.identifier
+
+        return return_value
+
+    def wait_for_async_result(
+            self
+    ) -> Tuple[int, float]:
+        """
+        Wait for asynchronous result.
+
+        :return: 2-tuple of the stepper id and skipped steps.
+        """
+
+        result_bytes = self.serial.connection.read(5)
+        assert len(result_bytes) == 5
+        stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
+        skipped_steps = get_float(result_bytes[1:5])
+
+        return stepper_id, skipped_steps
+
+    def stop(self):
+        """
+        Stop the driver.
+        """
+
+        success = bool(self.serial.write_then_read(
+            StepperMotorDriverArduinoUln2003.Command.STOP.to_bytes(1) +
+            self.identifier.to_bytes(1),
+            True,
+            1,
+            False
+        ))
+        if not success:
+            raise ValueError('Failed to stop Arduino stepper motor driver.')
+
+
+class StepperMotorDriverArduinoA4988(StepperMotorDriver):
+    """
+    Stepper motor driver that operates via serial connection to an Arduino board, which controls the stepper motor via
+    A4988 integrated circuit.
+    """
+
+    # Maximum number of steps is the maximum two-byte unsigned integer.
+    MAX_TWO_BYTE_UNSIGNED_INT = 2 ** 16 - 1
+
+    class Command(IntEnum):
+        """
+        Commands that can be sent to the Arduino.
+        """
+
+        INIT = 1
+        STEP = 2
+        STOP = 3
+
+    def __init__(
+            self,
+            driver_pin: int,
+            direction_pin: int,
+            identifier: int,
+            serial: LockingSerial,
+            asynchronous: bool
+    ):
+        """
+        Initialize the driver.
+
+        :param driver_pin: Driver GPIO pin.
+        :param direction_pin: Direction pin.
+        :param identifier: Identifier.
+        :param serial: Serial connection to the Arduino.
+        :param asynchronous: Whether the driver should operate asynchronously.
+        """
+
+        self.driver_pin = driver_pin
+        self.direction_pin = direction_pin
+        self.identifier = identifier
+        self.serial = serial
+        self.asynchronous = asynchronous
+
+    def start(self):
+        """
+        Start the driver.
+        """
+
+        success = bool(self.serial.write_then_read(
+            StepperMotorDriverArduinoA4988.Command.INIT.to_bytes(1) +
+            self.identifier.to_bytes(1) +
+            self.driver_pin.to_bytes(1) +
+            self.direction_pin.to_bytes(2, signed=True),
             True,
             1,
             False
@@ -1482,27 +1620,28 @@ class Stepper(Component):
 
     def __init__(
             self,
-            poles: int,
+            full_steps_per_revolution: int,
             output_rotor_ratio: float,
-            driver: StepperMotorDriverUln2003,
+            driver: StepperMotorDriver,
             reverse: bool
     ):
         """
         Initialize the motor.
 
-        :param poles: Number of poles in the stepper.
-        :param output_rotor_ratio: Rotor/output ratio (e.g., if the output shaft rotates one time per 100 rotations of
-        the internal rotor, then this value would be 1/100).
+        :param full_steps_per_revolution: Number of full steps per revolution.
+        :param output_rotor_ratio: Output/rotor ratio (e.g., if the output shaft rotates one time per 100 rotations of
+        the internal rotor, then this value would be 1/100). This is for stepper motors that have gearboxes. If there is
+        no gearbox, then the output/rotor ratio is 1/1 = 1.0.
         :param driver: Stepper motor driver.
         :param reverse: Whether to reverse the stepper.
         """
 
         super().__init__(Stepper.State(0, timedelta(seconds=0)))
 
-        self.poles = poles
+        self.full_steps_per_revolution = full_steps_per_revolution
         self.output_rotor_ratio = output_rotor_ratio
         self.driver = driver
         self.reverse = reverse
 
-        self.steps_per_degree = (poles / output_rotor_ratio) / 360.0
+        self.steps_per_degree = (self.full_steps_per_revolution / self.output_rotor_ratio) / 360.0
         self.driver_step_return_value: Any = None
