@@ -1392,11 +1392,11 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
             raise ValueError(f'Steps must be in range of two-byte signed integer:  [32768, 32767]')
 
         ms_to_step = int(time_to_step.total_seconds() * 1000.0)
-        if ms_to_step > StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT:
-            raise ValueError(f'Maximum time (ms) to step:  {StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT}')
+        if ms_to_step > StepperMotorDriverArduinoA4988.MAX_TWO_BYTE_UNSIGNED_INT:
+            raise ValueError(f'Maximum time (ms) to step:  {StepperMotorDriverArduinoA4988.MAX_TWO_BYTE_UNSIGNED_INT}')
 
         bytes_to_write = (
-            StepperMotorDriverArduinoUln2003.Command.STEP.to_bytes(1) +
+            StepperMotorDriverArduinoA4988.Command.STEP.to_bytes(1) +
             self.identifier.to_bytes(1) +
             num_steps.to_bytes(2, signed=True) +
             ms_to_step.to_bytes(2)
@@ -1433,7 +1433,7 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         """
 
         success = bool(self.serial.write_then_read(
-            StepperMotorDriverArduinoUln2003.Command.STOP.to_bytes(1) +
+            StepperMotorDriverArduinoA4988.Command.STOP.to_bytes(1) +
             self.identifier.to_bytes(1),
             True,
             1,
@@ -1515,7 +1515,8 @@ class Stepper(Component):
         self.driver_step_return_value = self.driver.step(self, num_steps, state.time_to_step)
         end_time = time.time()
 
-        # return value will be an integer of skipped steps if the driver is synchronous. we can update the state now.
+        # return value will be an integer of skipped steps if the driver is synchronous. we can update the state now. if
+        # the driver is asynchronous, then we cannot update the stepper state here. it will need to be done elsewhere.
         if isinstance(self.driver_step_return_value, int):
             num_steps_taken = round(num_steps - self.driver_step_return_value)
             super().set_state(
