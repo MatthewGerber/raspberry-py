@@ -22,7 +22,8 @@ def main():
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS
         ),
-        throughput_step_size=1.0
+        throughput_step_size=1.0,
+        manual_buffer=False
     )
     arduino_interface = RotaryEncoder.Arduino(
         phase_a_pin=3,
