@@ -23,8 +23,8 @@ class LockingSerial:
         :param throughput_step_size: Step size in (0.0, 1.0] used to estimate throughput. Smaller step sizes create less
         variance but more lag in the estimate, whereas larger step sizes create more variance but less lag.
         :param manual_buffer: Whether to manually buffer all bytes. Any written bytes will be held back until the
-        current object's flush function is called, at which point all bytes will be written to the serial connection and
-        flushed.
+        current object's `flush_manually` function is called, at which point all bytes will be written to the serial
+        connection and flushed. If False, then Python's standard buffering in the Serial class will be used.
         """
 
         self.connection = connection
@@ -45,7 +45,8 @@ class LockingSerial:
             readline: bool
     ) -> bytes:
         """
-        Write bytes and then read response.
+        Write bytes and then read response. Note that, when buffering manually, flush has no effect, and it is not
+        permitted to read any data.
 
         :param data: Bytes to write.
         :param flush: Whether to flush the output stream after writing the data.
@@ -58,6 +59,10 @@ class LockingSerial:
         with self.lock:
 
             if self.manual_buffer:
+
+                if read_length > 0 or readline:
+                    raise ValueError('Cannot read data with write_then_read when buffering manually.')
+
                 self.buffer.extend(data)
                 bytes_read = bytes()
 
