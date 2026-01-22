@@ -166,8 +166,8 @@ export async function is_checked(element) {
     @staticmethod
     def get_switch(
             component_id: str,
-            on_function: Callable[[], None],
-            off_function: Callable[[], None],
+            on_function: Optional[Callable[[], None]],
+            off_function: Optional[Callable[[], None]],
             text: Optional[str],
             initially_on: bool
     ) -> Tuple[str, str]:
@@ -175,31 +175,32 @@ export async function is_checked(element) {
         Get switch UI element.
 
         :param component_id: Component id.
-        :param on_function: Function to call when switch is flipped on.
-        :param off_function: Function to call when switch is flipped off.
+        :param on_function: Function to call when switch is switched on, or None for no scripting (value only).
+        :param off_function: Function to call when switch is switched off, or None for no scripting (value only).
         :param text: Readable text to display.
         :param initially_on: Initially on.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
-        on_function_name = on_function.__name__
-        off_function_name = off_function.__name__
+        if on_function is None or off_function is None:
 
-        if text is None:
-            text = f'{component_id} {on_function_name}/{off_function_name}'
+            if text is None:
+                text = component_id
 
-        element_id = f'{component_id}-{on_function_name}-{off_function_name}'
-        element_var = element_id.replace('-', '_')
-        checked = ' checked ' if initially_on else ''
+            element_id = component_id
+            script = ''
+        else:
 
-        return (
-            element_id,
-            (
-                f'<div class="form-check form-switch switch-container">\n'
-                f'  <input class="form-check-input" type="checkbox" role="switch" id="{element_id}"{checked}/>\n'
-                f'  <label class="form-check-label" for="{element_id}">{text}</label>\n'                
-                f'</div>\n'
-                f'<script type="module">\n'
+            on_function_name = on_function.__name__
+            off_function_name = off_function.__name__
+
+            if text is None:
+                text = f'{component_id} {on_function_name}/{off_function_name}'
+
+            element_id = f'{component_id}-{on_function_name}-{off_function_name}'
+            element_var = element_id.replace('-', '_')
+            script = (
+                f'\n<script type="module">\n'
                 f'import {{rest_host, rest_port}} from "./globals.js";\n'
                 f'const {element_var} = $("#{element_id}");\n'
                 f'{element_var}.on("change", function () {{\n'
@@ -209,6 +210,18 @@ export async function is_checked(element) {
                 f'  }});\n'
                 f'}});\n'
                 f'</script>'
+            )
+
+        checked = ' checked ' if initially_on else ''
+
+        return (
+            element_id,
+            (
+                f'<div class="form-check form-switch switch-container">\n'
+                f'  <input class="form-check-input" type="checkbox" role="switch" id="{element_id}"{checked}/>\n'
+                f'  <label class="form-check-label" for="{element_id}">{text}</label>\n'                
+                f'</div>'
+                f'{script}'
             )
         )
 
@@ -699,6 +712,28 @@ export async function is_checked(element) {
         )
 
     @staticmethod
+    def get_dyn_arg_js(
+            dyn_arg_type: Type,
+            dyn_arg_comp_id: str
+    ):
+        """
+        Get JavaScript for obtaining the value of an argument dynamically from a UI element.
+
+        :param dyn_arg_type: Argument type.
+        :param dyn_arg_comp_id: Component id.
+        :return: JavaScript.
+        """
+
+        if dyn_arg_type == float:
+            js = f'document.getElementById("{dyn_arg_comp_id}").value'  # assume textbox
+        elif dyn_arg_type == bool:
+            js = '$("#{element_id}").is(":checked")'  # assume switch
+        else:
+            raise ValueError(f'Unknown dynamic argument type:  {dyn_arg_type}')
+
+        return js
+
+    @staticmethod
     def get_button(
             component_id: str,
             pressed_function: Optional[Callable[..., Any]],
@@ -717,7 +752,7 @@ export async function is_checked(element) {
         :param pressed_function: Function to call when the button is pressed.
         :param pressed_args: Dictionary of argument names/values to pass to `pressed_function`.
         :param pressed_dyn_args_name_type_id: Dynamic arguments that refer to other components whose values are obtained
-        at runtime for the query string.
+        at runtime for the query string. List of 3-tuples of argument name, argument Python type, and UI component id.
         :param released_function: Function to call when the button is released.
         :param released_args: Dictionary of argument names/values to pass to `released_function`.
         :param key: Key that, when pressed/released, will trigger the associated functions.
@@ -752,7 +787,7 @@ export async function is_checked(element) {
                 pressed_dyn_args_js = f'  let dyn_args_query = "{"" if pressed_args_query == "" else "&"}";\n'
                 pressed_dyn_args_js += ''.join(
                     (
-                        f'  {"let " if i == 0 else ""}dyn_arg_value = document.getElementById("{dyn_arg_comp_id}").value;\n'
+                        f'  {"let " if i == 0 else ""}dyn_arg_value = {RpyFlask.get_dyn_arg_js(dyn_arg_type, dyn_arg_comp_id)};\n'
                         f'  dyn_args_query = dyn_args_query + "{"" if i == 0 else "&"}{dyn_arg_name}={dyn_arg_type.__name__}:" + dyn_arg_value;\n'
                     )
                     for i, (dyn_arg_name, dyn_arg_type, dyn_arg_comp_id) in enumerate(pressed_dyn_args_name_type_id)
