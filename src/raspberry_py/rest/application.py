@@ -189,6 +189,7 @@ export async function is_checked(element) {
 
             element_id = component_id
             script = ''
+
         else:
 
             on_function_name = on_function.__name__
