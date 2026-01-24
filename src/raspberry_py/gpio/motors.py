@@ -1333,6 +1333,7 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
     def __init__(
             self,
             driver_pin: int,
+            disable_pin: int,
             direction_pin: int,
             identifier: int,
             serial: LockingSerial,
@@ -1342,6 +1343,7 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         Initialize the driver.
 
         :param driver_pin: Driver GPIO pin.
+        :param disable_pin: Disable GPIO pin.
         :param direction_pin: Direction pin.
         :param identifier: Identifier.
         :param serial: Serial connection to the Arduino.
@@ -1349,6 +1351,7 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         """
 
         self.driver_pin = driver_pin
+        self.disable_pin = disable_pin
         self.direction_pin = direction_pin
         self.identifier = identifier
         self.serial = serial
@@ -1363,6 +1366,7 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
             StepperMotorDriverArduinoA4988.Command.INIT.to_bytes(1) +
             self.identifier.to_bytes(1) +
             self.driver_pin.to_bytes(1) +
+            self.disable_pin.to_bytes(2, signed=True) +
             self.direction_pin.to_bytes(2, signed=True),
             True,
             1,
