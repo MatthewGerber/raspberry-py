@@ -725,10 +725,10 @@ export async function is_checked(element) {
         :return: JavaScript.
         """
 
-        if dyn_arg_type == float:
-            js = f'document.getElementById("{dyn_arg_comp_id}").value'  # assume textbox
+        if dyn_arg_type in [int, float]:
+            js = f'document.getElementById("{dyn_arg_comp_id}").value'  # assume number textbox
         elif dyn_arg_type == bool:
-            js = '$("#{element_id}").is(":checked")'  # assume switch
+            js = f'$("#{dyn_arg_comp_id}").is(":checked")'  # assume switch
         else:
             raise ValueError(f'Unknown dynamic argument type:  {dyn_arg_type}')
 
@@ -1064,7 +1064,7 @@ def call(
         'int': int,
         'str': str,
         'float': float,
-        'bool': lambda s: s == 'True',
+        'bool': lambda s: s.lower() == 'true',
         'days': lambda days: timedelta(days=float(days)),
         'hours': lambda hours: timedelta(hours=float(hours)),
         'minutes': lambda minutes: timedelta(minutes=float(minutes)),
