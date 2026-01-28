@@ -272,8 +272,7 @@ class DcMotorDriverIndirectArduino(DcMotorDriver):
             self.serial.write_then_read(
                 DcMotorDriverIndirectArduino.Command.SET_SPEED.to_bytes(1) +
                 self.identifier.to_bytes(1) +
-                abs(new_speed).to_bytes(2) +
-                (new_speed > 0).to_bytes(1) +
+                new_speed.to_bytes(2, signed=True) +
                 promise_ms.to_bytes(2),
                 True,
                 0,
