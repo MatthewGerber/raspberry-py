@@ -241,13 +241,16 @@ def get_bytes(
         value: float
 ) -> bytes:
     """
-    Get bytes for a float.
+    Get a 4-byte array for a float.
 
     :param value: Value.
     :return: Bytes.
     """
 
-    return struct.pack('f', value)
+    float_bytes = struct.pack('f', value)
+    assert len(float_bytes) == 4
+
+    return float_bytes
 
 
 def get_float(
