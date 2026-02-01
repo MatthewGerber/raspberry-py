@@ -1742,7 +1742,7 @@ class RotaryEncoder(Component):
             Start the interface.
             """
 
-            success = bool(self.serial.write_then_read(
+            self.serial.write_then_read(
                 RotaryEncoder.Arduino.Command.INIT.to_bytes(1) +
                 self.identifier.to_bytes(1) +
                 self.phase_a_pin.to_bytes(1) +
@@ -1754,11 +1754,9 @@ class RotaryEncoder(Component):
                 get_bytes(self.angular_acceleration_step_size) +
                 self.state_update_hz.to_bytes(1),
                 True,
-                1,
+                0,
                 False
-            ))
-            if not success:
-                raise ValueError('Failed to start rotary encoder.')
+            )
 
         def get_state(
                 self,
