@@ -508,7 +508,7 @@ class RaspberryPyElevator(Component):
         self.asynchronize_steppers()
 
         # synchronize the motors in reverse, as they are mounted opposite each other.
-        self.stepper_left.event(lambda s: self.stepper_right.step(
+        self.stepper_left.event(lambda s: self.stepper_right.step(  # type: ignore - return value from stepper driver
             -s.step - self.stepper_right.get_step(),
             timedelta(0)
         ))
