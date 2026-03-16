@@ -8,7 +8,7 @@ from datetime import timedelta
 from enum import StrEnum
 from http import HTTPStatus
 from os.path import join, expanduser
-from typing import List, Optional, Tuple, Callable, Any, Dict, Type
+from typing import List, Optional, Tuple, Callable, Any, Dict, Type, Union
 
 import flask
 from flask import Flask, request, abort, Response
@@ -21,6 +21,198 @@ RIGHT_ARROW_KEYS = ['Right', 'ArrowRight']
 UP_ARROW_KEYS = ['Up', 'ArrowUp']
 DOWN_ARROW_KEYS = ['Down', 'ArrowDown']
 SPACE_KEY = [' ']
+CALL_TYPE_CAST_FUNCTIONS = {
+    'int': int,
+    'str': str,
+    'float': float,
+    'bool': lambda s: s.lower() == 'true',
+    'days': lambda days: timedelta(days=float(days)),
+    'hours': lambda hours: timedelta(hours=float(hours)),
+    'minutes': lambda minutes: timedelta(minutes=float(minutes)),
+    'seconds': lambda seconds: timedelta(seconds=float(seconds)),
+    'milliseconds': lambda milliseconds: timedelta(milliseconds=float(milliseconds)),
+    'ListBoxIndex': lambda idx: int(idx)
+}
+
+
+class ListBoxIndex:
+    """
+    Type for indicating list-box index in dynamic argument retrieval.
+    """
+
+
+class Call:
+    """
+    Record of a call.
+    """
+
+    def __init__(
+            self,
+            component_id: str,
+            function_name: str,
+            arg_value: Dict
+    ):
+        """
+        Initialize the call.
+
+        :param component_id: Component id.
+        :param function_name: Function name.
+        :param arg_value: Argument values.
+        """
+
+        self.component_id = component_id
+        self.function_name = function_name
+        self.arg_value = arg_value
+
+    def __eq__(
+            self,
+            other
+    ) -> bool:
+        """
+        Check equality with an object.
+
+        :param other: Other object.
+        :return: True if equal and False otherwise.
+        """
+
+        if not isinstance(other, Call):
+            raise ValueError(f'Expected a {Call}')
+
+        return (
+            self.component_id == other.component_id and
+            self.function_name == other.function_name and
+            self.arg_value == other.arg_value
+        )
+
+    def __ne__(
+            self,
+            other
+    ) -> bool:
+        """
+        Check inequality with an object.
+
+        :param other: Other object.
+        :return: True if not equal and False otherwise.
+        """
+
+        return not self.__eq__(other)
+
+    def execute(
+            self
+    ) -> Response:
+        """
+        Execute the call.
+
+        :return: Response.
+        """
+
+        component = app.id_component[self.component_id]
+        if hasattr(component, self.function_name):
+            f = getattr(component, self.function_name)
+            return flask.jsonify(f(**self.arg_value))
+        else:
+            abort(HTTPStatus.NOT_FOUND, f'Component {component} (id={self.component_id}) does not have a function named {self.function_name}.')
+
+
+class CallHistory(Component):
+    """
+    Component that records, loads, saves, and composes the call history of the RpyFlask application.
+    """
+
+    class State(Component.State):
+
+        def __init__(
+                self,
+                calls: List[Call]
+        ):
+            """
+            Initialize the state.
+
+            :param calls: Calls
+            """
+
+            self.calls: List[Call] = calls
+
+        def __eq__(
+                self,
+                other: object
+        ) -> bool:
+            """
+            Check equality with another object.
+
+            :param other: Other object.
+            :return: True if equal and False otherwise.
+            """
+
+            if not isinstance(other, CallHistory.State):
+                raise ValueError(f'Expected a {CallHistory.State}')
+
+            return self.calls == other.calls
+
+        def __str__(self) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'calls:  {len(self.calls)}'
+
+    def add(
+            self,
+            call_reference: Call
+    ):
+        """
+        Add call reference.
+
+        :param call_reference: Call reference.
+        """
+
+        state: CallHistory.State = self.state
+        calls = state.calls
+        calls.append(call_reference)
+
+        self.set_state(CallHistory.State(calls))
+
+    def run(
+            self,
+            item_idx: int
+    ) -> Response:
+        """
+        Run a call from the history.
+
+        :param item_idx: History item index.
+        :return: Call response.
+        """
+
+        state: CallHistory.State = self.state
+
+        return state.calls[item_idx].execute()
+
+
+    def get_ui_elements(
+            self
+    ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
+        """
+        Get UI elements for the current component.
+
+        :return: List of 2-tuples of (1) element key and (2) element content.
+        """
+
+        state: CallHistory.State = self.state
+
+        listbox_id, listbox_ui_element = RpyFlask.get_listbox(self.id, lambda: state.calls, timedelta(seconds=1.0))
+
+        run_history_item_dyn_args = [
+            ('item_idx', ListBoxIndex, listbox_id)
+        ]
+
+        run_button_id, run_button_ui_element = RpyFlask.get_button(self.id, None, None, run_history_item_dyn_args, None, None, None, 'Run')
+
+        return [
+            (listbox_id, listbox_ui_element),
+            (run_button_id, run_button_ui_element)
+        ]
 
 
 class RpyFlask(Flask):
@@ -573,7 +765,7 @@ export async function is_checked(element) {
     def get_image(
             component_id: str,
             width: int,
-            function: Callable[[], Any],
+            refresh_function: Callable[[], Any],
             refresh_interval: Optional[timedelta],
             pause_for_checkbox_id: Optional[str]
     ) -> Tuple[str, str]:
@@ -582,14 +774,14 @@ export async function is_checked(element) {
 
         :param component_id: Component id.
         :param width: Initial width of HTML image.
-        :param function: Function to call to obtain new image as a base-64 encoded byte string.
+        :param refresh_function: Function to call to obtain new image as a base-64 encoded byte string.
         :param refresh_interval: How long to wait between refresh calls, or None for no interval.
         :param pause_for_checkbox_id: HTML identifier of checkbox to pause for before capturing image.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
-        function_name = function.__name__
-        element_id = f'{component_id}-{function_name}'
+        refresh_function_name = refresh_function.__name__
+        element_id = f'{component_id}-{refresh_function_name}'
         latency_label_id = f'{component_id}-latency'
         latency_label_var = latency_label_id.replace('-', '_')
         capture_function_name = f'capture_{element_id}'.replace('-', '_')
@@ -628,7 +820,7 @@ export async function is_checked(element) {
                 f'{pause_await_javascript}'
                 f'  set_call_time("{latency_label_id}");\n'
                 f'  $.ajax({{\n'
-                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{function_name}",\n'
+                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{refresh_function_name}",\n'
                 f'    type: "GET",\n'
                 f'    success: async function (return_value) {{\n'
                 f'      {image_element}.src = "data:image/jpg;base64," + return_value;\n'
@@ -713,7 +905,62 @@ export async function is_checked(element) {
         )
 
     @staticmethod
-    def get_dyn_arg_js(
+    def get_listbox(
+            component_id: str,
+            refresh_function: Callable[[], Any],
+            refresh_interval: Optional[timedelta]
+    ) -> Tuple[str, str]:
+        """
+        Get a listbox that refreshes its items periodically.
+
+        :param component_id: Component id.
+        :param refresh_function: Function
+        :param refresh_interval:
+        :return: Element id and content.
+        """
+
+        refresh_function_name = refresh_function.__name__
+        element_id = f'{component_id}-{refresh_function_name}'
+        refresh_items_function_name = f'refresh_items_{element_id}'.replace('-', '_')
+        list_element = element_id.replace('-', '_')
+
+        refresh_interval_javascript = ''
+        if refresh_interval is not None:
+            refresh_interval_javascript = f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
+
+        return (
+            element_id,
+            (
+                f'<div style="text-align: center">\n'
+                f'  \n'
+                f'  \n'
+                f'</div>\n'
+                f'<script type="module">\n'
+                f'import {{rest_host, rest_port}} from "./globals.js";\n'
+                f'const {list_element} = $("#{element_id}")[0];\n'
+                f'async function {refresh_items_function_name}() {{\n'
+                f'  $.ajax({{\n'
+                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{refresh_function_name}",\n'
+                f'    type: "GET",\n'
+                f'    success: async function (return_value) {{\n'
+                f'      {list_element}.src = "data:image/jpg;base64," + return_value;\n'
+                f'{refresh_interval_javascript}'
+                f'      await {refresh_items_function_name}();\n'
+                f'    }},\n'
+                f'    error: async function(xhr, error){{\n'
+                f'      console.log(error);\n'
+                f'{refresh_interval_javascript}'
+                f'      await {refresh_items_function_name}();\n'
+                f'    }}\n'
+                f'  }});\n'
+                f'}}\n'
+                f'{refresh_items_function_name}();\n'
+                f'</script>'
+            )
+        )
+
+    @staticmethod
+    def get_javascript_for_accessing_dyn_arg_value(
             dyn_arg_type: Type,
             dyn_arg_comp_id: str
     ):
@@ -729,6 +976,9 @@ export async function is_checked(element) {
             js = f'document.getElementById("{dyn_arg_comp_id}").value'  # assume number textbox
         elif dyn_arg_type == bool:
             js = f'$("#{dyn_arg_comp_id}").is(":checked")'  # assume switch
+        elif dyn_arg_type == ListBoxIndex:
+            raise NotImplemented()
+            js = f'document.getElementById("{dyn_arg_comp_id}").value'
         else:
             raise ValueError(f'Unknown dynamic argument type:  {dyn_arg_type}')
 
@@ -788,7 +1038,7 @@ export async function is_checked(element) {
                 pressed_dyn_args_js = f'  let dyn_args_query = "{"" if pressed_args_query == "" else "&"}";\n'
                 pressed_dyn_args_js += ''.join(
                     (
-                        f'  {"let " if i == 0 else ""}dyn_arg_value = {RpyFlask.get_dyn_arg_js(dyn_arg_type, dyn_arg_comp_id)};\n'
+                        f'  {"let " if i == 0 else ""}dyn_arg_value = {RpyFlask.get_javascript_for_accessing_dyn_arg_value(dyn_arg_type, dyn_arg_comp_id)};\n'
                         f'  dyn_args_query = dyn_args_query + "{"" if i == 0 else "&"}{dyn_arg_name}={dyn_arg_type.__name__}:" + dyn_arg_value;\n'
                     )
                     for i, (dyn_arg_name, dyn_arg_type, dyn_arg_comp_id) in enumerate(pressed_dyn_args_name_type_id)
@@ -1017,6 +1267,10 @@ export async function is_checked(element) {
 
 app = RpyFlask(__name__)
 
+call_history = CallHistory(CallHistory.State([]))
+call_history.id = 'app-call-history'
+app.add_component(call_history)
+
 # allow cross-site access from an html front-end
 CORS(app)
 
@@ -1060,29 +1314,19 @@ def call(
     if component_id not in app.id_component:
         abort(HTTPStatus.NOT_FOUND, f'No component with id {component_id}.')
 
-    arg_types = {
-        'int': int,
-        'str': str,
-        'float': float,
-        'bool': lambda s: s.lower() == 'true',
-        'days': lambda days: timedelta(days=float(days)),
-        'hours': lambda hours: timedelta(hours=float(hours)),
-        'minutes': lambda minutes: timedelta(minutes=float(minutes)),
-        'seconds': lambda seconds: timedelta(seconds=float(seconds)),
-        'milliseconds': lambda milliseconds: timedelta(milliseconds=float(milliseconds))
-    }
-
     arg_value = {}
     for arg_name, type_value_str in request.args.to_dict().items():
         type_str, value_str = type_value_str.split(':', maxsplit=1)
-        arg_value[arg_name] = arg_types[type_str](value_str)
+        arg_value[arg_name] = CALL_TYPE_CAST_FUNCTIONS[type_str](value_str)
 
-    component = app.id_component[component_id]
-    if hasattr(component, function_name):
-        f = getattr(component, function_name)
-        return flask.jsonify(f(**arg_value))
-    else:
-        abort(HTTPStatus.NOT_FOUND, f'Component {component} (id={component_id}) does not have a function named {function_name}.')
+    call_reference = Call(component_id, function_name, arg_value)
+    response = call_reference.execute()
+
+    # don't re-add call history executions to the call history
+    if component_id != call_history.id:
+        call_history.add(call_reference)
+
+    return response
 
 
 def write_component_files_cli(
