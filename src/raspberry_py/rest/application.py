@@ -16,13 +16,6 @@ from flask_cors import CORS
 
 from raspberry_py.gpio import Component, setup, cleanup
 
-
-class RestArgListIndex:
-    """
-    Type for indicating list index in dynamic argument retrieval.
-    """
-
-
 # keyboard keys
 LEFT_ARROW_KEYS = ['Left', 'ArrowLeft']
 RIGHT_ARROW_KEYS = ['Right', 'ArrowRight']
@@ -41,8 +34,7 @@ CALL_TYPE_CAST_FUNCTIONS = {
     'hours': lambda hours: timedelta(hours=float(hours)),
     'minutes': lambda minutes: timedelta(minutes=float(minutes)),
     'seconds': lambda seconds: timedelta(seconds=float(seconds)),
-    'milliseconds': lambda milliseconds: timedelta(milliseconds=float(milliseconds)),
-    RestArgListIndex.__name__: lambda idx: int(idx)
+    'milliseconds': lambda milliseconds: timedelta(milliseconds=float(milliseconds))
 }
 
 
@@ -1031,9 +1023,6 @@ export async function is_checked(element) {
             js = f'document.getElementById("{dyn_arg_comp_id}").value'  # assume number textbox
         elif dyn_arg_type == bool:
             js = f'$("#{dyn_arg_comp_id}").is(":checked")'  # assume switch
-        elif dyn_arg_type == RestArgListIndex:
-            raise NotImplemented()
-            js = f'document.getElementById("{dyn_arg_comp_id}").value'
         else:
             raise ValueError(f'Unknown dynamic argument type:  {dyn_arg_type}')
 
