@@ -233,18 +233,10 @@ class CallHistory(Component):
         :return: List of 2-tuples of (1) element key and (2) UI element.
         """
 
-        # show calls in the list
-        list_id, list_ui_element = RpyFlask.get_list(self.id, self.list_calls, timedelta(seconds=1.0))
-
-        # run the item currently selected in the list
-        run_history_item_dyn_args = [
-            ('item_idx', RestArgListIndex, list_id)
-        ]
-        run_button_id, run_button_ui_element = RpyFlask.get_button(self.id, self.execute, None, run_history_item_dyn_args, None, None, None, 'Run')
+        list_id, list_ui_element = RpyFlask.get_action_button_list(self.id, self.list_calls, timedelta(seconds=1.0))
 
         return [
-            (list_id, list_ui_element),
-            (run_button_id, run_button_ui_element)
+            (list_id, list_ui_element)
         ]
 
 
@@ -938,13 +930,15 @@ export async function is_checked(element) {
         )
 
     @staticmethod
-    def get_list(
+    def get_action_button_list(
             component_id: str,
             refresh_function: Callable[[], Any],
             refresh_interval: Optional[timedelta]
     ) -> Tuple[str, str]:
         """
-        Get a list that refreshes its items periodically.
+        Get an action button list that refreshes its items periodically.
+
+        https://mdbootstrap.com/docs/standard/components/list-group/
 
         :param component_id: Component id.
         :param refresh_function: Function
@@ -989,6 +983,7 @@ export async function is_checked(element) {
                 f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{refresh_function_name}",\n'
                 f'    type: "GET",\n'
                 f'    success: async function (return_value) {{\n'
+                f'      {list_element} = "";\n'
                 f'      return_value.forEach(item => {{\n'
                 f'        const li = document.createElement("li");\n'
                 f'        li.innerHTML = `'
@@ -1002,7 +997,7 @@ export async function is_checked(element) {
                 f'            </div>'
                 f'            <a class="btn btn-link btn-rounded btn-sm" href="#" role="button">Run</a>'
                 f'          </li>`;\n'
-                f'        dataList.appendChild(li);\n'
+                f'        {list_element}.appendChild(li);\n'
                 f'      }});\n'
                 f'{refresh_interval_javascript}'
                 f'      await {refresh_items_function_name}();\n'
@@ -1376,15 +1371,23 @@ def call(
         abort(HTTPStatus.NOT_FOUND, f'No component with id {component_id}.')
 
     arg_value = {}
+    add_to_history = False
     for arg_name, type_value_str in request.args.to_dict().items():
+
         type_str, value_str = type_value_str.split(':', maxsplit=1)
-        arg_value[arg_name] = CALL_TYPE_CAST_FUNCTIONS[type_str](value_str)
+        value = CALL_TYPE_CAST_FUNCTIONS[type_str](value_str)
+
+        # the add_to_history argument pertains to the rest application and indicates whether the call should be recorded
+        # in the history. use it here and do not pass is to the function we're going to call.
+        if arg_name == 'add_to_history' and isinstance(value, bool):
+            add_to_history = value
+        else:
+            arg_value[arg_name] = value
 
     call_reference = Call(component_id, function_name, arg_value)
     response = call_reference.execute()
 
-    # don't re-add call history executions to the call history
-    if component_id != call_history.id:
+    if add_to_history:
         call_history.add(call_reference)
 
     return response
