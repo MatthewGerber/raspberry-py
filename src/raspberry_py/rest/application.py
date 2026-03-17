@@ -16,29 +16,34 @@ from flask_cors import CORS
 
 from raspberry_py.gpio import Component, setup, cleanup
 
+
+class RestArgListIndex:
+    """
+    Type for indicating list index in dynamic argument retrieval.
+    """
+
+
+# keyboard keys
 LEFT_ARROW_KEYS = ['Left', 'ArrowLeft']
 RIGHT_ARROW_KEYS = ['Right', 'ArrowRight']
 UP_ARROW_KEYS = ['Up', 'ArrowUp']
 DOWN_ARROW_KEYS = ['Down', 'ArrowDown']
 SPACE_KEY = [' ']
+
+# mapping from (a) type name specified in the REST GET query to (b) python function that converts the value to a python
+# object.
 CALL_TYPE_CAST_FUNCTIONS = {
-    'int': int,
-    'str': str,
-    'float': float,
-    'bool': lambda s: s.lower() == 'true',
+    int.__name__: int,
+    str.__name__: str,
+    float.__name__: float,
+    bool.__name__: lambda s: s.lower() == 'true',
     'days': lambda days: timedelta(days=float(days)),
     'hours': lambda hours: timedelta(hours=float(hours)),
     'minutes': lambda minutes: timedelta(minutes=float(minutes)),
     'seconds': lambda seconds: timedelta(seconds=float(seconds)),
     'milliseconds': lambda milliseconds: timedelta(milliseconds=float(milliseconds)),
-    'ListBoxIndex': lambda idx: int(idx)
+    RestArgListIndex.__name__: lambda idx: int(idx)
 }
-
-
-class ListBoxIndex:
-    """
-    Type for indicating list-box index in dynamic argument retrieval.
-    """
 
 
 class Call:
@@ -97,13 +102,24 @@ class Call:
 
         return not self.__eq__(other)
 
+    def __str__(
+            self
+    ) -> str:
+        """
+        Get string.
+
+        :return: String.
+        """
+
+        return f'{self.component_id}/{self.function_name}:  {self.arg_value}'
+
     def execute(
             self
     ) -> Response:
         """
         Execute the call.
 
-        :return: Response.
+        :return: Flask Response.
         """
 
         component = app.id_component[self.component_id]
@@ -169,26 +185,44 @@ class CallHistory(Component):
         """
 
         state: CallHistory.State = self.state
-        calls = state.calls
+        calls = state.calls.copy()
         calls.append(call_reference)
 
         self.set_state(CallHistory.State(calls))
 
-    def run(
+    def execute(
             self,
             item_idx: int
     ) -> Response:
         """
-        Run a call from the history.
+        Execute a call from the history.
 
-        :param item_idx: History item index.
-        :return: Call response.
+        :param item_idx: History item index to execute.
+        :return: Response from executing the call.
         """
 
         state: CallHistory.State = self.state
 
         return state.calls[item_idx].execute()
 
+    def list_calls(
+            self
+    ) -> List[Dict]:
+        """
+        List calls.
+
+        :return: Calls.
+        """
+
+        state: CallHistory.State = self.state
+
+        return [
+            {
+                'title': 'Call',
+                'description': f'{c}'
+            }
+            for c in state.calls
+        ]
 
     def get_ui_elements(
             self
@@ -196,21 +230,20 @@ class CallHistory(Component):
         """
         Get UI elements for the current component.
 
-        :return: List of 2-tuples of (1) element key and (2) element content.
+        :return: List of 2-tuples of (1) element key and (2) UI element.
         """
 
-        state: CallHistory.State = self.state
+        # show calls in the list
+        list_id, list_ui_element = RpyFlask.get_list(self.id, self.list_calls, timedelta(seconds=1.0))
 
-        listbox_id, listbox_ui_element = RpyFlask.get_listbox(self.id, lambda: state.calls, timedelta(seconds=1.0))
-
+        # run the item currently selected in the list
         run_history_item_dyn_args = [
-            ('item_idx', ListBoxIndex, listbox_id)
+            ('item_idx', RestArgListIndex, list_id)
         ]
-
-        run_button_id, run_button_ui_element = RpyFlask.get_button(self.id, None, None, run_history_item_dyn_args, None, None, None, 'Run')
+        run_button_id, run_button_ui_element = RpyFlask.get_button(self.id, self.execute, None, run_history_item_dyn_args, None, None, None, 'Run')
 
         return [
-            (listbox_id, listbox_ui_element),
+            (list_id, list_ui_element),
             (run_button_id, run_button_ui_element)
         ]
 
@@ -905,18 +938,18 @@ export async function is_checked(element) {
         )
 
     @staticmethod
-    def get_listbox(
+    def get_list(
             component_id: str,
             refresh_function: Callable[[], Any],
             refresh_interval: Optional[timedelta]
     ) -> Tuple[str, str]:
         """
-        Get a listbox that refreshes its items periodically.
+        Get a list that refreshes its items periodically.
 
         :param component_id: Component id.
         :param refresh_function: Function
         :param refresh_interval:
-        :return: Element id and content.
+        :return: 2-tuple of (1) element id and (2) UI element.
         """
 
         refresh_function_name = refresh_function.__name__
@@ -928,22 +961,49 @@ export async function is_checked(element) {
         if refresh_interval is not None:
             refresh_interval_javascript = f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
 
+        # <ul class="list-group list-group-light">
+        #   <li class="list-group-item d-flex justify-content-between align-items-center">
+        #     <div class="d-flex align-items-center">
+        #       <img src="https://mdbootstrap.com/img/new/avatars/8.jpg" alt="" style="width: 45px; height: 45px"
+        #         class="rounded-circle" />
+        #       <div class="ms-3">
+        #         <p class="fw-bold mb-1">John Doe</p>
+        #         <p class="text-muted mb-0">john.doe@gmail.com</p>
+        #       </div>
+        #     </div>
+        #     <a class="btn btn-link btn-rounded btn-sm" href="#" role="button">View</a>
+        #   </li>
+
         return (
             element_id,
             (
                 f'<div style="text-align: center">\n'
-                f'  \n'
-                f'  \n'
+                f'  <ul class="list-group list-group-light" id="{element_id}">\n'
+                f'  </ul>\n'
                 f'</div>\n'
                 f'<script type="module">\n'
                 f'import {{rest_host, rest_port}} from "./globals.js";\n'
-                f'const {list_element} = $("#{element_id}")[0];\n'
+                f'const {list_element} = document.getElementById("{element_id}");\n'
                 f'async function {refresh_items_function_name}() {{\n'
                 f'  $.ajax({{\n'
                 f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{refresh_function_name}",\n'
                 f'    type: "GET",\n'
                 f'    success: async function (return_value) {{\n'
-                f'      {list_element}.src = "data:image/jpg;base64," + return_value;\n'
+                f'      return_value.forEach(item => {{\n'
+                f'        const li = document.createElement("li");\n'
+                f'        li.innerHTML = `'
+                f'          <li class="list-group-item d-flex justify-content-between align-items-center">'
+                f'            <div class="d-flex align-items-center">'
+                f'              <img src="https://mdbootstrap.com/img/new/avatars/8.jpg" alt="" style="width: 45px; height: 45px" class="rounded-circle" />'
+                f'              <div class="ms-3">'
+                f'                <p class="fw-bold mb-1">{{item.title}}</p>'
+                f'                <p class="text-muted mb-0">{{item.description}}</p>'
+                f'              </div>'
+                f'            </div>'
+                f'            <a class="btn btn-link btn-rounded btn-sm" href="#" role="button">Run</a>'
+                f'          </li>`;\n'
+                f'        dataList.appendChild(li);\n'
+                f'      }});\n'
                 f'{refresh_interval_javascript}'
                 f'      await {refresh_items_function_name}();\n'
                 f'    }},\n'
@@ -976,7 +1036,7 @@ export async function is_checked(element) {
             js = f'document.getElementById("{dyn_arg_comp_id}").value'  # assume number textbox
         elif dyn_arg_type == bool:
             js = f'$("#{dyn_arg_comp_id}").is(":checked")'  # assume switch
-        elif dyn_arg_type == ListBoxIndex:
+        elif dyn_arg_type == RestArgListIndex:
             raise NotImplemented()
             js = f'document.getElementById("{dyn_arg_comp_id}").value'
         else:
@@ -1267,6 +1327,7 @@ export async function is_checked(element) {
 
 app = RpyFlask(__name__)
 
+# add the special call history component, which tracks rest calls.
 call_history = CallHistory(CallHistory.State([]))
 call_history.id = 'app-call-history'
 app.add_component(call_history)
