@@ -210,8 +210,8 @@ class CallHistory(Component):
 
         return [
             {
-                'title': 'Call',
-                'description': f'{c}'
+                'title': f'{c.function_name}',
+                'description': f'{c.arg_value}'
             }
             for c in state.calls
         ]
@@ -960,11 +960,13 @@ export async function is_checked(element) {
         #     <a class="btn btn-link btn-rounded btn-sm" href="#" role="button">View</a>
         #   </li>
 
+        # base_64_string_jpg = str(base64.b64encode(image_jpg_bytes))[2:-1]  # type: ignore
+
         return (
             element_id,
             (
                 f'<div style="text-align: center">\n'
-                f'  <ul class="list-group list-group-light" id="{element_id}">\n'
+                f'  <ul class="list-group list-group-light list-unstyled" id="{element_id}">\n'
                 f'  </ul>\n'
                 f'</div>\n'
                 f'<script type="module">\n'
@@ -975,19 +977,19 @@ export async function is_checked(element) {
                 f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{refresh_function_name}",\n'
                 f'    type: "GET",\n'
                 f'    success: async function (return_value) {{\n'
-                f'      {list_element} = "";\n'
+                f'      {list_element}.innerHTML = "";\n'
                 f'      return_value.forEach(item => {{\n'
                 f'        const li = document.createElement("li");\n'
                 f'        li.innerHTML = `'
                 f'          <li class="list-group-item d-flex justify-content-between align-items-center">'
                 f'            <div class="d-flex align-items-center">'
-                f'              <img src="https://mdbootstrap.com/img/new/avatars/8.jpg" alt="" style="width: 45px; height: 45px" class="rounded-circle" />'
+                f'              <img src="data:image/jpg;base64,${{item.image}}" alt="" style="width: 45px; height: 45px" class="rounded-circle" />'
                 f'              <div class="ms-3">'
-                f'                <p class="fw-bold mb-1">{{item.title}}</p>'
-                f'                <p class="text-muted mb-0">{{item.description}}</p>'
-                f'              </div>'
+                f'                <p class="fw-bold mb-1">${{item.title}}</p>'
+                f'                <p class="text-muted mb-0">${{item.description}}</p>'
+                f'              </div>'                
                 f'            </div>'
-                f'            <a class="btn btn-link btn-rounded btn-sm" href="#" role="button">Run</a>'
+                f'            <a class="btn btn-link btn-rounded btn-sm" href="#" role="button">Run</a>'                
                 f'          </li>`;\n'
                 f'        {list_element}.appendChild(li);\n'
                 f'      }});\n'
