@@ -38,6 +38,13 @@ CALL_TYPE_CAST_FUNCTIONS = {
 }
 
 
+class CallImageBytes(str):
+    """
+    Special return type for RpyFlask calls that want to display an image/icon in the call history. This must be a
+    base-64 encoded string of the image bytes, to be used as the source (src) of an HTML image.
+    """
+
+
 class Call:
     """
     Record of a call.
@@ -60,6 +67,8 @@ class Call:
         self.component_id = component_id
         self.function_name = function_name
         self.arg_value = arg_value
+
+        self.call_image_bytes: Optional[CallImageBytes] = None
 
     def __eq__(
             self,
@@ -115,9 +124,21 @@ class Call:
         """
 
         component = app.id_component[self.component_id]
+
         if hasattr(component, self.function_name):
+
             f = getattr(component, self.function_name)
-            return flask.jsonify(f(**self.arg_value))
+            f_return = f(**self.arg_value)
+
+            # if the function returned call-image bytes, then set them on the current Call object. there is no return
+            # value from the rest call in this case, since the image bytes are intended to be consumed here and not
+            # returned to the caller.
+            if isinstance(f_return, CallImageBytes):
+                self.call_image_bytes = f_return
+                f_return = None
+
+            return flask.jsonify(f_return)
+
         else:
             abort(HTTPStatus.NOT_FOUND, f'Component {component} (id={self.component_id}) does not have a function named {self.function_name}.')
 
@@ -210,6 +231,7 @@ class CallHistory(Component):
 
         return [
             {
+                'image': f'{"" if c.call_image_bytes is None else c.call_image_bytes}',
                 'title': f'{c.function_name}',
                 'description': f'{c.arg_value}'
             }
@@ -924,7 +946,7 @@ export async function is_checked(element) {
     @staticmethod
     def get_action_button_list(
             component_id: str,
-            refresh_function: Callable[[], Any],
+            refresh_function: Callable[[], List[Dict]],
             refresh_interval: Optional[timedelta]
     ) -> Tuple[str, str]:
         """
@@ -933,8 +955,16 @@ export async function is_checked(element) {
         https://mdbootstrap.com/docs/standard/components/list-group/
 
         :param component_id: Component id.
-        :param refresh_function: Function
-        :param refresh_interval:
+        :param refresh_function: Function called to obtain the list of action-button items. Each item in this list must
+        have the following structure:
+
+        {
+            'image': [base-64 encoded string value of the image bytes],
+            'title': [action title],
+            'description': [action description]
+        }
+
+        :param refresh_interval: Time interval between list refreshes, or None to refresh as quickly as possible.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
@@ -959,8 +989,6 @@ export async function is_checked(element) {
         #     </div>
         #     <a class="btn btn-link btn-rounded btn-sm" href="#" role="button">View</a>
         #   </li>
-
-        # base_64_string_jpg = str(base64.b64encode(image_jpg_bytes))[2:-1]  # type: ignore
 
         return (
             element_id,

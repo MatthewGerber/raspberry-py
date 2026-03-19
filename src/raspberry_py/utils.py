@@ -1,3 +1,4 @@
+import base64
 import struct
 from typing import Optional
 
@@ -264,3 +265,17 @@ def get_float(
     """
 
     return struct.unpack('f', float_bytes)[0]
+
+
+def get_base_64_str(
+        buffer: bytes
+) -> str:
+    """
+    Get base-64 encoding of a buffer of bytes.
+
+    :param buffer: Buffer to encode as base-64 string.
+    :return: Base-64 encoded string.
+    """
+
+    # strip the leading and trailing single quotes
+    return str(base64.b64encode(buffer))[2:-1]

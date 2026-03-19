@@ -1,4 +1,3 @@
-import base64
 import logging
 import math
 import os
@@ -15,12 +14,13 @@ from typing import Optional, List, Callable, Tuple, Union
 import RPi.GPIO as gpio
 import cv2
 import numpy as np
+
 from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.adc import AdcDevice
 from raspberry_py.gpio.communication import LockingSerial
 from raspberry_py.gpio.controls import TwoPoleButton
 from raspberry_py.rest.application import RpyFlask
-from raspberry_py.utils import IncrementalSampleAverager, get_bytes, get_float
+from raspberry_py.utils import IncrementalSampleAverager, get_bytes, get_float, get_base_64_str
 
 
 class Photoresistor(Component):
@@ -839,11 +839,10 @@ class Camera(Component):
             if self.circle_detected_faces:
                 image_bytes = self.circle_faces(image_bytes, detected_faces)
 
-        # encode as jpg -> base64 string, and strip the leading b' and trailing '
+        # encode as jpg -> base64 string
         image_jpg_bytes = cv2.imencode('.jpg', image_bytes)[1]
-        base_64_string_jpg = str(base64.b64encode(image_jpg_bytes))[2:-1]  # type: ignore
 
-        return base_64_string_jpg
+        return get_base_64_str(image_jpg_bytes)
 
     def enable_face_detection(
             self
