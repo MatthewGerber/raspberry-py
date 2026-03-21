@@ -247,7 +247,7 @@ class CallHistory(Component):
         :return: List of 2-tuples of (1) element key and (2) UI element.
         """
 
-        list_id, list_ui_element = RpyFlask.get_action_button_list(self.id, self.list_calls, timedelta(seconds=1.0))
+        list_id, list_ui_element = RpyFlask.get_action_button_list(self.id, self.list_calls, timedelta(seconds=1.0), "200px", "200px")
 
         return [
             (list_id, list_ui_element)
@@ -947,7 +947,9 @@ export async function is_checked(element) {
     def get_action_button_list(
             component_id: str,
             refresh_function: Callable[[], List[Dict]],
-            refresh_interval: Optional[timedelta]
+            refresh_interval: Optional[timedelta],
+            image_width: str,
+            image_height: str
     ) -> Tuple[str, str]:
         """
         Get an action button list that refreshes its items periodically.
@@ -965,6 +967,8 @@ export async function is_checked(element) {
         }
 
         :param refresh_interval: Time interval between list refreshes, or None to refresh as quickly as possible.
+        :param image_width: Image width specifier (e.g., "100px").
+        :param image_height: Image height specifier (e.g., "100px").
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
@@ -976,19 +980,6 @@ export async function is_checked(element) {
         refresh_interval_javascript = ''
         if refresh_interval is not None:
             refresh_interval_javascript = f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
-
-        # <ul class="list-group list-group-light">
-        #   <li class="list-group-item d-flex justify-content-between align-items-center">
-        #     <div class="d-flex align-items-center">
-        #       <img src="https://mdbootstrap.com/img/new/avatars/8.jpg" alt="" style="width: 45px; height: 45px"
-        #         class="rounded-circle" />
-        #       <div class="ms-3">
-        #         <p class="fw-bold mb-1">John Doe</p>
-        #         <p class="text-muted mb-0">john.doe@gmail.com</p>
-        #       </div>
-        #     </div>
-        #     <a class="btn btn-link btn-rounded btn-sm" href="#" role="button">View</a>
-        #   </li>
 
         return (
             element_id,
@@ -1011,7 +1002,7 @@ export async function is_checked(element) {
                 f'        li.innerHTML = `'
                 f'          <li class="list-group-item d-flex justify-content-between align-items-center">'
                 f'            <div class="d-flex align-items-center">'
-                f'              <img src="data:image/jpg;base64,${{item.image}}" alt="" style="width: 45px; height: 45px" class="rounded-circle" />'
+                f'              <img src="data:image/jpg;base64,${{item.image}}" alt="" style="width: {image_width}; height: {image_height}"/>'
                 f'              <div class="ms-3">'
                 f'                <p class="fw-bold mb-1">${{item.title}}</p>'
                 f'                <p class="text-muted mb-0">${{item.description}}</p>'
