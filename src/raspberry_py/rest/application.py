@@ -206,17 +206,15 @@ class CallHistory(Component):
     def execute(
             self,
             item_idx: int
-    ) -> Response:
+    ):
         """
         Execute a call from the history.
 
         :param item_idx: History item index to execute.
-        :return: Response from executing the call.
         """
 
         state: CallHistory.State = self.state
-
-        return state.calls[item_idx].execute()
+        state.calls[item_idx].execute()
 
     def list_calls(
             self
@@ -247,7 +245,7 @@ class CallHistory(Component):
         :return: List of 2-tuples of (1) element key and (2) UI element.
         """
 
-        list_id, list_ui_element = RpyFlask.get_action_button_list(self.id, self.list_calls, timedelta(seconds=1.0), "200px", "200px")
+        list_id, list_ui_element = RpyFlask.get_action_button_list(self.id, self.list_calls, timedelta(seconds=1.0), "200px", "200px", self.execute)
 
         return [
             (list_id, list_ui_element)
@@ -949,7 +947,8 @@ export async function is_checked(element) {
             refresh_function: Callable[[], List[Dict]],
             refresh_interval: Optional[timedelta],
             image_width: str,
-            image_height: str
+            image_height: str,
+            run_item_function: Callable[[int], Any]
     ) -> Tuple[str, str]:
         """
         Get an action button list that refreshes its items periodically.
@@ -969,6 +968,8 @@ export async function is_checked(element) {
         :param refresh_interval: Time interval between list refreshes, or None to refresh as quickly as possible.
         :param image_width: Image width specifier (e.g., "100px").
         :param image_height: Image height specifier (e.g., "100px").
+        :param run_item_function: Function to call when an item's run action is clicked. The function must take a
+        single integer argument named `item_idx`.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
@@ -976,6 +977,7 @@ export async function is_checked(element) {
         element_id = f'{component_id}-{refresh_function_name}'
         refresh_items_function_name = f'refresh_items_{element_id}'.replace('-', '_')
         list_element = element_id.replace('-', '_')
+        run_function_name = run_item_function.__name__
 
         refresh_interval_javascript = ''
         if refresh_interval is not None:
@@ -996,9 +998,11 @@ export async function is_checked(element) {
                 f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{refresh_function_name}",\n'
                 f'    type: "GET",\n'
                 f'    success: async function (return_value) {{\n'
+                f'      let item_idx = 0;\n'
                 f'      {list_element}.innerHTML = "";\n'
-                f'      return_value.forEach(item => {{\n'
+                f'      return_value.forEach(item => {{\n'                
                 f'        const li = document.createElement("li");\n'
+                f'        let li_button_id = "{list_element}_" + item_idx;\n'
                 f'        li.innerHTML = `'
                 f'          <li class="list-group-item d-flex justify-content-between align-items-center">'
                 f'            <div class="d-flex align-items-center">'
@@ -1008,9 +1012,18 @@ export async function is_checked(element) {
                 f'                <p class="text-muted mb-0">${{item.description}}</p>'
                 f'              </div>'                
                 f'            </div>'
-                f'            <a class="btn btn-link btn-rounded btn-sm" href="#" role="button">Run</a>'                
+                f'            <a class="btn btn-link btn-rounded btn-sm" role="button" href="javascript:void(0);" id="${{li_button_id}}">Run</a>'                
                 f'          </li>`;\n'
                 f'        {list_element}.appendChild(li);\n'
+                f'        document.getElementById(li_button_id).addEventListener("click", function(event) {{\n'
+                f'          event.preventDefault();\n'
+                f'          let clicked_index = event.target.id.split("_").pop();\n'
+                f'          $.ajax({{\n'
+                f'            url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{run_function_name}?item_idx=int:" + clicked_index,\n'
+                f'            type: "GET"\n'
+                f'          }});\n'
+                f'        }});\n'
+                f'        item_idx++;\n'
                 f'      }});\n'
                 f'{refresh_interval_javascript}'
                 f'      await {refresh_items_function_name}();\n'
