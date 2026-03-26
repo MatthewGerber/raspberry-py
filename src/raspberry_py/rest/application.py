@@ -1,7 +1,9 @@
 import atexit
 import importlib
 import inspect
+import logging
 import os.path
+import pickle
 import sys
 from argparse import ArgumentParser
 from datetime import timedelta
@@ -216,6 +218,19 @@ class CallHistory(Component):
         state: CallHistory.State = self.state
         state.calls[item_idx].execute()
 
+    def remove(
+            self,
+            item_idx: int
+    ):
+        """
+        Remove a call from the history.
+
+        :param item_idx: History item index to remove.
+        """
+
+        state: CallHistory.State = self.state
+        del state.calls[item_idx]
+
     def list_calls(
             self
     ) -> List[Dict]:
@@ -245,7 +260,7 @@ class CallHistory(Component):
         :return: List of 2-tuples of (1) element key and (2) UI element.
         """
 
-        list_id, list_ui_element = RpyFlask.get_action_button_list(self.id, self.list_calls, timedelta(seconds=1.0), "200px", "200px", self.execute)
+        list_id, list_ui_element = RpyFlask.get_action_button_list(self.id, self.list_calls, timedelta(seconds=1.0), "200px", "200px", [(self.execute, 'Run'), (self.remove, 'Delete')])
 
         return [
             (list_id, list_ui_element)
@@ -256,6 +271,26 @@ class RpyFlask(Flask):
     """
     Extension of Flask that adds raspberry-py GPIO components.
     """
+
+    def __init__(
+            self,
+            import_name: str
+    ):
+        """
+        Initialize the RpyFlask.
+
+        :param import_name: Import name. See Flask documentation.
+        """
+
+        super().__init__(import_name=import_name)
+
+        self.id_component = {}
+        self.root_components = []
+        self.on_exit_callbacks: List[Callable[[], Any]] = []
+
+        state_dir = expanduser('~/.raspberry-pi')
+        os.makedirs(state_dir, exist_ok=True)
+        self.state_path = join(state_dir, 'state.json')
 
     def add_component(
             self,
@@ -290,12 +325,43 @@ class RpyFlask(Flask):
         for component in component.get_subcomponents():
             self._add_component(component, False)
 
+    def save_state(
+            self
+    ):
+        """
+        Save state.
+        """
+
+        with open(self.state_path, 'wb') as f:
+            history = [c for c in self.id_component.values() if isinstance(c, CallHistory)][0]
+            history_state: CallHistory.State = history.state
+            pickle.dump(history_state, f)
+            logging.info(f'Saved call history state ({len(history_state.calls)}):  {self.state_path}')
+
+    def load_state(
+            self
+    ):
+        """
+        Load state.
+        """
+
+        if os.path.exists(self.state_path):
+            with open(self.state_path, 'rb') as f:
+                history = [c for c in self.id_component.values() if isinstance(c, CallHistory)][0]
+                history_state: CallHistory.State = pickle.load(f)
+                history.state = history_state
+                logging.info(f'Loaded call history state ({len(history_state.calls)}):  {self.state_path}')
+        else:
+            logging.info(f'No call history state exists:  {self.state_path}')
+
     def on_exit(
             self
     ):
         """
-        Signal that the process running the app is about to exit.
+        Save state and signal that the process running the app is about to exit.
         """
+
+        self.save_state()
 
         for callback in self.on_exit_callbacks:
             callback()
@@ -948,7 +1014,7 @@ export async function is_checked(element) {
             refresh_interval: Optional[timedelta],
             image_width: str,
             image_height: str,
-            run_item_function: Callable[[int], Any]
+            action_function_names: List[Tuple[Callable[[int], None], str]]
     ) -> Tuple[str, str]:
         """
         Get an action button list that refreshes its items periodically.
@@ -968,8 +1034,8 @@ export async function is_checked(element) {
         :param refresh_interval: Time interval between list refreshes, or None to refresh as quickly as possible.
         :param image_width: Image width specifier (e.g., "100px").
         :param image_height: Image height specifier (e.g., "100px").
-        :param run_item_function: Function to call when an item's run action is clicked. The function must take a
-        single integer argument named `item_idx`.
+        :param action_function_names: List of 2-tuples of (1) function to call when an item's action is clicked (the
+        function must take a single integer argument named `item_idx`), and (2) the name of the action.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
@@ -977,7 +1043,14 @@ export async function is_checked(element) {
         element_id = f'{component_id}-{refresh_function_name}'
         refresh_items_function_name = f'refresh_items_{element_id}'.replace('-', '_')
         list_element = element_id.replace('-', '_')
-        run_function_name = run_item_function.__name__
+
+        # build action links html event event-listener hookups
+        action_links_html = ''
+        action_links_add_event_listeners_js = ''
+        for action_function, name in action_function_names:
+            action_id = f'{element_id}-${{item_idx}}-{action_function.__name__}'
+            action_links_html += f'<a class="btn btn-link btn-rounded btn-sm stacked-link" role="button" href="javascript:void(0);" id="{action_id}">{name}</a>'
+            action_links_add_event_listeners_js += f'        document.getElementById(`{action_id}`).addEventListener("click", action_button_clicked);\n'
 
         refresh_interval_javascript = ''
         if refresh_interval is not None:
@@ -993,6 +1066,16 @@ export async function is_checked(element) {
                 f'<script type="module">\n'
                 f'import {{rest_host, rest_port}} from "./globals.js";\n'
                 f'const {list_element} = document.getElementById("{element_id}");\n'
+                f'function action_button_clicked(event) {{\n'
+                f'  event.preventDefault();\n'
+                f'  let clicked_id_parts = event.target.id.split("-");\n'
+                f'  let clicked_index = clicked_id_parts.at(-2);\n'
+                f'  let clicked_action_name = clicked_id_parts.at(-1);\n'
+                f'  $.ajax({{\n'
+                f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/" + clicked_action_name + "?item_idx=int:" + clicked_index,\n'
+                f'    type: "GET"\n'
+                f'  }});\n'
+                f'}}\n'
                 f'async function {refresh_items_function_name}() {{\n'
                 f'  $.ajax({{\n'
                 f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{refresh_function_name}",\n'
@@ -1002,7 +1085,6 @@ export async function is_checked(element) {
                 f'      {list_element}.innerHTML = "";\n'
                 f'      return_value.forEach(item => {{\n'                
                 f'        const li = document.createElement("li");\n'
-                f'        let li_button_id = "{list_element}_" + item_idx;\n'
                 f'        li.innerHTML = `'
                 f'          <li class="list-group-item d-flex justify-content-between align-items-center">'
                 f'            <div class="d-flex align-items-center">'
@@ -1012,17 +1094,12 @@ export async function is_checked(element) {
                 f'                <p class="text-muted mb-0">${{item.description}}</p>'
                 f'              </div>'                
                 f'            </div>'
-                f'            <a class="btn btn-link btn-rounded btn-sm" role="button" href="javascript:void(0);" id="${{li_button_id}}">Run</a>'                
+                f'            <div class="link-container">'
+                f'{action_links_html}'
+                f'            </div>'                
                 f'          </li>`;\n'
                 f'        {list_element}.appendChild(li);\n'
-                f'        document.getElementById(li_button_id).addEventListener("click", function(event) {{\n'
-                f'          event.preventDefault();\n'
-                f'          let clicked_index = event.target.id.split("_").pop();\n'
-                f'          $.ajax({{\n'
-                f'            url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{run_function_name}?item_idx=int:" + clicked_index,\n'
-                f'            type: "GET"\n'
-                f'          }});\n'
-                f'        }});\n'
+                f'{action_links_add_event_listeners_js}'
                 f'        item_idx++;\n'
                 f'      }});\n'
                 f'{refresh_interval_javascript}'
@@ -1326,22 +1403,6 @@ export async function is_checked(element) {
             )
         )
 
-    def __init__(
-            self,
-            import_name: str
-    ):
-        """
-        Initialize the RpyFlask.
-
-        :param import_name: Import name. See Flask documentation.
-        """
-
-        super().__init__(import_name=import_name)
-
-        self.id_component = {}
-        self.root_components = []
-        self.on_exit_callbacks: List[Callable[[], Any]] = []
-
 
 app = RpyFlask(__name__)
 
@@ -1349,11 +1410,12 @@ app = RpyFlask(__name__)
 call_history = CallHistory(CallHistory.State([]))
 call_history.id = 'app-call-history'
 app.add_component(call_history)
+app.load_state()
 
 # allow cross-site access from an html front-end
 CORS(app)
 
-# hook atexit to the app's callback and to cleanup
+# hook atexit to the app's callback and to clean up
 atexit.register(app.on_exit)
 atexit.register(cleanup)
 
