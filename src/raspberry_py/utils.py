@@ -1,3 +1,4 @@
+import base64
 import struct
 from typing import Optional
 
@@ -94,7 +95,7 @@ class IncrementalSampleAverager:
         the weight of previous values decreasing according to `alpha^i`, where `i` is the number of samples prior to
         the current when a previous value was obtained. If `None` is passed, then the unweighted sample average will be
         used, and every value will have the same weight.
-        :param weighted: Whether or not per-value weights will be provided to calls to `update`. If this is True, then
+        :param weighted: Whether per-value weights will be provided to calls to `update`. If this is True, then
         every call to `update` must provide a non-None value for `weight`.
         """
 
@@ -264,3 +265,17 @@ def get_float(
     """
 
     return struct.unpack('f', float_bytes)[0]
+
+
+def get_base_64_str(
+        buffer: bytes
+) -> str:
+    """
+    Get base-64 encoding of a buffer of bytes.
+
+    :param buffer: Buffer to encode as base-64 string.
+    :return: Base-64 encoded string.
+    """
+
+    # strip the leading and trailing single quotes
+    return str(base64.b64encode(buffer))[2:-1]

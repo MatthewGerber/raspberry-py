@@ -157,7 +157,7 @@ class Event:
         :param action: Function to run when event is triggered. Accepts the component's current state.
         :param trigger: A function that takes the component state and returns True if action should be triggered, or
         None to trigger the event on every state change.
-        :param synchronous: Whether or not the action function should be called synchronously. If True, then execution
+        :param synchronous: Whether the action function should be called synchronously. If True, then execution
         will not resume until the action function has returned. If False, the action function will be started in a new
         thread and execution will resume immediately.
         """
@@ -167,9 +167,9 @@ class Event:
         self.synchronous = synchronous
 
 
-class Component(ABC):
+class Component:
     """
-    Abstract base class for all components.
+    Base class for all components.
     """
 
     class State(ABC):

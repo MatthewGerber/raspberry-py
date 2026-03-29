@@ -6,10 +6,11 @@ from typing import List, Optional, Union, Dict, Tuple
 
 import RPi.GPIO as gpio
 import numpy as np
+from rpi_ws281x import Adafruit_NeoPixel, Color, RGBW
+
 from raspberry_py.gpio import Component
 from raspberry_py.gpio.integrated_circuits import ShiftRegister74HC595
 from raspberry_py.rest.application import RpyFlask
-from rpi_ws281x import Adafruit_NeoPixel, Color
 
 
 class LED(Component):
@@ -29,7 +30,7 @@ class LED(Component):
             """
             Initialize the LED state.
 
-            :param on: Whether or not the LED is on.
+            :param on: Whether the LED is on.
             """
 
             self.on = on
@@ -134,7 +135,7 @@ class LED(Component):
         Initialize the LED.
 
         :param output_pin: Output pin that connects to the LED.
-        :param reverse: Whether or not the LED is wired in reverse, such that LOW is on and HIGH is off.
+        :param reverse: Whether the LED is wired in reverse, such that LOW is on and HIGH is off.
         """
 
         super().__init__(
@@ -291,7 +292,7 @@ class LedBar(Component):
         Initialize the LED bar.
 
         :param output_pins: Output pins in the order in which they are wired to GPIO ports.
-        :param reverse: Whether or not the GPIO ports are wired to the cathodes of the LED bar.
+        :param reverse: Whether the GPIO ports are wired to the cathodes of the LED bar.
         """
 
         super().__init__(
@@ -1043,7 +1044,7 @@ class LedStrip:
     def get_color(
             self,
             rgb: int
-    ) -> Color:
+    ) -> RGBW:
         """
         Get color.
 
@@ -1079,7 +1080,7 @@ class LedStrip:
 
     def theater_chase(
             self,
-            color: Color,
+            color: RGBW,
             wait_ms: int = 50,
             iterations: int = 10
     ):
@@ -1103,7 +1104,7 @@ class LedStrip:
     @staticmethod
     def wheel(
             pos: int
-    ) -> Color:
+    ) -> RGBW:
         """
         Generate rainbow colors.
 

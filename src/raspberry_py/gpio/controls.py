@@ -25,7 +25,7 @@ class TwoPoleButton(Component):
             """
             Initialize the button state.
 
-            :param pressed: Whether or not the button is pressed.
+            :param pressed: Whether the button is pressed.
             """
 
             self.pressed = pressed
