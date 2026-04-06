@@ -39,6 +39,18 @@ CALL_TYPE_CAST_FUNCTIONS = {
     'milliseconds': lambda milliseconds: timedelta(milliseconds=float(milliseconds))
 }
 
+# the smallest possible blank jpeg, encoded as base-64 string.
+BLANK_JPEG_BASE_64_STR = (
+    '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC'
+    '4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIA'
+    'AhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0'
+    'KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWm'
+    'p6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8'
+    'QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElK'
+    'U1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6O'
+    'nq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigD//2Q=='
+)
+
 
 class CallImageBytes(str):
     """
@@ -70,7 +82,7 @@ class Call:
         self.function_name = function_name
         self.arg_value = arg_value
 
-        self.call_image_bytes: CallImageBytes = CallImageBytes('/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigD//2Q==')
+        self.call_image_bytes: CallImageBytes = CallImageBytes(BLANK_JPEG_BASE_64_STR)
 
     def __eq__(
             self,
@@ -118,11 +130,11 @@ class Call:
 
     def execute(
             self
-    ) -> Response:
+    ) -> Tuple[Response, Any]:
         """
         Execute the call.
 
-        :return: Flask Response.
+        :return: 2-tuple of the Flask Response and the function's raw response.
         """
 
         component = app.id_component[self.component_id]
@@ -134,15 +146,20 @@ class Call:
 
             # if the function returned call-image bytes, then set them on the current Call object. there is no return
             # value from the rest call in this case, since the image bytes are intended to be consumed here and not
-            # returned to the caller.
-            if isinstance(f_return, CallImageBytes):
+            # returned to the caller. only set the first time.
+            if isinstance(f_return, CallImageBytes) and self.call_image_bytes != BLANK_JPEG_BASE_64_STR:
                 self.call_image_bytes = f_return
-                f_return = None
+                flask_response = flask.jsonify(None)
+            else:
+                flask_response = flask.jsonify(f_return)
 
-            return flask.jsonify(f_return)
+            return flask_response, f_return
 
         else:
-            abort(HTTPStatus.NOT_FOUND, f'Component {component} (id={self.component_id}) does not have a function named {self.function_name}.')
+            abort(
+                HTTPStatus.NOT_FOUND,
+                f'Component {component} (id={self.component_id}) has no function named {self.function_name}.'
+            )
 
 
 class CallHistory(Component):
@@ -154,15 +171,18 @@ class CallHistory(Component):
 
         def __init__(
                 self,
-                calls: List[Call]
+                calls: List[Call],
+                macros: List[List[int]]
         ):
             """
             Initialize the state.
 
-            :param calls: Calls
+            :param calls: Calls.
+            :param macros: Macros.
             """
 
             self.calls: List[Call] = calls
+            self.macros: List[List[int]] = macros
 
         def __eq__(
                 self,
@@ -178,7 +198,7 @@ class CallHistory(Component):
             if not isinstance(other, CallHistory.State):
                 raise ValueError(f'Expected a {CallHistory.State}')
 
-            return self.calls == other.calls
+            return self.calls == other.calls and self.macros == other.macros
 
         def __str__(self) -> str:
             """
@@ -187,7 +207,19 @@ class CallHistory(Component):
             :return: String.
             """
 
-            return f'calls:  {len(self.calls)}'
+            return f'calls:  {len(self.calls)}; macros:  {len(self.macros)}'
+
+    def __init__(
+            self
+    ):
+        """
+        Initialize the component.
+        """
+
+        super().__init__(CallHistory.State([], []))
+
+        self.record_macro = False
+        self.macro_call_indices: List[int] = []
 
     def add(
             self,
@@ -203,20 +235,21 @@ class CallHistory(Component):
         calls = state.calls.copy()
         calls.append(call_reference)
 
-        self.set_state(CallHistory.State(calls))
+        self.set_state(CallHistory.State(calls, state.macros))
 
     def execute(
             self,
             item_idx: int
-    ):
+    ) -> Tuple[Response, Any]:
         """
         Execute a call from the history.
 
         :param item_idx: History item index to execute.
+        :return: 2-tuple of the Flask Response and the function's raw response.
         """
 
         state: CallHistory.State = self.state
-        state.calls[item_idx].execute()
+        return state.calls[item_idx].execute()
 
     def remove(
             self,
@@ -231,7 +264,7 @@ class CallHistory(Component):
         state: CallHistory.State = self.state
         del state.calls[item_idx]
 
-    def list_calls(
+    def list(
             self
     ) -> List[Dict]:
         """
@@ -251,6 +284,77 @@ class CallHistory(Component):
             for c in state.calls
         ]
 
+    def start_macro(
+            self
+    ):
+        """
+        Start recording call executions until `save_macro` is called, at which point a macro-call will be added to the
+        history.
+        """
+
+        if self.record_macro:
+            logging.warning('Already recording a macro.')
+        else:
+            self.record_macro = True
+
+    def save_macro(
+            self
+    ):
+        """
+        Save the current macro.
+        """
+
+        if self.record_macro:
+            macro = self.macro_call_indices.copy()
+            self.macro_call_indices.clear()
+            self.record_macro = False
+
+            state: CallHistory.State = self.state
+            macro_idx = len(state.macros)
+            macros = state.macros.copy()
+            macros.append(macro)
+
+            calls = state.calls.copy()
+            call_reference = Call(
+                self.id,
+                self.run_macro.__name__,
+                {
+                    'macro_idx': macro_idx,
+                    'call_idx': len(calls)
+                }
+            )
+            calls.append(call_reference)
+
+            self.set_state(CallHistory.State(calls, macros))
+        else:
+            logging.warning('Cannot save macro when not currently recording one.')
+
+    def run_macro(
+            self,
+            macro_idx: int,
+            call_idx: int
+    ):
+        """
+        Run a macro.
+
+        :param macro_idx: Macro index.
+        :param call_idx: Call index.
+        """
+
+        state: CallHistory.State = self.state
+        final_f_return = None
+        for item_idx in state.macros[macro_idx]:
+            _, final_f_return = self.execute(item_idx)
+
+        macro_call = state.calls[call_idx]
+        if isinstance(final_f_return, CallImageBytes):
+            if macro_call.call_image_bytes == BLANK_JPEG_BASE_64_STR:
+                macro_call.call_image_bytes = final_f_return
+        else:
+            raise ValueError(
+                f'Expected the final call of the macro to return image bytes, but it returned:  {final_f_return}'
+            )
+
     def get_ui_elements(
             self
     ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
@@ -260,10 +364,11 @@ class CallHistory(Component):
         :return: List of 2-tuples of (1) element key and (2) UI element.
         """
 
-        list_id, list_ui_element = RpyFlask.get_action_button_list(self.id, self.list_calls, timedelta(seconds=1.0), "200px", "200px", [(self.execute, 'Run'), (self.remove, 'Delete')])
+        list_id, list_ui_element = RpyFlask.get_action_button_list(self.id, self.list, timedelta(seconds=1.0), "200px", "200px", [(self.execute, 'Run'), (self.remove, 'Delete')])
 
         return [
-            (list_id, list_ui_element)
+            (list_id, list_ui_element),
+            RpyFlask.get_switch(self.id, self.start_macro, self.save_macro, 'Record Macro', False)
         ]
 
 
@@ -336,7 +441,7 @@ class RpyFlask(Flask):
             history = [c for c in self.id_component.values() if isinstance(c, CallHistory)][0]
             history_state: CallHistory.State = history.state
             pickle.dump(history_state, f)
-            logging.info(f'Saved call history state ({len(history_state.calls)}):  {self.state_path}')
+            logging.info(f'Saved call history state ({history_state}):  {self.state_path}')
 
     def load_state(
             self
@@ -350,7 +455,7 @@ class RpyFlask(Flask):
                 history = [c for c in self.id_component.values() if isinstance(c, CallHistory)][0]
                 history_state: CallHistory.State = pickle.load(f)
                 history.state = history_state
-                logging.info(f'Loaded call history state ({len(history_state.calls)}):  {self.state_path}')
+                logging.info(f'Loaded call history state ({history_state}):  {self.state_path}')
         else:
             logging.info(f'No call history state exists:  {self.state_path}')
 
@@ -1407,7 +1512,7 @@ export async function is_checked(element) {
 app = RpyFlask(__name__)
 
 # add the special call history component, which tracks rest calls.
-call_history = CallHistory(CallHistory.State([]))
+call_history = CallHistory()
 call_history.id = 'app-call-history'
 app.add_component(call_history)
 app.load_state()
@@ -1470,7 +1575,7 @@ def call(
             arg_value[arg_name] = value
 
     call_reference = Call(component_id, function_name, arg_value)
-    response = call_reference.execute()
+    response, _ = call_reference.execute()
 
     if add_to_history:
         call_history.add(call_reference)
