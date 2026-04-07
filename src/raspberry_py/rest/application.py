@@ -406,7 +406,7 @@ class RpyFlask(Flask):
         self.root_components = []
         self.on_exit_callbacks: List[Callable[[], Any]] = []
 
-        state_dir = expanduser('~/.raspberry-pi')
+        state_dir = expanduser('~/.raspberry-py')
         os.makedirs(state_dir, exist_ok=True)
         self.state_path = join(state_dir, 'state.json')
 
@@ -464,6 +464,7 @@ class RpyFlask(Flask):
         """
 
         if os.path.exists(self.state_path):
+            logging.info(f'Loading state:  {self.state_path}')
             with open(self.state_path, 'rb') as f:
                 history = [c for c in self.id_component.values() if isinstance(c, CallHistory)][0]
                 history_state: CallHistory.State = pickle.load(f)
