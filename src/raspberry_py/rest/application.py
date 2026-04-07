@@ -144,12 +144,25 @@ class Call:
             function = getattr(component, self.function_name)
             function_return_value = function(**self.arg_value)
 
+            # if we just executed a call from this history, then use the result directly.
+            if (
+                isinstance(function_return_value, tuple) and
+                len(function_return_value) == 2 and
+                isinstance(function_return_value[0], Response)
+            ):
+                flask_response, function_return_value = function_return_value
+
             # if the function returned call-image bytes, then set them on the current Call object. there is no return
             # value from the REST call in this case, since the image bytes are intended to be consumed here and not
-            # returned to the caller. only set the image the first time.
-            if isinstance(function_return_value, CallImageBytes) and self.call_image_bytes == BLANK_JPEG_BASE_64_STR:
-                self.call_image_bytes = function_return_value
+            # returned to the caller. only set the image the first time to prevent subsequent modification.
+            elif isinstance(function_return_value, CallImageBytes):
+
+                if self.call_image_bytes == BLANK_JPEG_BASE_64_STR:
+                    self.call_image_bytes = function_return_value
+
                 flask_response = flask.jsonify(None)
+
+            # otherwise, jsonify the return value into a flask response.
             else:
                 flask_response = flask.jsonify(function_return_value)
 
@@ -251,7 +264,13 @@ class CallHistory(Component):
 
         state: CallHistory.State = self.state
 
-        return state.calls[item_idx].execute()
+        flask_response, function_return_value = state.calls[item_idx].execute()
+
+        if self.record_macro:
+            self.macro_call_indices.append(item_idx)
+            logging.info(f'Added macro index:  {item_idx}')
+
+        return flask_response, function_return_value
 
     def remove(
             self,
