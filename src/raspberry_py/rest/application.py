@@ -134,26 +134,26 @@ class Call:
         """
         Execute the call.
 
-        :return: 2-tuple of the Flask Response and the function's raw response.
+        :return: 2-tuple of the Flask Response and the call function's raw (verbatim) return value.
         """
 
         component = app.id_component[self.component_id]
 
         if hasattr(component, self.function_name):
 
-            f = getattr(component, self.function_name)
-            f_return = f(**self.arg_value)
+            function = getattr(component, self.function_name)
+            function_return_value = function(**self.arg_value)
 
             # if the function returned call-image bytes, then set them on the current Call object. there is no return
-            # value from the rest call in this case, since the image bytes are intended to be consumed here and not
-            # returned to the caller. only set the first time.
-            if isinstance(f_return, CallImageBytes) and self.call_image_bytes != BLANK_JPEG_BASE_64_STR:
-                self.call_image_bytes = f_return
+            # value from the REST call in this case, since the image bytes are intended to be consumed here and not
+            # returned to the caller. only set the image the first time.
+            if isinstance(function_return_value, CallImageBytes) and self.call_image_bytes == BLANK_JPEG_BASE_64_STR:
+                self.call_image_bytes = function_return_value
                 flask_response = flask.jsonify(None)
             else:
-                flask_response = flask.jsonify(f_return)
+                flask_response = flask.jsonify(function_return_value)
 
-            return flask_response, f_return
+            return flask_response, function_return_value
 
         else:
             abort(
@@ -178,7 +178,7 @@ class CallHistory(Component):
             Initialize the state.
 
             :param calls: Calls.
-            :param macros: Macros.
+            :param macros: Macros, each of which is a list of indices in the history to be called.
             """
 
             self.calls: List[Call] = calls
@@ -232,6 +232,7 @@ class CallHistory(Component):
         """
 
         state: CallHistory.State = self.state
+
         calls = state.calls.copy()
         calls.append(call_reference)
 
@@ -245,10 +246,11 @@ class CallHistory(Component):
         Execute a call from the history.
 
         :param item_idx: History item index to execute.
-        :return: 2-tuple of the Flask Response and the function's raw response.
+        :return: 2-tuple of the Flask Response and the call function's raw (verbatim) return value.
         """
 
         state: CallHistory.State = self.state
+
         return state.calls[item_idx].execute()
 
     def remove(
@@ -293,7 +295,7 @@ class CallHistory(Component):
         """
 
         if self.record_macro:
-            logging.warning('Already recording a macro.')
+            logging.warning('Already recording a macro. It does not make sense to call start_macro.')
         else:
             self.record_macro = True
 
@@ -305,27 +307,34 @@ class CallHistory(Component):
         """
 
         if self.record_macro:
-            macro = self.macro_call_indices.copy()
-            self.macro_call_indices.clear()
-            self.record_macro = False
 
             state: CallHistory.State = self.state
-            macro_idx = len(state.macros)
+
+            # add the macro
             macros = state.macros.copy()
+            macro_idx = len(macros)
+            macro = self.macro_call_indices.copy()
             macros.append(macro)
 
+            # add the macro-call
             calls = state.calls.copy()
-            call_reference = Call(
+            call_idx = len(calls)
+            macro_call = Call(
                 self.id,
                 self.run_macro.__name__,
                 {
                     'macro_idx': macro_idx,
-                    'call_idx': len(calls)
+                    'call_idx': call_idx
                 }
             )
-            calls.append(call_reference)
+            calls.append(macro_call)
 
+            # set state and clear macro
             self.set_state(CallHistory.State(calls, macros))
+            self.macro_call_indices.clear()
+            self.record_macro = False
+            logging.info(f'Saved new macro {macro_idx} as call {call_idx}. Calls in macro:  {macro}')
+
         else:
             logging.warning('Cannot save macro when not currently recording one.')
 
@@ -337,22 +346,26 @@ class CallHistory(Component):
         """
         Run a macro.
 
-        :param macro_idx: Macro index.
-        :param call_idx: Call index.
+        :param macro_idx: Macro index to run.
+        :param call_idx: Index of the Call associated with the macro.
         """
 
         state: CallHistory.State = self.state
-        final_f_return = None
-        for item_idx in state.macros[macro_idx]:
-            _, final_f_return = self.execute(item_idx)
 
+        # execute each call in the macro
+        final_function_return_value = None
+        for call_history_item_idx in state.macros[macro_idx]:
+            _, final_function_return_value = self.execute(call_history_item_idx)
+
+        # set the macro-call image to the final returned image
         macro_call = state.calls[call_idx]
-        if isinstance(final_f_return, CallImageBytes):
+        if isinstance(final_function_return_value, CallImageBytes):
             if macro_call.call_image_bytes == BLANK_JPEG_BASE_64_STR:
-                macro_call.call_image_bytes = final_f_return
+                macro_call.call_image_bytes = final_function_return_value
         else:
             raise ValueError(
-                f'Expected the final call of the macro to return image bytes, but it returned:  {final_f_return}'
+                f'Expected the final call of the macro to return image bytes, but it returned:  '
+                f'{final_function_return_value}'
             )
 
     def get_ui_elements(
