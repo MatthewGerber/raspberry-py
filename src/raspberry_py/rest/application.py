@@ -61,7 +61,7 @@ class CallImageBytes(str):
 
 class Call:
     """
-    Record of a call.
+    Record of a call made to the application.
     """
 
     def __init__(
@@ -144,12 +144,9 @@ class Call:
             function = getattr(component, self.function_name)
             function_return_value = function(**self.arg_value)
 
-            # if we just executed a call from this history, then use the result directly.
-            if (
-                isinstance(function_return_value, tuple) and
-                len(function_return_value) == 2 and
-                isinstance(function_return_value[0], Response)
-            ):
+            # if we just executed a call from the history, then the return value comes from the Call.execute function,
+            # in which case we can use it directly as the flask response and function return value.
+            if isinstance(component, CallHistory) and self.function_name == component.execute.__name__:
                 flask_response, function_return_value = function_return_value
 
             # if the function returned call-image bytes, then set them on the current Call object. there is no return
@@ -184,18 +181,15 @@ class CallHistory(Component):
 
         def __init__(
                 self,
-                calls: List[Call],
-                macros: List[List[int]]
+                calls: List[Call]
         ):
             """
             Initialize the state.
 
             :param calls: Calls.
-            :param macros: Macros, each of which is a list of indices in the history to be called.
             """
 
             self.calls: List[Call] = calls
-            self.macros: List[List[int]] = macros
 
         def __eq__(
                 self,
@@ -211,7 +205,7 @@ class CallHistory(Component):
             if not isinstance(other, CallHistory.State):
                 raise ValueError(f'Expected a {CallHistory.State}')
 
-            return self.calls == other.calls and self.macros == other.macros
+            return self.calls == other.calls
 
         def __str__(self) -> str:
             """
@@ -220,7 +214,7 @@ class CallHistory(Component):
             :return: String.
             """
 
-            return f'calls:  {len(self.calls)}; macros:  {len(self.macros)}'
+            return f'calls:  {len(self.calls)}'
 
     def __init__(
             self
@@ -229,10 +223,10 @@ class CallHistory(Component):
         Initialize the component.
         """
 
-        super().__init__(CallHistory.State([], []))
+        super().__init__(CallHistory.State([]))
 
         self.record_macro = False
-        self.macro_call_indices: List[int] = []
+        self.macro_calls: List[Call] = []
 
     def add(
             self,
@@ -249,7 +243,7 @@ class CallHistory(Component):
         calls = state.calls.copy()
         calls.append(call_reference)
 
-        self.set_state(CallHistory.State(calls, state.macros))
+        self.set_state(CallHistory.State(calls))
 
     def execute(
             self,
@@ -264,11 +258,12 @@ class CallHistory(Component):
 
         state: CallHistory.State = self.state
 
-        flask_response, function_return_value = state.calls[item_idx].execute()
+        call_to_execute = state.calls[item_idx]
+        flask_response, function_return_value = call_to_execute.execute()
 
         if self.record_macro:
-            self.macro_call_indices.append(item_idx)
-            logging.info(f'Added macro index:  {item_idx}')
+            self.macro_calls.append(call_to_execute)
+            logging.info(f'Added macro call:  {call_to_execute}')
 
         return flask_response, function_return_value
 
@@ -329,63 +324,45 @@ class CallHistory(Component):
 
             state: CallHistory.State = self.state
 
-            # add the macro
-            macros = state.macros.copy()
-            macro_idx = len(macros)
-            macro = self.macro_call_indices.copy()
-            macros.append(macro)
-
             # add the macro-call
             calls = state.calls.copy()
-            call_idx = len(calls)
+            macro_calls = self.macro_calls.copy()
             macro_call = Call(
                 self.id,
                 self.run_macro.__name__,
                 {
-                    'macro_idx': macro_idx,
-                    'call_idx': call_idx
+                    'macro_calls': macro_calls
                 }
             )
             calls.append(macro_call)
 
             # set state and clear macro
-            self.set_state(CallHistory.State(calls, macros))
-            self.macro_call_indices.clear()
+            self.set_state(CallHistory.State(calls))
+            self.macro_calls.clear()
             self.record_macro = False
-            logging.info(f'Saved new macro {macro_idx} as call {call_idx}. Calls in macro:  {macro}')
+            logging.info(f'Saved new macro:  {macro_call}')
 
         else:
             logging.warning('Cannot save macro when not currently recording one.')
 
+    @staticmethod
     def run_macro(
-            self,
-            macro_idx: int,
-            call_idx: int
-    ):
+            macro_calls: List[Call]
+    ) -> Optional[Any]:
         """
         Run a macro.
 
-        :param macro_idx: Macro index to run.
-        :param call_idx: Index of the Call associated with the macro.
+        :param macro_calls: Macro calls.
+        :return: Final non-None return value, if any.
         """
 
-        state: CallHistory.State = self.state
-
-        # execute each call in the macro
         final_function_return_value = None
-        for call_history_item_idx in state.macros[macro_idx]:
-            _, final_function_return_value = self.execute(call_history_item_idx)
+        for macro_call in macro_calls:
+            _, function_return_value = macro_call.execute()
+            if function_return_value is not None:
+                final_function_return_value = function_return_value
 
-        # set the macro-call image to the final returned image
-        macro_call = state.calls[call_idx]
-        if isinstance(final_function_return_value, CallImageBytes):
-            if macro_call.call_image_bytes == BLANK_JPEG_BASE_64_STR:
-                macro_call.call_image_bytes = final_function_return_value
-        else:
-            raise ValueError(
-                f'Expected the final call of the macro to return image bytes, but it returned:  '
-                f'{final_function_return_value}'
-            )
+        return final_function_return_value
 
     def get_ui_elements(
             self
