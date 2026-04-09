@@ -126,7 +126,38 @@ class Call:
         :return: String.
         """
 
-        return f'{self.component_id}/{self.function_name}:  {self.arg_value}'
+        return f'{self.component_id}/{self.function_name}:  {self.get_arg_value_str(", ")}'
+
+    @staticmethod
+    def string_list(
+            l: List[Any],
+            sep: str
+    ) -> str:
+        """
+        String a list.
+
+        :param l: List.
+        :param sep: Item separator.
+        :return: String.
+        """
+
+        return sep.join(l)
+
+    def get_arg_value_str(
+            self,
+            sep: str
+    ) -> str:
+        """
+        Get a string for the argument-value dictionary.
+
+        :param sep: Item separator.
+        :return: String.
+        """
+
+        return ', '.join([
+            f'{k}: {Call.string_list([str(i) for i in v], sep) if isinstance(v, list) else str(v)}'
+            for k, v in self.arg_value.items()
+        ])
 
     def execute(
             self
@@ -144,8 +175,9 @@ class Call:
             function = getattr(component, self.function_name)
             function_return_value = function(**self.arg_value)
 
-            # if we just executed a call from the history, then the return value comes from the Call.execute function,
-            # in which case we can use it directly as the flask response and function return value.
+            # if we just executed a call from the history, then the return value comes from the Call.execute function
+            # invoked by the CallHistory.execute function. in this case, we can use the return value directly as the
+            # flask response and function return value.
             if isinstance(component, CallHistory) and self.function_name == component.execute.__name__:
                 flask_response, function_return_value = function_return_value
 
@@ -295,7 +327,7 @@ class CallHistory(Component):
             {
                 'image': f'{c.call_image_bytes}',
                 'title': f'{c.function_name}',
-                'description': f'{c.arg_value}'
+                'description': f'{c.get_arg_value_str("<br>")}'
             }
             for c in state.calls
         ]
@@ -325,15 +357,14 @@ class CallHistory(Component):
             state: CallHistory.State = self.state
 
             # add the macro-call
-            calls = state.calls.copy()
-            macro_calls = self.macro_calls.copy()
             macro_call = Call(
                 self.id,
                 self.run_macro.__name__,
                 {
-                    'macro_calls': macro_calls
+                    'macro_calls': self.macro_calls.copy()
                 }
             )
+            calls = state.calls.copy()
             calls.append(macro_call)
 
             # set state and clear macro
