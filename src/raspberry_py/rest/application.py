@@ -257,6 +257,7 @@ class CallHistory(Component):
 
         super().__init__(CallHistory.State([]))
 
+        self.record_history = False
         self.record_macro = False
         self.macro_calls: List[Call] = []
 
@@ -270,12 +271,11 @@ class CallHistory(Component):
         :param call_reference: Call reference.
         """
 
-        state: CallHistory.State = self.state
-
-        calls = state.calls.copy()
-        calls.append(call_reference)
-
-        self.set_state(CallHistory.State(calls))
+        if self.record_history:
+            state: CallHistory.State = self.state
+            calls = state.calls.copy()
+            calls.append(call_reference)
+            self.set_state(CallHistory.State(calls))
 
     def execute(
             self,
@@ -331,6 +331,24 @@ class CallHistory(Component):
             }
             for c in state.calls
         ]
+
+    def enable_record_history(
+            self
+    ):
+        """
+        Enable recording history.
+        """
+
+        self.record_history = True
+
+    def disable_record_history(
+            self
+    ):
+        """
+        Disable recording history.
+        """
+
+        self.record_history = False
 
     def start_macro(
             self
@@ -408,7 +426,8 @@ class CallHistory(Component):
 
         return [
             (list_id, list_ui_element),
-            RpyFlask.get_switch(self.id, self.start_macro, self.save_macro, 'Record Macro', False)
+            RpyFlask.get_switch(self.id, self.enable_record_history, self.disable_record_history, 'Record History', self.record_history),
+            RpyFlask.get_switch(self.id, self.start_macro, self.save_macro, 'Record Macro', self.record_macro)
         ]
 
 
