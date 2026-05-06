@@ -425,6 +425,9 @@ class Clock(Component):
                 self.run_thread = Thread(target=self.__run__)
                 self.run_thread.start()
 
+        while not self.is_running():
+            time.sleep(0.1)
+
     def stop(
             self
     ):
@@ -444,6 +447,19 @@ class Clock(Component):
             self.run_thread.join()
 
         logging.info('Stopped clock.')
+
+    def is_running(
+            self
+    ) -> bool:
+        """
+        Check if clock is running.
+
+        :return: Whether clock is running.
+        """
+
+        with self.state_lock:
+            state: Clock.State = self.state
+            return state.running
 
     def __init__(
             self,
