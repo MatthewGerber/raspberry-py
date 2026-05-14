@@ -483,7 +483,7 @@ class Car(Component):
         ]
 
         if isinstance(self.camera, Camera):
-            camera_id, camera_element = RpyFlask.get_image(self.camera.id, self.camera.width, self.camera.capture_image, None, power_id)
+            camera_id, camera_element = RpyFlask.get_image(self.camera.id, self.camera.width, self.camera.capture_image, None, power_id, 0.01)
             camera_elements = [
                 (camera_id, camera_element),
                 RpyFlask.get_range_html_attribute(camera_id, 'width', 100, 800, 10, self.camera.width, 'Display Size '),

@@ -609,7 +609,7 @@ export function update_latency(element_id) {
       running_latency = latency;
     }
     else {
-      running_latency = alpha * running_latency + (1.0 - alpha) * latency;
+      running_latency = (1.0 - alpha) * running_latency + alpha * latency;
     }
     element_id_latency[element_id] = running_latency;
     return running_latency;
@@ -1035,7 +1035,8 @@ export async function is_checked(element) {
             width: int,
             refresh_function: Callable[[], Any],
             refresh_interval: Optional[timedelta],
-            pause_for_checkbox_id: Optional[str]
+            pause_for_checkbox_id: Optional[str],
+            latency_alpha: float
     ) -> Tuple[str, str]:
         """
         Get image that refreshes periodically.
@@ -1045,6 +1046,8 @@ export async function is_checked(element) {
         :param refresh_function: Function to call to obtain new image as a base-64 encoded byte string.
         :param refresh_interval: How long to wait between refresh calls, or None for no interval.
         :param pause_for_checkbox_id: HTML identifier of checkbox to pause for before capturing image.
+        :param latency_alpha: Latency smoothing alpha in the interval (0.0, 1.0], with larger values resulting in faster
+        updates.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
@@ -1081,7 +1084,7 @@ export async function is_checked(element) {
                 f'{pause_import_javascript}'
                 f'import {{init_latency, set_call_time, update_latency}} from "./utils.js";\n'
                 f'const {latency_label_var} = $("#{latency_label_id}")[0];\n'
-                f'init_latency("{latency_label_id}", 0.99);\n'
+                f'init_latency("{latency_label_id}", {latency_alpha});\n'
                 f'const {image_element} = $("#{element_id}")[0];\n'
                 f'{pause_element_javascript}'
                 f'async function {capture_function_name}() {{\n'

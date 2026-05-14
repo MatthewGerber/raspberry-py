@@ -945,7 +945,7 @@ class Camera(Component):
         """
 
         return [
-            RpyFlask.get_image(self.id, self.width, self.capture_image, timedelta(seconds=1.0 / self.fps), None)
+            RpyFlask.get_image(self.id, self.width, self.capture_image, timedelta(seconds=1.0 / self.fps), None, 0.01)
         ]
 
     def __init__(
