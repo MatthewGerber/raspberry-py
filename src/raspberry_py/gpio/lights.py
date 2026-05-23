@@ -1213,3 +1213,10 @@ class LedStrip:
                 self.strip.show()
 
             index = index >> 1
+
+    def turn_off(
+            self
+    ):
+        for i in range(self.strip.numPixels()):
+            self.strip.setPixelColor(i, Color(0, 0, 0))
+        self.strip.show()
