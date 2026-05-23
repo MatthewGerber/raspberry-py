@@ -22,7 +22,7 @@ smbus2 = '~=0.4'
 Flask = '~=3.0'
 Flask-Cors = '~=4.0'
 opencv-python = '~=4.8'
-rpi-ws281x = '~=5.0'
+rpi-ws281x = "^5.0.0"
 pyserial = "^3.5"
 
 # raspberry pi os removed sysfs gpio interface with rpi 5. prior to this, it was possible to use the RPi.GPIO package.
@@ -31,7 +31,8 @@ pyserial = "^3.5"
 rpi-lgpio = "^0.6"
 adafruit-circuitpython-pixelbuf = "^2.0.12"
 adafruit-circuitpython-led-animation = "^2.12.6"
-adafruit-blinka-raspberry-pi5-neopixel = "^1.0.0rc2"
+
+adafruit-blinka-raspberry-pi5-neopixel = { version = "^1.0.0rc2", markers = "platform_machine == 'aarch64'" }
 
 [tool.poetry.group.dev.dependencies]
 mypy = '~=1.10'
