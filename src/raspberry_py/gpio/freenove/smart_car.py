@@ -212,7 +212,7 @@ class Car(Component):
             try:
 
                 if self.led_strip is None:
-                    self.led_strip = LedStrip(led_brightness=3)
+                    self.led_strip = LedStrip(led_count=8, led_pin=CkPin.GPIO18, led_brightness=3)
 
                 self.run_led_strip_thread = Thread(target=self.run_led_strip)
                 self.run_led_strip_thread.start()
@@ -285,11 +285,15 @@ class Car(Component):
 
             # ensure that the loop/thread doesn't die due to any strangeness in the underlying led api
             try:
-                self.led_strip.theater_chase(Color(0, 255, 0), iterations=1, wait_ms=250)
+                self.led_strip.theater_chase(
+                    Color(0, 255, 0),
+                    iterations=1,
+                    wait=timedelta(milliseconds=250)
+                )
             except Exception as e:
                 print(f'Caught exception when running LED strip (ignoring):  {e}')
 
-        self.led_strip.color_wipe(0, 0)
+        self.led_strip.color_wipe(0, timedelta(seconds=1))
 
     def stop(
             self
