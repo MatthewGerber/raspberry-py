@@ -1002,32 +1002,63 @@ class LedMatrix(Component):
 
 class LedStrip:
     """
-    LED strip, controlled by a WS281x driver and single-GPIO pin PWM.
+    LED strip, controlled by a WS281x driver and single-GPIO pin using PWM or SPI.
     """
+
+    class LedType(Enum):
+        """
+        LED type.
+        """
+
+        GRB = auto()
+        GBR = auto()
+        RGB = auto()
+        RBG = auto()
+        BRG = auto()
+        BGR = auto()
 
     def __init__(
             self,
-            led_count: int = 8,
-            led_pin: int = 18,
+            led_count: int,
+            led_pin: int,
             led_freq_hz: int = 800000,
             led_dma: int = 10,
             led_brightness: int = 255,
             led_invert: int = False,
-            led_channel: int = 0
+            led_type: 'LedStrip.LedType' = LedType.RGB
     ):
         """
         Initialize the strip.
 
         :param led_count: Number of LED pixels.
-        :param led_pin: GPIO pin connected to the pixels (18 uses PWM and requires sudo; 10 uses SPI and avoid sudo).
+        :param led_pin: GPIO pin connected to the pixel strip. Must be one of the following:
+
+            * PWM channel 0:  GPIO pin 12 or 18; requires Python script to run with sudo. Might only work on Raspberry
+                              Pi 4, depending on updates to rpi-ws281x.
+
+            * PWM channel 1:  GPIO pin 13 or 19; requires Python script to run with sudo. Might only work on Raspberry
+                              Pi 4, depending on updates to rpi-ws281x.
+
+            * SPI:  GPIO pin 10 (MOSI); does not require PWM or sudo. Must enable SPI using `sudo raspi-config`. Should
+                    work on all Raspberry Pi models.
+
         :param led_freq_hz: LED signal frequency in hertz (usually 800khz).
         :param led_dma: DMA channel to use for generating signal (try 10).
         :param led_brightness: Set to 0 for darkest and 255 for brightest.
         :param led_invert: True to invert the signal (when using NPN transistor level shift).
-        :param led_channel: Set to '1' for GPIOs 13, 19, 41, 45 or 53
+        :param led_type: LED type.
         """
 
-        self.order = 'RGB'
+        if led_pin in [12, 18]:
+            pwm_channel = 0
+        elif led_pin in [13, 19]:
+            pwm_channel = 1
+        elif led_pin == 10:
+            pwm_channel = 0
+        else:
+            raise NotImplementedError(f'Cannot control LED strip using LED pin {led_pin}')
+
+        self.led_type = led_type
 
         self.strip = Adafruit_NeoPixel(
             led_count,
@@ -1036,7 +1067,7 @@ class LedStrip:
             led_dma,
             led_invert,
             led_brightness,
-            led_channel
+            pwm_channel
         )
 
         self.strip.begin()
@@ -1055,40 +1086,53 @@ class LedStrip:
         b = rgb & 255
         g = rgb >> 8 & 255
         r = rgb >> 16 & 255
-        led_type = ['GRB', 'GBR', 'RGB', 'RBG', 'BRG', 'BGR']
-        color = [Color(g, r, b), Color(g, b, r), Color(r, g, b), Color(r, b, g), Color(b, r, g), Color(b, g, r)]
 
-        return color[led_type.index(self.order)]
+        if self.led_type == LedStrip.LedType.GRB:
+            color = Color(g, r, b)
+        elif self.led_type == LedStrip.LedType.GBR:
+            color = Color(g, b, r)
+        elif self.led_type == LedStrip.LedType.RGB:
+            color = Color(r, g, b)
+        elif self.led_type == LedStrip.LedType.RBG:
+            color = Color(r, b, g)
+        elif self.led_type == LedStrip.LedType.BRG:
+            color = Color(b, r, g)
+        elif self.led_type == LedStrip.LedType.BGR:
+            color = Color(b, g, r)
+        else:
+            raise NotImplementedError(f'Unknown LED type:  {self.led_type}')
+
+        return color
 
     def color_wipe(
             self,
-            rgb: int,
-            wait_ms: int = 50
+            color: RGBW,
+            delay: timedelta
     ):
         """
         Wipe color across display a pixel at a time.
 
-        :param rgb: Color.
-        :param wait_ms: Delay.
+        :param color: Color.
+        :param delay: Delay.
         """
 
-        color = self.get_color(rgb)
-        for i in range(self.strip.numPixels()):
-            self.strip.setPixelColor(i, color)
+        delay_sec = delay.total_seconds()
+        for i in range(len(self.strip)):
+            self.strip[i] = color
             self.strip.show()
-            time.sleep(wait_ms / 1000.0)
+            time.sleep(delay_sec)
 
     def theater_chase(
             self,
             color: RGBW,
-            wait_ms: int = 50,
-            iterations: int = 10
+            wait: timedelta,
+            iterations: int
     ):
         """
         Movie theater light style chaser animation.
 
         :param color: Color.
-        :param wait_ms: Delay.
+        :param wait: Delay.
         :param iterations: Iterations.
         """
 
