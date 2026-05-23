@@ -24,10 +24,10 @@ sysv_ipc = {version = ">=1.1.0", markers = "sys_platform == \"linux\" and platfo
 name = "adafruit-blinka-raspberry-pi5-neopixel"
 version = "1.0.0rc2"
 description = "Control NeoPixel & compatibles on a Pi 5"
-optional = false
+optional = true
 python-versions = ">=3.11"
 groups = ["main"]
-markers = "platform_machine == \"aarch64\""
+markers = "extra == \"pi5\""
 files = [
     {file = "Adafruit_Blinka_Raspberry_Pi5_Neopixel-1.0.0rc2-cp311-cp311-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:0b6ddcfcda2f64231913328b17190e4ed65b65ad459c9a6e9a698e77761663c2"},
     {file = "Adafruit_Blinka_Raspberry_Pi5_Neopixel-1.0.0rc2-cp311-cp311-manylinux_2_24_armv7l.manylinux_2_31_armv7l.whl", hash = "sha256:9f9fad9aa23c90e73779f857dd9f6c1a920f7f32865ee269394b8fc2ef8ffd0c"},
@@ -86,6 +86,23 @@ files = [
 
 [package.dependencies]
 Adafruit-Blinka = "*"
+
+[[package]]
+name = "adafruit-circuitpython-neopixel"
+version = "6.4.2"
+description = "CircuitPython library for NeoPixel LEDs."
+optional = true
+python-versions = "*"
+groups = ["main"]
+markers = "extra == \"pi4\""
+files = [
+    {file = "adafruit_circuitpython_neopixel-6.4.2-py3-none-any.whl", hash = "sha256:1a471557e7b82c98894ec27c23910149c5ef76ce39420f054773943dfe56970e"},
+    {file = "adafruit_circuitpython_neopixel-6.4.2.tar.gz", hash = "sha256:c5123c5a8f204dd2d8975666c2298cecdf268f27f3a4fc3fa425636ff1f7668d"},
+]
+
+[package.dependencies]
+Adafruit-Blinka = "*"
+adafruit-circuitpython-pixelbuf = "*"
 
 [[package]]
 name = "adafruit-circuitpython-pixelbuf"
@@ -743,7 +760,11 @@ MarkupSafe = ">=2.1.1"
 [package.extras]
 watchdog = ["watchdog (>=2.3)"]
 
+[extras]
+pi4 = ["adafruit-circuitpython-neopixel"]
+pi5 = ["adafruit-blinka-raspberry-pi5-neopixel"]
+
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "d6fd725d9ec9e182bd698593a786ac481a01e7a4cb72973cdcc1f15dde764815"
+content-hash = "81c067a1a8fca3da68abfaa50ce1dc3be6c8400d4c992c4d381b20c1ab198f70"

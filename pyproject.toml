@@ -29,10 +29,15 @@ pyserial = "^3.5"
 # the rpi-lgpio package is a drop-in replacement for RPi.GPIO that works with rpi 4 and 5. to install rpi-lgpio, first
 # install the swig and liblgpio-dev packages with `sudo apt install swig liblgpio-dev`.
 rpi-lgpio = "^0.6"
+
 adafruit-circuitpython-pixelbuf = "^2.0.12"
 adafruit-circuitpython-led-animation = "^2.12.6"
+adafruit-circuitpython-neopixel = {version = "^6.4.2", optional = true}
+adafruit-blinka-raspberry-pi5-neopixel = {version = "^1.0.0rc2", optional = true}
 
-adafruit-blinka-raspberry-pi5-neopixel = { version = "^1.0.0rc2", markers = "platform_machine == 'aarch64'" }
+[tool.poetry.extras]
+pi4 = ['adafruit-circuitpython-neopixel']
+pi5 = ['adafruit-blinka-raspberry-pi5-neopixel']
 
 [tool.poetry.group.dev.dependencies]
 mypy = '~=1.10'
