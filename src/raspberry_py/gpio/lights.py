@@ -1019,7 +1019,7 @@ class LedStrip:
         Initialize the strip.
 
         :param led_count: Number of LED pixels.
-        :param led_pin: GPIO pin connected to the pixels (18 uses PWM).
+        :param led_pin: GPIO pin connected to the pixels (18 uses PWM and requires sudo; 10 uses SPI and avoid sudo).
         :param led_freq_hz: LED signal frequency in hertz (usually 800khz).
         :param led_dma: DMA channel to use for generating signal (try 10).
         :param led_brightness: Set to 0 for darkest and 255 for brightest.

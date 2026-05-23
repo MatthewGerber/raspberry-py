@@ -4,9 +4,10 @@ from rpi_ws281x import Color
 
 def main():
 
+    # use gpio 10 (SPI) to avoid need for sudo
     led_strip = LedStrip(
         led_count=144,
-        led_pin=12
+        led_pin=10
     )
 
     while True:
