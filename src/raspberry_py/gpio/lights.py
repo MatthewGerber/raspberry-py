@@ -1036,64 +1036,75 @@ class LedStrip:
     LED strip.
     """
 
-    class LedType(Enum):
+    @staticmethod
+    def wheel(
+            pos: int
+    ) -> RGBW:
         """
-        LED type.
+        Generate rainbow colors.
+
+        :param pos: Position in [0, 255].
+        :return: Color.
         """
 
-        GRB = auto()
-        GBR = auto()
-        RGB = auto()
-        RBG = auto()
-        BRG = auto()
-        BGR = auto()
+        if pos < 0 or pos > 255:
+            r = g = b = 0
+        elif pos < 85:
+            r = pos * 3
+            g = 255 - pos * 3
+            b = 0
+        elif pos < 170:
+            pos -= 85
+            r = 255 - pos * 3
+            g = 0
+            b = pos * 3
+        else:
+            pos -= 170
+            r = 0
+            g = pos * 3
+            b = 255 - pos * 3
+
+        return Color(r, g, b)
 
     def __init__(
             self,
-            pixels: Union[NeoPixel, Pi5PixelBuffer],
-            led_type: 'LedStrip.LedType' = LedType.RGB
+            pixels: Union[NeoPixel, Pi5PixelBuffer]
     ):
         """
         Initialize the strip.
 
         :param pixels: Pixels, either `NeoPixel` (Raspberry Pi 4) or `Pi5PixelBuffer` (Raspberry Pi 5).
-        :param led_type: LED type.
         """
 
         self.pixels = pixels
-        self.led_type = led_type
 
-    def get_color(
+    def __setitem__(
             self,
-            rgb: int
+            pixel: int,
+            color: RGBW
+    ):
+        """
+        Set LED to a color.
+
+        :param pixel: Pixel index.
+        :param color: Color.
+        """
+
+        self.pixels[pixel] = color
+        self.pixels.show()
+
+    def __getitem__(
+            self,
+            pixel: int
     ) -> RGBW:
         """
-        Get color.
+        Get LED's color.
 
-        :param rgb: Color integer.
+        :param pixel: Pixel index.
         :return: Color.
         """
 
-        b = rgb & 255
-        g = rgb >> 8 & 255
-        r = rgb >> 16 & 255
-
-        if self.led_type == LedStrip.LedType.GRB:
-            color = Color(g, r, b)
-        elif self.led_type == LedStrip.LedType.GBR:
-            color = Color(g, b, r)
-        elif self.led_type == LedStrip.LedType.RGB:
-            color = Color(r, g, b)
-        elif self.led_type == LedStrip.LedType.RBG:
-            color = Color(r, b, g)
-        elif self.led_type == LedStrip.LedType.BRG:
-            color = Color(b, r, g)
-        elif self.led_type == LedStrip.LedType.BGR:
-            color = Color(b, g, r)
-        else:
-            raise NotImplementedError(f'Unknown LED type:  {self.led_type}')
-
-        return color
+        return self.pixels[pixel]
 
     def color_wipe(
             self,
@@ -1137,40 +1148,10 @@ class LedStrip:
                 for i in range(0, len(self.pixels), 3):
                     self.pixels[i + q] = 0
 
-    @staticmethod
-    def wheel(
-            pos: int
-    ) -> RGBW:
-        """
-        Generate rainbow colors.
-
-        :param pos: Position in [0,255].
-        :return: Color.
-        """
-
-        if pos < 0 or pos > 255:
-            r = g = b = 0
-        elif pos < 85:
-            r = pos * 3
-            g = 255 - pos * 3
-            b = 0
-        elif pos < 170:
-            pos -= 85
-            r = 255 - pos * 3
-            g = 0
-            b = pos * 3
-        else:
-            pos -= 170
-            r = 0
-            g = pos * 3
-            b = 255 - pos * 3
-
-        return Color(r, g, b)
-
     def rainbow(
             self,
             delay: timedelta,
-            iterations: int = 1
+            iterations: int
     ):
         """
         Draw rainbow that fades across all pixels at once.
@@ -1190,7 +1171,7 @@ class LedStrip:
     def rainbow_cycle(
             self,
             delay: timedelta,
-            iterations: int = 5
+            iterations: int
     ):
         """
         Draw rainbow that uniformly distributes itself across all pixels.
@@ -1228,30 +1209,6 @@ class LedStrip:
                 time.sleep(delay_sec)
                 for i in range(0, len(self.pixels), 3):
                     self.pixels[i + q] = 0
-
-    def set_led(
-            self,
-            index: int,
-            r: int,
-            g: int,
-            b: int
-    ):
-        """
-        Set LED.
-
-        :param index: LED index.
-        :param r: Red.
-        :param g: Green.
-        :param b: Blue.
-        """
-
-        color = Color(r, g, b)
-        for i in range(8):
-            if index & 0x01 == 1:
-                self.pixels[i] = color
-                self.pixels.show()
-
-            index = index >> 1
 
     def turn_off(
             self

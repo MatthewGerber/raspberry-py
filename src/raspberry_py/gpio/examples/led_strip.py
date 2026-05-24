@@ -20,12 +20,19 @@ def run(
     :param led_strip: LED strip.
     """
 
-    # run a solid color for a couple seconds
-    led_strip.pixels[0] = Color(255, 0, 0)
-    led_strip.pixels.show()
-    time.sleep(2)
+    # run a solid color to check ordering
+    led_strip[0] = Color(255, 0, 0)
+    print(f'Red...{led_strip[0]}')
+    time.sleep(1)
+    led_strip[0] = Color(0, 255, 0)
+    print(f'Green...{led_strip[0]}')
+    time.sleep(1)
+    led_strip.pixels[0] = Color(0, 0, 255)
+    print(f'Blue...{led_strip[0]}')
+    time.sleep(1)
 
     # run animations using the adafruit library
+    print(f'Adafruit animations...')
     pixels = led_strip.pixels
     rainbow = Rainbow(pixels, speed=0.02, period=2)
     rainbow_chase = RainbowChase(pixels, speed=0.02, size=5, spacing=3)
@@ -37,23 +44,25 @@ def run(
         rainbow_comet,
         rainbow_sparkle,
         advance_interval=5,
-        auto_clear=True,
+        auto_clear=True
     )
     try:
         while True:
             animations.animate()
+            time.sleep(1.0)
     except KeyboardInterrupt:
         pass
-    finally:
-        time.sleep(.02)
-        pixels.fill(0)
-        pixels.show()
 
     # run some raspberry pi-layer stuff
-    try:
-        while True:
-            led_strip.theater_chase(Color(0, 255, 0), iterations=10, delay=timedelta(milliseconds=50))
-    except KeyboardInterrupt:
-        pass
-    finally:
-        led_strip.turn_off()
+    print('Color wipe...')
+    led_strip.color_wipe(Color(255, 0, 0), timedelta(milliseconds=10))
+    print('Rainbow...')
+    led_strip.rainbow(timedelta(milliseconds=5), 1)
+    print('Rainbow cycle...')
+    led_strip.rainbow_cycle(timedelta(milliseconds=5), 1)
+    print('Theater chase...')
+    led_strip.theater_chase(Color(0, 255, 0), iterations=10, delay=timedelta(milliseconds=10))
+    print('Theater chase rainbow...')
+    led_strip.theater_chase_rainbow(timedelta(milliseconds=10))
+
+    led_strip.turn_off()
