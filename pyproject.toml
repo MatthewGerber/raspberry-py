@@ -32,12 +32,8 @@ rpi-lgpio = "^0.6"
 
 adafruit-circuitpython-pixelbuf = "^2.0.12"
 adafruit-circuitpython-led-animation = "^2.12.6"
-adafruit-circuitpython-neopixel = {version = "^6.4.2", optional = true}
-adafruit-blinka-raspberry-pi5-neopixel = {version = "^1.0.0rc2", optional = true}
-
-[tool.poetry.extras]
-pi4 = ['adafruit-circuitpython-neopixel']
-pi5 = ['adafruit-blinka-raspberry-pi5-neopixel']
+adafruit-circuitpython-neopixel = "^6.4.2"
+adafruit-blinka-raspberry-pi5-neopixel = "^1.0.0rc2"
 
 [tool.poetry.group.dev.dependencies]
 mypy = '~=1.10'
