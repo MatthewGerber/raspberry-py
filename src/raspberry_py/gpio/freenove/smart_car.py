@@ -4,6 +4,11 @@ from enum import IntEnum
 from threading import RLock, Thread, Lock
 from typing import Optional, List, Union, Tuple
 
+import microcontroller.pin
+from neopixel import NeoPixel
+from rpi_ws281x import Color
+from smbus2 import SMBus
+
 from raspberry_py.gpio import CkPin
 from raspberry_py.gpio import Component
 from raspberry_py.gpio.adc import ADS7830
@@ -20,8 +25,6 @@ from raspberry_py.rest.application import (
     RIGHT_ARROW_KEYS,
     LEFT_ARROW_KEYS
 )
-from rpi_ws281x import Color
-from smbus2 import SMBus
 
 
 class Wheel(IntEnum):
@@ -212,7 +215,12 @@ class Car(Component):
             try:
 
                 if self.led_strip is None:
-                    self.led_strip = LedStrip(led_count=8, led_pin=CkPin.GPIO18, led_brightness=3)
+                    self.led_strip = LedStrip(
+                        pixels=NeoPixel(
+                            pin=microcontroller.Pin(CkPin.GPIO18.value),
+                            n=8
+                        )
+                    )
 
                 self.run_led_strip_thread = Thread(target=self.run_led_strip)
                 self.run_led_strip_thread.start()
@@ -288,7 +296,7 @@ class Car(Component):
                 self.led_strip.theater_chase(
                     Color(0, 255, 0),
                     iterations=1,
-                    wait=timedelta(milliseconds=250)
+                    delay=timedelta(milliseconds=250)
                 )
             except Exception as e:
                 print(f'Caught exception when running LED strip (ignoring):  {e}')

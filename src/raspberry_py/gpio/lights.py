@@ -6,7 +6,10 @@ from typing import List, Optional, Union, Dict, Tuple
 
 import RPi.GPIO as gpio
 import numpy as np
-from rpi_ws281x import Adafruit_NeoPixel, Color, RGBW
+from adafruit_pixelbuf import PixelBuf
+from adafruit_raspberry_pi5_neopixel_write import neopixel_write
+from neopixel import NeoPixel
+from rpi_ws281x import Color, RGBW
 
 from raspberry_py.gpio import Component
 from raspberry_py.gpio.integrated_circuits import ShiftRegister74HC595
@@ -1000,9 +1003,37 @@ class LedMatrix(Component):
         self.run_display_thread = False
 
 
+class Pi5PixelBuffer(PixelBuf):
+    """
+    LED pixel buffer for the Raspberry Pi 5.
+    """
+
+    def __init__(self, pin, size, **kwargs):
+        """
+        Initialize the pixel buffer.
+
+        :param pin: Pin.
+        :param size: Number of pixels.
+        :param kwargs: Other arguments.
+        """
+
+        self._pin = pin
+
+        super().__init__(size=size, **kwargs)
+
+    def _transmit(self, buf):
+        """
+        Transmit the buffer.
+
+        :param buf: Buffer.
+        """
+
+        neopixel_write(self._pin, buf)
+
+
 class LedStrip:
     """
-    LED strip, controlled by a WS281x driver and single-GPIO pin using PWM or SPI.
+    LED strip.
     """
 
     class LedType(Enum):
@@ -1019,58 +1050,18 @@ class LedStrip:
 
     def __init__(
             self,
-            led_count: int,
-            led_pin: int,
-            led_freq_hz: int = 800000,
-            led_dma: int = 10,
-            led_brightness: int = 255,
-            led_invert: int = False,
+            pixels: Union[NeoPixel, Pi5PixelBuffer],
             led_type: 'LedStrip.LedType' = LedType.RGB
     ):
         """
         Initialize the strip.
 
-        :param led_count: Number of LED pixels.
-        :param led_pin: GPIO pin connected to the pixel strip. Must be one of the following:
-
-            * PWM channel 0:  GPIO pin 12 or 18; requires Python script to run with sudo. Might only work on Raspberry
-                              Pi 4, depending on updates to rpi-ws281x.
-
-            * PWM channel 1:  GPIO pin 13 or 19; requires Python script to run with sudo. Might only work on Raspberry
-                              Pi 4, depending on updates to rpi-ws281x.
-
-            * SPI:  GPIO pin 10 (MOSI); does not require PWM or sudo. Must enable SPI using `sudo raspi-config`. Should
-                    work on all Raspberry Pi models.
-
-        :param led_freq_hz: LED signal frequency in hertz (usually 800khz).
-        :param led_dma: DMA channel to use for generating signal (try 10).
-        :param led_brightness: Set to 0 for darkest and 255 for brightest.
-        :param led_invert: True to invert the signal (when using NPN transistor level shift).
+        :param pixels: Pixels, either `NeoPixel` (Raspberry Pi 4) or `Pi5PixelBuffer` (Raspberry Pi 5).
         :param led_type: LED type.
         """
 
-        if led_pin in [12, 18]:
-            pwm_channel = 0
-        elif led_pin in [13, 19]:
-            pwm_channel = 1
-        elif led_pin == 10:
-            pwm_channel = 0
-        else:
-            raise NotImplementedError(f'Cannot control LED strip using LED pin {led_pin}')
-
+        self.pixels = pixels
         self.led_type = led_type
-
-        self.strip = Adafruit_NeoPixel(
-            led_count,
-            led_pin,
-            led_freq_hz,
-            led_dma,
-            led_invert,
-            led_brightness,
-            pwm_channel
-        )
-
-        self.strip.begin()
 
     def get_color(
             self,
@@ -1117,33 +1108,34 @@ class LedStrip:
         """
 
         delay_sec = delay.total_seconds()
-        for i in range(len(self.strip)):
-            self.strip[i] = color
-            self.strip.show()
+        for i in range(len(self.pixels)):
+            self.pixels[i] = color
+            self.pixels.show()
             time.sleep(delay_sec)
 
     def theater_chase(
             self,
             color: RGBW,
-            wait: timedelta,
+            delay: timedelta,
             iterations: int
     ):
         """
         Movie theater light style chaser animation.
 
         :param color: Color.
-        :param wait: Delay.
+        :param delay: Delay.
         :param iterations: Iterations.
         """
 
+        delay_sec = delay.total_seconds()
         for j in range(iterations):
             for q in range(3):
-                for i in range(0, self.strip.numPixels(), 3):
-                    self.strip.setPixelColor(i + q, color)
-                self.strip.show()
-                time.sleep(wait_ms / 1000.0)
-                for i in range(0, self.strip.numPixels(), 3):
-                    self.strip.setPixelColor(i + q, 0)
+                for i in range(0, len(self.pixels), 3):
+                    self.pixels[i + q] = color
+                self.pixels.show()
+                time.sleep(delay_sec)
+                for i in range(0, len(self.pixels), 3):
+                    self.pixels[i + q] = 0
 
     @staticmethod
     def wheel(
@@ -1177,62 +1169,65 @@ class LedStrip:
 
     def rainbow(
             self,
-            wait_ms: int = 20,
+            delay: timedelta,
             iterations: int = 1
     ):
         """
         Draw rainbow that fades across all pixels at once.
 
-        :param wait_ms: Delay.
+        :param delay: Delay.
         :param iterations: Iterations.
         """
 
+        delay_sec = delay.total_seconds()
         for j in range(256 * iterations):
-            for i in range(self.strip.numPixels()):
-                self.strip.setPixelColor(i, self.wheel((i + j) & 255))
+            for i in range(len(self.pixels)):
+                self.pixels[i] = self.wheel((i + j) & 255)
 
-            self.strip.show()
-            time.sleep(wait_ms / 1000.0)
+            self.pixels.show()
+            time.sleep(delay_sec)
 
     def rainbow_cycle(
             self,
-            wait_ms: int = 20,
+            delay: timedelta,
             iterations: int = 5
     ):
         """
         Draw rainbow that uniformly distributes itself across all pixels.
 
-        :param wait_ms: Delay.
+        :param delay: Delay.
         :param iterations: Iterations.
         """
 
+        delay_sec = delay.total_seconds()
         for j in range(256 * iterations):
-            for i in range(self.strip.numPixels()):
-                self.strip.setPixelColor(i, self.wheel((int(i * 256 / self.strip.numPixels()) + j) & 255))
+            for i in range(len(self.pixels)):
+                self.pixels[i] = self.wheel((int(i * 256 / len(self.pixels)) + j) & 255)
 
-            self.strip.show()
-            time.sleep(wait_ms / 1000.0)
+            self.pixels.show()
+            time.sleep(delay_sec)
 
     def theater_chase_rainbow(
             self,
-            wait_ms: int = 50
+            delay: timedelta
     ):
         """
         Rainbow movie theater light style chaser animation.
 
-        :param wait_ms: Delay.
+        :param delay: Delay.
         """
 
+        delay_sec = delay.total_seconds()
         for j in range(256):
             for q in range(3):
 
-                for i in range(0, self.strip.numPixels(), 3):
-                    self.strip.setPixelColor(i + q, self.wheel((i + j) % 255))
+                for i in range(0, len(self.pixels), 3):
+                    self.pixels[i + q] = self.wheel((i + j) % 255)
 
-                self.strip.show()
-                time.sleep(wait_ms / 1000.0)
-                for i in range(0, self.strip.numPixels(), 3):
-                    self.strip.setPixelColor(i + q, 0)
+                self.pixels.show()
+                time.sleep(delay_sec)
+                for i in range(0, len(self.pixels), 3):
+                    self.pixels[i + q] = 0
 
     def set_led(
             self,
@@ -1253,14 +1248,19 @@ class LedStrip:
         color = Color(r, g, b)
         for i in range(8):
             if index & 0x01 == 1:
-                self.strip.setPixelColor(i, color)
-                self.strip.show()
+                self.pixels[i] = color
+                self.pixels.show()
 
             index = index >> 1
 
     def turn_off(
             self
     ):
-        for i in range(self.strip.numPixels()):
-            self.strip.setPixelColor(i, Color(0, 0, 0))
-        self.strip.show()
+        """
+        Turn off all pixels.
+        """
+
+        for i in range(len(self.pixels)):
+            self.pixels[i] = Color(0, 0, 0)
+
+        self.pixels.show()

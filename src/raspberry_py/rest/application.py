@@ -16,7 +16,7 @@ import flask
 from flask import Flask, request, abort, Response
 from flask_cors import CORS
 
-from raspberry_py.gpio import Component, setup, cleanup
+from raspberry_py.gpio import Component, cleanup
 
 # keyboard keys
 LEFT_ARROW_KEYS = ['Left', 'ArrowLeft']
@@ -454,7 +454,7 @@ class RpyFlask(Flask):
 
         state_dir = expanduser('~/.raspberry-py')
         os.makedirs(state_dir, exist_ok=True)
-        self.state_path = join(state_dir, 'state.json')
+        self.state_path = join(state_dir, 'state.pickle')
 
     def add_component(
             self,
@@ -1586,9 +1586,6 @@ CORS(app)
 # hook atexit to the app's callback and to clean up
 atexit.register(app.on_exit)
 atexit.register(cleanup)
-
-# set up gpio
-setup()
 
 
 @app.route('/list')

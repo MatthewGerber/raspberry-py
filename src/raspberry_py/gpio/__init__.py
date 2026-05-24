@@ -5,18 +5,31 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import IntEnum
 from threading import Thread, RLock
+from types import DynamicClassAttribute
 from typing import List, Callable, Optional, Dict, Tuple, Union
 
 import RPi.GPIO as gpio
 
+GPIO_PIN_NUMBERING = gpio.BOARD
 
-def setup():
+
+def setup(
+        numbering: int = GPIO_PIN_NUMBERING
+):
     """
     Set up the GPIO interface.
+
+    :param numbering: Numbering mode, either `gpio.BOARD` (physical pin numbers) or `gpio.BCM` (GPIO numbers).
     """
 
+    global GPIO_PIN_NUMBERING
+
+    GPIO_PIN_NUMBERING = numbering
+
     gpio.setwarnings(False)
-    gpio.setmode(gpio.BOARD)
+    gpio.setmode(GPIO_PIN_NUMBERING)
+
+
 
 
 def cleanup():
@@ -66,6 +79,21 @@ class Pin(IntEnum):
     GPIO_26 = 37
     GPIO_27 = 13
 
+    @DynamicClassAttribute
+    def value(self) -> int:
+        """
+        Get pin number depending on board numbering.
+
+        :return: Integer pin number.
+        """
+
+        if GPIO_PIN_NUMBERING == gpio.BOARD:
+            pin_number = self._value_
+        else:
+            pin_number = int(self._name_.split('_')[1])
+
+        return pin_number
+
 
 class CkPin(IntEnum):
     """
@@ -108,6 +136,45 @@ class CkPin(IntEnum):
     # ID
     SDA0 = Pin.GPIO_0_ID_SD
     SCL0 = Pin.GPIO_1_ID_SC
+
+    @DynamicClassAttribute
+    def value(self) -> int:
+        """
+        Get pin number depending on board numbering.
+
+        :return: Integer pin number.
+        """
+
+        if GPIO_PIN_NUMBERING == gpio.BOARD:
+            pin_number = self._value_
+        elif self._name_.startswith('GPIO'):
+            pin_number = int(self._name_[4:])
+        elif self._name_ == 'MOSI':
+            pin_number = 10
+        elif self._name_ == 'MISO':
+            pin_number = 9
+        elif self._name_ == 'SCLK':
+            pin_number = 11
+        elif self._name_ == 'CE0':
+            pin_number = 8
+        elif self._name_ == 'CE1':
+            pin_number = 7
+        elif self._name_ == 'TXD0':
+            pin_number = 14
+        elif self._name_ == 'RXD0':
+            pin_number = 15
+        elif self._name_ == 'SDA1':
+            pin_number = 2
+        elif self._name_ == 'SCL1':
+            pin_number = 3
+        elif self._name_ == 'SDA0':
+            pin_number = 0
+        elif self._name_ == 'SCL0':
+            pin_number = 1
+        else:
+            raise ValueError(f'Unknown pin:  {self._name_}')
+
+        return pin_number
 
 
 def get_ck_pin(
