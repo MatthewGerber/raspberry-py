@@ -1033,8 +1033,14 @@ class Pi5PixelBuffer(PixelBuf):
 
 class LedStrip:
     """
-    LED strip.
+    LED strip. This is a wrapper around pixel buffers for the Raspberry Pi, providing high-level functions.
     """
+
+    RED = Color(255, 0, 0)
+    GREEN = Color(0, 255, 0)
+    BLUE = Color(0, 0, 255)
+    WHITE = Color(255, 255, 255)
+    OFF = Color(0, 0, 0)
 
     @staticmethod
     def wheel(
@@ -1068,15 +1074,19 @@ class LedStrip:
 
     def __init__(
             self,
-            pixels: Union[NeoPixel, Pi5PixelBuffer]
+            pixels: Union[NeoPixel, Pi5PixelBuffer],
+            led_spacing_mm: Optional[float]
     ):
         """
         Initialize the strip.
 
         :param pixels: Pixels, either `NeoPixel` (Raspberry Pi 4) or `Pi5PixelBuffer` (Raspberry Pi 5).
+        :param led_spacing_mm: Spacing (mm) between the centers of two sequential LEDs on the strip. This is required to
+        use distance based control.
         """
 
         self.pixels = pixels
+        self.led_spacing_mm = led_spacing_mm
 
     def __setitem__(
             self,
@@ -1091,7 +1101,6 @@ class LedStrip:
         """
 
         self.pixels[pixel] = color
-        self.pixels.show()
 
     def __getitem__(
             self,
@@ -1105,6 +1114,36 @@ class LedStrip:
         """
 
         return self.pixels[pixel]
+
+    def set_led_at_distance(
+            self,
+            mm: float,
+            color: RGBW
+    ) -> int:
+        """
+        Set LED at a distance.
+
+        :param mm: Distance (mm).
+        :param color: Color.
+        :return: Pixel index that was set.
+        """
+
+        if self.led_spacing_mm is None:
+            raise ValueError('Must supply LED spacing to use distance-based control.')
+
+        i = min(len(self.pixels), int(mm / self.led_spacing_mm))
+        self[i] = color
+
+        return i
+
+    def show(
+            self
+    ):
+        """
+        Show the pixels.
+        """
+
+        self.pixels.show()
 
     def color_wipe(
             self,
@@ -1148,6 +1187,33 @@ class LedStrip:
                 for i in range(0, len(self.pixels), 3):
                     self.pixels[i + q] = 0
 
+    def step_through(
+            self,
+            color: RGBW,
+            delay: timedelta,
+            iterations: int
+    ):
+        """
+        Run a single color across the strip.
+
+        :param color: Color.
+        :param delay: Delay.
+        :param iterations: Iterations.
+        """
+
+        delay_sec = delay.total_seconds()
+        self.turn_off()
+        for i in range(iterations):
+            for j in range(len(self.pixels)):
+                self.pixels[j] = color
+                if j > 0:
+                    self.pixels[j - 1] = 0
+                self.show()
+                if delay_sec > 0.001:
+                    time.sleep(delay_sec)
+
+        self.turn_off()
+
     def rainbow(
             self,
             delay: timedelta,
@@ -1190,16 +1256,18 @@ class LedStrip:
 
     def theater_chase_rainbow(
             self,
-            delay: timedelta
+            delay: timedelta,
+            iterations: int
     ):
         """
         Rainbow movie theater light style chaser animation.
 
         :param delay: Delay.
+        :param iterations: Iterations.
         """
 
         delay_sec = delay.total_seconds()
-        for j in range(256):
+        for j in range(256 * iterations):
             for q in range(3):
 
                 for i in range(0, len(self.pixels), 3):
@@ -1209,6 +1277,87 @@ class LedStrip:
                 time.sleep(delay_sec)
                 for i in range(0, len(self.pixels), 3):
                     self.pixels[i + q] = 0
+
+    def strobe(
+            self,
+            color: RGBW,
+            on_duration: timedelta,
+            off_duration: timedelta,
+            total_duration: Optional[timedelta]
+    ):
+        """
+        Strobe all LEDs with a color.
+
+        :param color: Color.
+        :param on_duration: On duration.
+        :param off_duration: Off duration.
+        :param total_duration: Total duration, or None to strobe forever.
+        """
+
+        colors = [color] * len(self.pixels)
+        start_time = time.time()
+        on_duration_sec = on_duration.total_seconds()
+        off_duration_sec = off_duration.total_seconds()
+        total_duration_sec = None if total_duration is None else total_duration.total_seconds()
+        self.turn_off()
+        on = False
+        while total_duration_sec is None or (time.time() - start_time) < total_duration_sec:
+            if on:
+                self.turn_off()
+                time.sleep(off_duration_sec)
+            else:
+                self.pixels[:] = colors
+                self.show()
+                time.sleep(on_duration_sec)
+            on = not on
+
+        self.turn_off()
+
+    def animal_chase(
+            self
+    ):
+        """
+        Fun little chase sequence.
+        """
+
+        animal_a = [
+            # Phase 1: A chases B rightward, gap closes
+            0, 3, 7, 12, 18, 23, 27, 30, 32, 34, 36, 39, 43, 47, 51, 54, 56, 57, 58, 59,
+            # Phase 2: B turns and aggressively chases A leftward
+            55, 50, 44, 40, 37, 35, 34, 33,
+            # Phase 3: A regains composure, both race to the right boundary
+            36, 40, 45, 51, 57, 63, 69, 75, 81, 87, 93, 99, 105, 111, 117, 123, 128, 132, 135, 137, 138, 139
+        ]
+
+        animal_b = [
+            # Phase 1
+            20, 22, 25, 29, 34, 37, 38, 38, 37, 37, 38, 41, 45, 49, 53, 56, 58, 59, 60, 61,
+            # Phase 2: B turns and lurches left, staying just ahead of A
+            58, 53, 47, 43, 40, 38, 37, 36,
+            # Phase 3: B flees right, reaches boundary at 143
+            39, 43, 48, 54, 60, 66, 72, 78, 84, 90, 96, 102, 108, 114, 120, 126, 131, 135, 138, 140, 141, 143
+        ]
+
+        for a, b in zip(animal_a, animal_b):
+            self.turn_off()
+            self[a] = LedStrip.RED
+            self[b] = LedStrip.GREEN
+            self.show()
+            time.sleep(0.1)
+
+        self.turn_off()
+
+    def set_brightness(
+            self,
+            brightness: float
+    ):
+        """
+        Set brightness.
+
+        :param brightness: Brightness value in [0.0, 1.0], with 1.0 being maximum brightness.
+        """
+
+        self.pixels.brightness = brightness
 
     def turn_off(
             self

@@ -11,13 +11,13 @@ def main():
     """
     Run an LED strip test for Raspberry Pi 4. Tested with the following LED strip:
 
-        https://www.amazon.com/dp/B0BDS7NHQM?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1
+        https://www.amazon.com/dp/B0BDS7NHQM
 
     """
 
     setup(gpio.BCM)
-    pixels = neopixel.NeoPixel(microcontroller.Pin(CkPin.MOSI.value), 144, brightness=0.1, auto_write=False)
-    led_strip = LedStrip(pixels)
+    pixels = neopixel.NeoPixel(microcontroller.Pin(int(CkPin.MOSI)), 144, brightness=0.1, auto_write=False)
+    led_strip = LedStrip(pixels, 7.0)
     run(led_strip)
 
 

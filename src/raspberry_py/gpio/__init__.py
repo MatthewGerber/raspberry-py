@@ -5,31 +5,29 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import IntEnum
 from threading import Thread, RLock
-from types import DynamicClassAttribute
 from typing import List, Callable, Optional, Dict, Tuple, Union
 
 import RPi.GPIO as gpio
 
-GPIO_PIN_NUMBERING = gpio.BOARD
+_gpio_pin_numbering = gpio.BOARD
 
 
 def setup(
-        numbering: int = GPIO_PIN_NUMBERING
+        numbering: int = _gpio_pin_numbering
 ):
     """
-    Set up the GPIO interface.
+    Set up the GPIO interface. On this is called with a board numbering scheme, calling again with a different scheme
+    will raise an error.
 
-    :param numbering: Numbering mode, either `gpio.BOARD` (physical pin numbers) or `gpio.BCM` (GPIO numbers).
+    :param numbering: Numbering mode, either `RPi.GPIO.BOARD` (physical pin numbers) or `RPi.GPIO.BCM` (GPIO numbers).
     """
 
-    global GPIO_PIN_NUMBERING
+    global _gpio_pin_numbering
 
-    GPIO_PIN_NUMBERING = numbering
+    _gpio_pin_numbering = numbering
 
     gpio.setwarnings(False)
-    gpio.setmode(GPIO_PIN_NUMBERING)
-
-
+    gpio.setmode(_gpio_pin_numbering)
 
 
 def cleanup():
@@ -79,20 +77,22 @@ class Pin(IntEnum):
     GPIO_26 = 37
     GPIO_27 = 13
 
-    @DynamicClassAttribute
-    def value(self) -> int:
+    def __int__(
+            self
+    ) -> int:
         """
-        Get pin number depending on board numbering.
+        Get integer pin number based on board numbering.
 
         :return: Integer pin number.
         """
 
-        if GPIO_PIN_NUMBERING == gpio.BOARD:
-            pin_number = self._value_
+        if _gpio_pin_numbering == gpio.BOARD:
+            pin_number = self.value
         else:
-            pin_number = int(self._name_.split('_')[1])
+            pin_number = int(self.name.split('_')[1])
 
         return pin_number
+
 
 
 class CkPin(IntEnum):
@@ -137,18 +137,19 @@ class CkPin(IntEnum):
     SDA0 = Pin.GPIO_0_ID_SD
     SCL0 = Pin.GPIO_1_ID_SC
 
-    @DynamicClassAttribute
-    def value(self) -> int:
+    def __int__(
+            self
+    ) -> int:
         """
         Get pin number depending on board numbering.
 
         :return: Integer pin number.
         """
 
-        if GPIO_PIN_NUMBERING == gpio.BOARD:
-            pin_number = self._value_
+        if _gpio_pin_numbering == gpio.BOARD:
+            pin_number = self.value
         elif self._name_.startswith('GPIO'):
-            pin_number = int(self._name_[4:])
+            pin_number = int(self.name[4:])
         elif self._name_ == 'MOSI':
             pin_number = 10
         elif self._name_ == 'MISO':
@@ -172,7 +173,7 @@ class CkPin(IntEnum):
         elif self._name_ == 'SCL0':
             pin_number = 1
         else:
-            raise ValueError(f'Unknown pin:  {self._name_}')
+            raise ValueError(f'Unknown pin:  {self.name}')
 
         return pin_number
 
