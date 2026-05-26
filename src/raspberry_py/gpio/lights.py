@@ -1314,10 +1314,13 @@ class LedStrip:
         self.turn_off()
 
     def animal_chase(
-            self
+            self,
+            delay: timedelta
     ):
         """
         Fun little chase sequence.
+
+        :param delay: Delay.
         """
 
         animal_a = [
@@ -1338,12 +1341,13 @@ class LedStrip:
             39, 43, 48, 54, 60, 66, 72, 78, 84, 90, 96, 102, 108, 114, 120, 126, 131, 135, 138, 140, 141, 143
         ]
 
+        delay_sec = delay.total_seconds()
         for a, b in zip(animal_a, animal_b):
             self.turn_off()
             self[a] = LedStrip.RED
             self[b] = LedStrip.GREEN
             self.show()
-            time.sleep(0.1)
+            time.sleep(delay_sec)
 
         self.turn_off()
 
@@ -1370,3 +1374,79 @@ class LedStrip:
             self.pixels[i] = Color(0, 0, 0)
 
         self.pixels.show()
+
+
+class FrameLedStrip(LedStrip):
+    """
+    LED strip arranged in a rectangular frame.
+    """
+
+    class Corner(Enum):
+        """
+        Corners.
+        """
+
+        BOTTOM_LEFT = auto()
+        TOP_LEFT = auto()
+        TOP_RIGHT = auto()
+        BOTTOM_RIGHT = auto()
+
+    class WrapDirection(Enum):
+        """
+        Wrap directions.
+        """
+
+        CLOCKWISE = auto()
+        COUNTERCLOCKWISE = auto()
+
+    def __init__(
+            self,
+            pixels: Union[NeoPixel, Pi5PixelBuffer],
+            led_spacing_mm: float,
+            width_mm: float,
+            height_mm: float,
+            start_location: Corner,
+            wrap_direction: WrapDirection
+    ):
+        """
+        Initialize the strip.
+
+        :param pixels: Pixels, either `NeoPixel` (Raspberry Pi 4) or `Pi5PixelBuffer` (Raspberry Pi 5).
+        :param led_spacing_mm: Spacing (mm) between the centers of two sequential LEDs on the strip. This is required to
+        use distance based control.
+        :param width_mm: Width (mm).
+        :param height_mm: Height (mm).
+        :param start_location: Starting location of the LED strip around the frame.
+        :param wrap_direction: Wrap direction of the LED strip around the frame, from the start to the end.
+        """
+
+        super().__init__(
+            pixels,
+            led_spacing_mm
+        )
+
+        self.width_mm = width_mm
+        self.height_mm = height_mm
+        self.start_location = start_location
+        self.wrap_direction = wrap_direction
+
+        self.left_side_leds = []
+        self.right_side_leds = []
+        self.top_leds = []
+        self.bottom_leds = []
+
+    def cross_point(
+            self,
+            x_mm: float,
+            y_mm: float,
+            color: RGBW
+    ):
+        """
+        Display cross point.
+
+        :param x_mm: X location (mm).
+        :param y_mm: Y location (mm).
+        :param color: Color.
+        """
+
+

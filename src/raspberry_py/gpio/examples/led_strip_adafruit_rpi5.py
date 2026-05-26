@@ -50,8 +50,8 @@ def main():
     #     time.sleep(0.1)
     #
     # led_strip.step_through(LedStrip.WHITE, timedelta(milliseconds=10), 20)
+    # led_strip.animal_chase(timedelta(milliseconds=100))
 
-    led_strip.animal_chase()
     cleanup()
 
 
