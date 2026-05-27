@@ -1378,46 +1378,24 @@ class LedStrip:
 
 class FrameLedStrip(LedStrip):
     """
-    LED strip arranged in a rectangular frame.
+    LED strip arranged in a rectangular frame. The LED strip must start in the bottom-left corner of the frame and wrap
+    clockwise around the frame.
     """
-
-    class Corner(Enum):
-        """
-        Corners.
-        """
-
-        BOTTOM_LEFT = auto()
-        TOP_LEFT = auto()
-        TOP_RIGHT = auto()
-        BOTTOM_RIGHT = auto()
-
-    class WrapDirection(Enum):
-        """
-        Wrap directions.
-        """
-
-        CLOCKWISE = auto()
-        COUNTERCLOCKWISE = auto()
 
     def __init__(
             self,
             pixels: Union[NeoPixel, Pi5PixelBuffer],
             led_spacing_mm: float,
             width_mm: float,
-            height_mm: float,
-            start_location: Corner,
-            wrap_direction: WrapDirection
+            height_mm: float
     ):
         """
         Initialize the strip.
 
         :param pixels: Pixels, either `NeoPixel` (Raspberry Pi 4) or `Pi5PixelBuffer` (Raspberry Pi 5).
-        :param led_spacing_mm: Spacing (mm) between the centers of two sequential LEDs on the strip. This is required to
-        use distance based control.
+        :param led_spacing_mm: Spacing (mm) between the centers of two sequential LEDs on the strip.
         :param width_mm: Width (mm).
         :param height_mm: Height (mm).
-        :param start_location: Starting location of the LED strip around the frame.
-        :param wrap_direction: Wrap direction of the LED strip around the frame, from the start to the end.
         """
 
         super().__init__(
@@ -1427,13 +1405,46 @@ class FrameLedStrip(LedStrip):
 
         self.width_mm = width_mm
         self.height_mm = height_mm
-        self.start_location = start_location
-        self.wrap_direction = wrap_direction
 
-        self.left_side_leds = []
-        self.right_side_leds = []
-        self.top_leds = []
-        self.bottom_leds = []
+    def get_led_idx_for_x(
+            self,
+            x_mm: float,
+            bottom: bool
+    ) -> int:
+        """
+        Get LED index for a given x position.
+
+        :param x_mm: x position (mm from left border).
+        :param bottom: Whether the LED is on the bottom (True) or top (False).
+        :return: LED index.
+        """
+
+        if bottom:
+            mm = self.height_mm + self.width_mm + self.height_mm + (self.width_mm - x_mm)
+        else:
+            mm = self.height_mm + x_mm
+
+        return round(mm / self.led_spacing_mm)
+
+    def get_led_idx_for_y(
+            self,
+            y_mm: float,
+            left: bool
+    ) -> int:
+        """
+        Get LED index for a given y position.
+
+        :param y_mm: y position (mm from bottom).
+        :param left: Whether the LED is on the left (True) or right (False).
+        :return: LED index.
+        """
+
+        if left:
+            mm = y_mm
+        else:
+            mm = self.height_mm + self.width_mm + (self.height_mm - y_mm)
+
+        return round(mm / self.led_spacing_mm)
 
     def cross_point(
             self,
@@ -1449,4 +1460,22 @@ class FrameLedStrip(LedStrip):
         :param color: Color.
         """
 
+        self[self.get_led_idx_for_y(y_mm, True)] = color
+        self[self.get_led_idx_for_y(y_mm, False)] = color
+        self[self.get_led_idx_for_x(x_mm, True)] = color
+        self[self.get_led_idx_for_x(x_mm, False)] = color
 
+    def corners(
+            self,
+            color: RGBW
+    ):
+        """
+        Display corners.
+
+        :param color: Color.
+        """
+
+        self[self.get_led_idx_for_y(0.0, True)] = color
+        self[self.get_led_idx_for_y(self.height_mm, True)] = color
+        self[self.get_led_idx_for_y(0.0, False)] = color
+        self[self.get_led_idx_for_y(self.height_mm, False)] = color

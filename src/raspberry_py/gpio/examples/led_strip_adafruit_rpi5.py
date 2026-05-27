@@ -4,11 +4,12 @@ from typing import Optional
 
 import RPi.GPIO as gpio
 import microcontroller
+import numpy as np
 from rpi_ws281x import Color
 
 from raspberry_py.gpio import setup, cleanup, CkPin
 from raspberry_py.gpio.examples.led_strip import run
-from raspberry_py.gpio.lights import Pi5PixelBuffer, LedStrip
+from raspberry_py.gpio.lights import Pi5PixelBuffer, LedStrip, FrameLedStrip
 
 
 def main():
@@ -25,7 +26,7 @@ def main():
         144,
         byteorder='GRB',
         auto_write=False,
-        brightness=1
+        brightness=0.1
     )
     led_strip = LedStrip(pixels, 7.0)
     # run(led_strip)
@@ -51,6 +52,17 @@ def main():
     #
     # led_strip.step_through(LedStrip.WHITE, timedelta(milliseconds=10), 20)
     # led_strip.animal_chase(timedelta(milliseconds=100))
+
+    led_frame = FrameLedStrip(pixels, 7.0, 996.95 / 4.0, 996.95 / 4.0)
+    for y_mm in np.linspace(0.0, led_frame.height_mm, 20):
+        for x_mm in np.linspace(0.0, led_frame.width_mm, 20):
+            led_frame.corners(LedStrip.GREEN)
+            led_frame.cross_point(x_mm, y_mm, LedStrip.RED)
+            led_frame.show()
+            time.sleep(0.05)
+            led_frame.turn_off()
+
+    led_frame.turn_off()
 
     cleanup()
 
