@@ -16,18 +16,24 @@ packages = [
 repository = 'https://github.com/MatthewGerber/raspberry-py'
 
 [tool.poetry.dependencies]
-python = '>=3.10,<3.13'
+python = '^3.11'
 numpy = '~=1.26'
 smbus2 = '~=0.4'
 Flask = '~=3.0'
 Flask-Cors = '~=4.0'
 opencv-python = '~=4.8'
-rpi-ws281x = '~=5.0'
+rpi-ws281x = "^5.0.0"
 pyserial = "^3.5"
 
 # raspberry pi os removed sysfs gpio interface with rpi 5. prior to this, it was possible to use the RPi.GPIO package.
-# the rpi-lgpio package is a drop-in replacement for RPi.GPIO that works with rpi 4 and 5.
+# the rpi-lgpio package is a drop-in replacement for RPi.GPIO that works with rpi 4 and 5. to install rpi-lgpio, first
+# install the swig and liblgpio-dev packages with `sudo apt install swig liblgpio-dev`.
 rpi-lgpio = "^0.6"
+
+adafruit-circuitpython-pixelbuf = "^2.0.12"
+adafruit-circuitpython-led-animation = "^2.12.6"
+adafruit-circuitpython-neopixel = "^6.4.2"
+adafruit-blinka-raspberry-pi5-neopixel = "^1.0.0rc2"
 
 [tool.poetry.group.dev.dependencies]
 mypy = '~=1.10'

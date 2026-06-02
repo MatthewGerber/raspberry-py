@@ -4,6 +4,11 @@ from enum import IntEnum
 from threading import RLock, Thread, Lock
 from typing import Optional, List, Union, Tuple
 
+import microcontroller.pin
+from neopixel import NeoPixel
+from rpi_ws281x import Color
+from smbus2 import SMBus
+
 from raspberry_py.gpio import CkPin
 from raspberry_py.gpio import Component
 from raspberry_py.gpio.adc import ADS7830
@@ -20,8 +25,6 @@ from raspberry_py.rest.application import (
     RIGHT_ARROW_KEYS,
     LEFT_ARROW_KEYS
 )
-from rpi_ws281x import Color
-from smbus2 import SMBus
 
 
 class Wheel(IntEnum):
@@ -212,7 +215,12 @@ class Car(Component):
             try:
 
                 if self.led_strip is None:
-                    self.led_strip = LedStrip(led_brightness=3)
+                    self.led_strip = LedStrip(
+                        pixels=NeoPixel(
+                            pin=microcontroller.Pin(CkPin.GPIO18.value),
+                            n=8
+                        )
+                    )
 
                 self.run_led_strip_thread = Thread(target=self.run_led_strip)
                 self.run_led_strip_thread.start()
@@ -285,11 +293,15 @@ class Car(Component):
 
             # ensure that the loop/thread doesn't die due to any strangeness in the underlying led api
             try:
-                self.led_strip.theater_chase(Color(0, 255, 0), iterations=1, wait_ms=250)
+                self.led_strip.theater_chase(
+                    Color(0, 255, 0),
+                    iterations=1,
+                    delay=timedelta(milliseconds=250)
+                )
             except Exception as e:
                 print(f'Caught exception when running LED strip (ignoring):  {e}')
 
-        self.led_strip.color_wipe(0, 0)
+        self.led_strip.color_wipe(0, timedelta(seconds=1))
 
     def stop(
             self
@@ -483,7 +495,7 @@ class Car(Component):
         ]
 
         if isinstance(self.camera, Camera):
-            camera_id, camera_element = RpyFlask.get_image(self.camera.id, self.camera.width, self.camera.capture_image, None, power_id)
+            camera_id, camera_element = RpyFlask.get_image(self.camera.id, self.camera.width, self.camera.capture_image, None, power_id, 0.01)
             camera_elements = [
                 (camera_id, camera_element),
                 RpyFlask.get_range_html_attribute(camera_id, 'width', 100, 800, 10, self.camera.width, 'Display Size '),

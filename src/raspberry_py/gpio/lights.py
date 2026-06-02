@@ -6,10 +6,14 @@ from typing import List, Optional, Union, Dict, Tuple
 
 import RPi.GPIO as gpio
 import numpy as np
+from adafruit_pixelbuf import PixelBuf
+from adafruit_raspberry_pi5_neopixel_write import neopixel_write
+from neopixel import NeoPixel
+from rpi_ws281x import Color, RGBW
+
 from raspberry_py.gpio import Component
 from raspberry_py.gpio.integrated_circuits import ShiftRegister74HC595
 from raspberry_py.rest.application import RpyFlask
-from rpi_ws281x import Adafruit_NeoPixel, Color
 
 
 class LED(Component):
@@ -29,7 +33,7 @@ class LED(Component):
             """
             Initialize the LED state.
 
-            :param on: Whether or not the LED is on.
+            :param on: Whether the LED is on.
             """
 
             self.on = on
@@ -134,7 +138,7 @@ class LED(Component):
         Initialize the LED.
 
         :param output_pin: Output pin that connects to the LED.
-        :param reverse: Whether or not the LED is wired in reverse, such that LOW is on and HIGH is off.
+        :param reverse: Whether the LED is wired in reverse, such that LOW is on and HIGH is off.
         """
 
         super().__init__(
@@ -291,7 +295,7 @@ class LedBar(Component):
         Initialize the LED bar.
 
         :param output_pins: Output pins in the order in which they are wired to GPIO ports.
-        :param reverse: Whether or not the GPIO ports are wired to the cathodes of the LED bar.
+        :param reverse: Whether the GPIO ports are wired to the cathodes of the LED bar.
         """
 
         super().__init__(
@@ -999,115 +1003,53 @@ class LedMatrix(Component):
         self.run_display_thread = False
 
 
+class Pi5PixelBuffer(PixelBuf):
+    """
+    LED pixel buffer for the Raspberry Pi 5.
+    """
+
+    def __init__(self, pin, size, **kwargs):
+        """
+        Initialize the pixel buffer.
+
+        :param pin: Pin.
+        :param size: Number of pixels.
+        :param kwargs: Other arguments.
+        """
+
+        self._pin = pin
+
+        super().__init__(size=size, **kwargs)
+
+    def _transmit(self, buf):
+        """
+        Transmit the buffer.
+
+        :param buf: Buffer.
+        """
+
+        neopixel_write(self._pin, buf)
+
+
 class LedStrip:
     """
-    LED strip, controlled by a WS281x driver and single-GPIO pin PWM.
+    LED strip. This is a wrapper around pixel buffers for the Raspberry Pi, providing high-level functions.
     """
 
-    def __init__(
-            self,
-            led_count: int = 8,
-            led_pin: int = 18,
-            led_freq_hz: int = 800000,
-            led_dma: int = 10,
-            led_brightness: int = 255,
-            led_invert: int = False,
-            led_channel: int = 0
-    ):
-        """
-        Initialize the strip.
-
-        :param led_count: Number of LED pixels.
-        :param led_pin: GPIO pin connected to the pixels (18 uses PWM).
-        :param led_freq_hz: LED signal frequency in hertz (usually 800khz).
-        :param led_dma: DMA channel to use for generating signal (try 10).
-        :param led_brightness: Set to 0 for darkest and 255 for brightest.
-        :param led_invert: True to invert the signal (when using NPN transistor level shift).
-        :param led_channel: Set to '1' for GPIOs 13, 19, 41, 45 or 53
-        """
-
-        self.order = 'RGB'
-
-        self.strip = Adafruit_NeoPixel(
-            led_count,
-            led_pin,
-            led_freq_hz,
-            led_dma,
-            led_invert,
-            led_brightness,
-            led_channel
-        )
-
-        self.strip.begin()
-
-    def get_color(
-            self,
-            rgb: int
-    ) -> Color:
-        """
-        Get color.
-
-        :param rgb: Color integer.
-        :return: Color.
-        """
-
-        b = rgb & 255
-        g = rgb >> 8 & 255
-        r = rgb >> 16 & 255
-        led_type = ['GRB', 'GBR', 'RGB', 'RBG', 'BRG', 'BGR']
-        color = [Color(g, r, b), Color(g, b, r), Color(r, g, b), Color(r, b, g), Color(b, r, g), Color(b, g, r)]
-
-        return color[led_type.index(self.order)]
-
-    def color_wipe(
-            self,
-            rgb: int,
-            wait_ms: int = 50
-    ):
-        """
-        Wipe color across display a pixel at a time.
-
-        :param rgb: Color.
-        :param wait_ms: Delay.
-        """
-
-        color = self.get_color(rgb)
-        for i in range(self.strip.numPixels()):
-            self.strip.setPixelColor(i, color)
-            self.strip.show()
-            time.sleep(wait_ms / 1000.0)
-
-    def theater_chase(
-            self,
-            color: Color,
-            wait_ms: int = 50,
-            iterations: int = 10
-    ):
-        """
-        Movie theater light style chaser animation.
-
-        :param color: Color.
-        :param wait_ms: Delay.
-        :param iterations: Iterations.
-        """
-
-        for j in range(iterations):
-            for q in range(3):
-                for i in range(0, self.strip.numPixels(), 3):
-                    self.strip.setPixelColor(i + q, color)
-                self.strip.show()
-                time.sleep(wait_ms / 1000.0)
-                for i in range(0, self.strip.numPixels(), 3):
-                    self.strip.setPixelColor(i + q, 0)
+    RED = Color(255, 0, 0)
+    GREEN = Color(0, 255, 0)
+    BLUE = Color(0, 0, 255)
+    WHITE = Color(255, 255, 255)
+    OFF = Color(0, 0, 0)
 
     @staticmethod
     def wheel(
             pos: int
-    ) -> Color:
+    ) -> RGBW:
         """
         Generate rainbow colors.
 
-        :param pos: Position in [0,255].
+        :param pos: Position in [0, 255].
         :return: Color.
         """
 
@@ -1130,85 +1072,410 @@ class LedStrip:
 
         return Color(r, g, b)
 
+    def __init__(
+            self,
+            pixels: Union[NeoPixel, Pi5PixelBuffer],
+            led_spacing_mm: Optional[float]
+    ):
+        """
+        Initialize the strip.
+
+        :param pixels: Pixels, either `NeoPixel` (Raspberry Pi 4) or `Pi5PixelBuffer` (Raspberry Pi 5).
+        :param led_spacing_mm: Spacing (mm) between the centers of two sequential LEDs on the strip. This is required to
+        use distance based control.
+        """
+
+        self.pixels = pixels
+        self.led_spacing_mm = led_spacing_mm
+
+    def __setitem__(
+            self,
+            pixel: int,
+            color: RGBW
+    ):
+        """
+        Set LED to a color.
+
+        :param pixel: Pixel index.
+        :param color: Color.
+        """
+
+        self.pixels[pixel] = color
+
+    def __getitem__(
+            self,
+            pixel: int
+    ) -> RGBW:
+        """
+        Get LED's color.
+
+        :param pixel: Pixel index.
+        :return: Color.
+        """
+
+        return self.pixels[pixel]
+
+    def set_led_at_distance(
+            self,
+            mm: float,
+            color: RGBW
+    ) -> int:
+        """
+        Set LED at a distance.
+
+        :param mm: Distance (mm).
+        :param color: Color.
+        :return: Pixel index that was set.
+        """
+
+        if self.led_spacing_mm is None:
+            raise ValueError('Must supply LED spacing to use distance-based control.')
+
+        i = min(len(self.pixels), int(mm / self.led_spacing_mm))
+        self[i] = color
+
+        return i
+
+    def show(
+            self
+    ):
+        """
+        Show the pixels.
+        """
+
+        self.pixels.show()
+
+    def color_wipe(
+            self,
+            color: RGBW,
+            delay: timedelta
+    ):
+        """
+        Wipe color across display a pixel at a time.
+
+        :param color: Color.
+        :param delay: Delay.
+        """
+
+        delay_sec = delay.total_seconds()
+        for i in range(len(self.pixels)):
+            self.pixels[i] = color
+            self.pixels.show()
+            time.sleep(delay_sec)
+
+    def theater_chase(
+            self,
+            color: RGBW,
+            delay: timedelta,
+            iterations: int
+    ):
+        """
+        Movie theater light style chaser animation.
+
+        :param color: Color.
+        :param delay: Delay.
+        :param iterations: Iterations.
+        """
+
+        delay_sec = delay.total_seconds()
+        for j in range(iterations):
+            for q in range(3):
+                for i in range(0, len(self.pixels), 3):
+                    self.pixels[i + q] = color
+                self.pixels.show()
+                time.sleep(delay_sec)
+                for i in range(0, len(self.pixels), 3):
+                    self.pixels[i + q] = 0
+
+    def step_through(
+            self,
+            color: RGBW,
+            delay: timedelta,
+            iterations: int
+    ):
+        """
+        Run a single color across the strip.
+
+        :param color: Color.
+        :param delay: Delay.
+        :param iterations: Iterations.
+        """
+
+        delay_sec = delay.total_seconds()
+        self.turn_off()
+        for i in range(iterations):
+            for j in range(len(self.pixels)):
+                self.pixels[j] = color
+                if j > 0:
+                    self.pixels[j - 1] = 0
+                self.show()
+                if delay_sec > 0.001:
+                    time.sleep(delay_sec)
+
+        self.turn_off()
+
     def rainbow(
             self,
-            wait_ms: int = 20,
-            iterations: int = 1
+            delay: timedelta,
+            iterations: int
     ):
         """
         Draw rainbow that fades across all pixels at once.
 
-        :param wait_ms: Delay.
+        :param delay: Delay.
         :param iterations: Iterations.
         """
 
+        delay_sec = delay.total_seconds()
         for j in range(256 * iterations):
-            for i in range(self.strip.numPixels()):
-                self.strip.setPixelColor(i, self.wheel((i + j) & 255))
+            for i in range(len(self.pixels)):
+                self.pixels[i] = self.wheel((i + j) & 255)
 
-            self.strip.show()
-            time.sleep(wait_ms / 1000.0)
+            self.pixels.show()
+            time.sleep(delay_sec)
 
     def rainbow_cycle(
             self,
-            wait_ms: int = 20,
-            iterations: int = 5
+            delay: timedelta,
+            iterations: int
     ):
         """
         Draw rainbow that uniformly distributes itself across all pixels.
 
-        :param wait_ms: Delay.
+        :param delay: Delay.
         :param iterations: Iterations.
         """
 
+        delay_sec = delay.total_seconds()
         for j in range(256 * iterations):
-            for i in range(self.strip.numPixels()):
-                self.strip.setPixelColor(i, self.wheel((int(i * 256 / self.strip.numPixels()) + j) & 255))
+            for i in range(len(self.pixels)):
+                self.pixels[i] = self.wheel((int(i * 256 / len(self.pixels)) + j) & 255)
 
-            self.strip.show()
-            time.sleep(wait_ms / 1000.0)
+            self.pixels.show()
+            time.sleep(delay_sec)
 
     def theater_chase_rainbow(
             self,
-            wait_ms: int = 50
+            delay: timedelta,
+            iterations: int
     ):
         """
         Rainbow movie theater light style chaser animation.
 
-        :param wait_ms: Delay.
+        :param delay: Delay.
+        :param iterations: Iterations.
         """
 
-        for j in range(256):
+        delay_sec = delay.total_seconds()
+        for j in range(256 * iterations):
             for q in range(3):
 
-                for i in range(0, self.strip.numPixels(), 3):
-                    self.strip.setPixelColor(i + q, self.wheel((i + j) % 255))
+                for i in range(0, len(self.pixels), 3):
+                    self.pixels[i + q] = self.wheel((i + j) % 255)
 
-                self.strip.show()
-                time.sleep(wait_ms / 1000.0)
-                for i in range(0, self.strip.numPixels(), 3):
-                    self.strip.setPixelColor(i + q, 0)
+                self.pixels.show()
+                time.sleep(delay_sec)
+                for i in range(0, len(self.pixels), 3):
+                    self.pixels[i + q] = 0
 
-    def set_led(
+    def strobe(
             self,
-            index: int,
-            r: int,
-            g: int,
-            b: int
+            color: RGBW,
+            on_duration: timedelta,
+            off_duration: timedelta,
+            total_duration: Optional[timedelta]
     ):
         """
-        Set LED.
+        Strobe all LEDs with a color.
 
-        :param index: LED index.
-        :param r: Red.
-        :param g: Green.
-        :param b: Blue.
+        :param color: Color.
+        :param on_duration: On duration.
+        :param off_duration: Off duration.
+        :param total_duration: Total duration, or None to strobe forever.
         """
 
-        color = Color(r, g, b)
-        for i in range(8):
-            if index & 0x01 == 1:
-                self.strip.setPixelColor(i, color)
-                self.strip.show()
+        colors = [color] * len(self.pixels)
+        start_time = time.time()
+        on_duration_sec = on_duration.total_seconds()
+        off_duration_sec = off_duration.total_seconds()
+        total_duration_sec = None if total_duration is None else total_duration.total_seconds()
+        self.turn_off()
+        on = False
+        while total_duration_sec is None or (time.time() - start_time) < total_duration_sec:
+            if on:
+                self.turn_off()
+                time.sleep(off_duration_sec)
+            else:
+                self.pixels[:] = colors
+                self.show()
+                time.sleep(on_duration_sec)
+            on = not on
 
-            index = index >> 1
+        self.turn_off()
+
+    def animal_chase(
+            self,
+            delay: timedelta
+    ):
+        """
+        Fun little chase sequence.
+
+        :param delay: Delay.
+        """
+
+        animal_a = [
+            # Phase 1: A chases B rightward, gap closes
+            0, 3, 7, 12, 18, 23, 27, 30, 32, 34, 36, 39, 43, 47, 51, 54, 56, 57, 58, 59,
+            # Phase 2: B turns and aggressively chases A leftward
+            55, 50, 44, 40, 37, 35, 34, 33,
+            # Phase 3: A regains composure, both race to the right boundary
+            36, 40, 45, 51, 57, 63, 69, 75, 81, 87, 93, 99, 105, 111, 117, 123, 128, 132, 135, 137, 138, 139
+        ]
+
+        animal_b = [
+            # Phase 1
+            20, 22, 25, 29, 34, 37, 38, 38, 37, 37, 38, 41, 45, 49, 53, 56, 58, 59, 60, 61,
+            # Phase 2: B turns and lurches left, staying just ahead of A
+            58, 53, 47, 43, 40, 38, 37, 36,
+            # Phase 3: B flees right, reaches boundary at 143
+            39, 43, 48, 54, 60, 66, 72, 78, 84, 90, 96, 102, 108, 114, 120, 126, 131, 135, 138, 140, 141, 143
+        ]
+
+        delay_sec = delay.total_seconds()
+        for a, b in zip(animal_a, animal_b):
+            self.turn_off()
+            self[a] = LedStrip.RED
+            self[b] = LedStrip.GREEN
+            self.show()
+            time.sleep(delay_sec)
+
+        self.turn_off()
+
+    def set_brightness(
+            self,
+            brightness: float
+    ):
+        """
+        Set brightness.
+
+        :param brightness: Brightness value in [0.0, 1.0], with 1.0 being maximum brightness.
+        """
+
+        self.pixels.brightness = brightness
+
+    def turn_off(
+            self
+    ):
+        """
+        Turn off all pixels.
+        """
+
+        for i in range(len(self.pixels)):
+            self.pixels[i] = Color(0, 0, 0)
+
+        self.pixels.show()
+
+
+class FrameLedStrip(LedStrip):
+    """
+    LED strip arranged in a rectangular frame. The LED strip must start in the bottom-left corner of the frame and wrap
+    clockwise around the frame.
+    """
+
+    def __init__(
+            self,
+            pixels: Union[NeoPixel, Pi5PixelBuffer],
+            led_spacing_mm: float,
+            width_mm: float,
+            height_mm: float
+    ):
+        """
+        Initialize the strip.
+
+        :param pixels: Pixels, either `NeoPixel` (Raspberry Pi 4) or `Pi5PixelBuffer` (Raspberry Pi 5).
+        :param led_spacing_mm: Spacing (mm) between the centers of two sequential LEDs on the strip.
+        :param width_mm: Width (mm).
+        :param height_mm: Height (mm).
+        """
+
+        super().__init__(
+            pixels,
+            led_spacing_mm
+        )
+
+        self.width_mm = width_mm
+        self.height_mm = height_mm
+
+    def get_led_idx_for_x(
+            self,
+            x_mm: float,
+            bottom: bool
+    ) -> int:
+        """
+        Get LED index for a given x position.
+
+        :param x_mm: x position (mm from left border).
+        :param bottom: Whether the LED is on the bottom (True) or top (False).
+        :return: LED index.
+        """
+
+        if bottom:
+            mm = self.height_mm + self.width_mm + self.height_mm + (self.width_mm - x_mm)
+        else:
+            mm = self.height_mm + x_mm
+
+        return round(mm / self.led_spacing_mm)
+
+    def get_led_idx_for_y(
+            self,
+            y_mm: float,
+            left: bool
+    ) -> int:
+        """
+        Get LED index for a given y position.
+
+        :param y_mm: y position (mm from bottom).
+        :param left: Whether the LED is on the left (True) or right (False).
+        :return: LED index.
+        """
+
+        if left:
+            mm = y_mm
+        else:
+            mm = self.height_mm + self.width_mm + (self.height_mm - y_mm)
+
+        return round(mm / self.led_spacing_mm)
+
+    def cross_point(
+            self,
+            x_mm: float,
+            y_mm: float,
+            color: RGBW
+    ):
+        """
+        Display cross point.
+
+        :param x_mm: X location (mm).
+        :param y_mm: Y location (mm).
+        :param color: Color.
+        """
+
+        self[self.get_led_idx_for_y(y_mm, True)] = color
+        self[self.get_led_idx_for_y(y_mm, False)] = color
+        self[self.get_led_idx_for_x(x_mm, True)] = color
+        self[self.get_led_idx_for_x(x_mm, False)] = color
+
+    def corners(
+            self,
+            color: RGBW
+    ):
+        """
+        Display corners.
+
+        :param color: Color.
+        """
+
+        self[self.get_led_idx_for_y(0.0, True)] = color
+        self[self.get_led_idx_for_y(self.height_mm, True)] = color
+        self[self.get_led_idx_for_y(0.0, False)] = color
+        self[self.get_led_idx_for_y(self.height_mm, False)] = color

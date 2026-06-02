@@ -9,14 +9,25 @@ from typing import List, Callable, Optional, Dict, Tuple, Union
 
 import RPi.GPIO as gpio
 
+_gpio_pin_numbering = gpio.BOARD
 
-def setup():
+
+def setup(
+        numbering: int = _gpio_pin_numbering
+):
     """
-    Set up the GPIO interface.
+    Set up the GPIO interface. On this is called with a board numbering scheme, calling again with a different scheme
+    will raise an error.
+
+    :param numbering: Numbering mode, either `RPi.GPIO.BOARD` (physical pin numbers) or `RPi.GPIO.BCM` (GPIO numbers).
     """
+
+    global _gpio_pin_numbering
+
+    _gpio_pin_numbering = numbering
 
     gpio.setwarnings(False)
-    gpio.setmode(gpio.BOARD)
+    gpio.setmode(_gpio_pin_numbering)
 
 
 def cleanup():
@@ -66,6 +77,23 @@ class Pin(IntEnum):
     GPIO_26 = 37
     GPIO_27 = 13
 
+    def __int__(
+            self
+    ) -> int:
+        """
+        Get integer pin number based on board numbering.
+
+        :return: Integer pin number.
+        """
+
+        if _gpio_pin_numbering == gpio.BOARD:
+            pin_number = self.value
+        else:
+            pin_number = int(self.name.split('_')[1])
+
+        return pin_number
+
+
 
 class CkPin(IntEnum):
     """
@@ -108,6 +136,46 @@ class CkPin(IntEnum):
     # ID
     SDA0 = Pin.GPIO_0_ID_SD
     SCL0 = Pin.GPIO_1_ID_SC
+
+    def __int__(
+            self
+    ) -> int:
+        """
+        Get pin number depending on board numbering.
+
+        :return: Integer pin number.
+        """
+
+        if _gpio_pin_numbering == gpio.BOARD:
+            pin_number = self.value
+        elif self._name_.startswith('GPIO'):
+            pin_number = int(self.name[4:])
+        elif self._name_ == 'MOSI':
+            pin_number = 10
+        elif self._name_ == 'MISO':
+            pin_number = 9
+        elif self._name_ == 'SCLK':
+            pin_number = 11
+        elif self._name_ == 'CE0':
+            pin_number = 8
+        elif self._name_ == 'CE1':
+            pin_number = 7
+        elif self._name_ == 'TXD0':
+            pin_number = 14
+        elif self._name_ == 'RXD0':
+            pin_number = 15
+        elif self._name_ == 'SDA1':
+            pin_number = 2
+        elif self._name_ == 'SCL1':
+            pin_number = 3
+        elif self._name_ == 'SDA0':
+            pin_number = 0
+        elif self._name_ == 'SCL0':
+            pin_number = 1
+        else:
+            raise ValueError(f'Unknown pin:  {self.name}')
+
+        return pin_number
 
 
 def get_ck_pin(
@@ -157,7 +225,7 @@ class Event:
         :param action: Function to run when event is triggered. Accepts the component's current state.
         :param trigger: A function that takes the component state and returns True if action should be triggered, or
         None to trigger the event on every state change.
-        :param synchronous: Whether or not the action function should be called synchronously. If True, then execution
+        :param synchronous: Whether the action function should be called synchronously. If True, then execution
         will not resume until the action function has returned. If False, the action function will be started in a new
         thread and execution will resume immediately.
         """
@@ -167,9 +235,9 @@ class Event:
         self.synchronous = synchronous
 
 
-class Component(ABC):
+class Component:
     """
-    Abstract base class for all components.
+    Base class for all components.
     """
 
     class State(ABC):
@@ -425,6 +493,9 @@ class Clock(Component):
                 self.run_thread = Thread(target=self.__run__)
                 self.run_thread.start()
 
+        while not self.is_running():
+            time.sleep(0.1)
+
     def stop(
             self
     ):
@@ -444,6 +515,19 @@ class Clock(Component):
             self.run_thread.join()
 
         logging.info('Stopped clock.')
+
+    def is_running(
+            self
+    ) -> bool:
+        """
+        Check if clock is running.
+
+        :return: Whether clock is running.
+        """
+
+        with self.state_lock:
+            state: Clock.State = self.state
+            return state.running
 
     def __init__(
             self,
