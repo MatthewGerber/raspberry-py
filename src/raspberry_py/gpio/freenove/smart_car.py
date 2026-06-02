@@ -602,7 +602,7 @@ class Car(Component):
             for wheel in Wheel
         ]
         self.wheel_min_speed, self.wheel_max_speed = self.wheels[0].min_speed, self.wheels[0].max_speed
-        for wheel, wheel_id in zip(self.wheels, Wheel):
+        for wheel, wheel_id in zip(self.wheels, Wheel, strict=True):
             wheel.id = f'wheel-{wheel_id.name.lower().replace("_", "-")}'
         (
             self.front_left_wheel,
