@@ -88,8 +88,10 @@ class Pin(IntEnum):
 
         if _gpio_pin_numbering == gpio.BOARD:
             pin_number = self.value
-        else:
+        elif _gpio_pin_numbering == gpio.BCM:
             pin_number = int(self.name.split('_')[1])
+        else:
+            raise ValueError(f'Unknown pin numbering:  {_gpio_pin_numbering}')
 
         return pin_number
 
@@ -148,32 +150,35 @@ class CkPin(IntEnum):
 
         if _gpio_pin_numbering == gpio.BOARD:
             pin_number = self.value
-        elif self._name_.startswith('GPIO'):
-            pin_number = int(self.name[4:])
-        elif self._name_ == 'MOSI':
-            pin_number = 10
-        elif self._name_ == 'MISO':
-            pin_number = 9
-        elif self._name_ == 'SCLK':
-            pin_number = 11
-        elif self._name_ == 'CE0':
-            pin_number = 8
-        elif self._name_ == 'CE1':
-            pin_number = 7
-        elif self._name_ == 'TXD0':
-            pin_number = 14
-        elif self._name_ == 'RXD0':
-            pin_number = 15
-        elif self._name_ == 'SDA1':
-            pin_number = 2
-        elif self._name_ == 'SCL1':
-            pin_number = 3
-        elif self._name_ == 'SDA0':
-            pin_number = 0
-        elif self._name_ == 'SCL0':
-            pin_number = 1
+        elif _gpio_pin_numbering == gpio.BCM:
+            if self._name_.startswith('GPIO'):
+                pin_number = int(self.name[4:])
+            elif self._name_ == 'MOSI':
+                pin_number = 10
+            elif self._name_ == 'MISO':
+                pin_number = 9
+            elif self._name_ == 'SCLK':
+                pin_number = 11
+            elif self._name_ == 'CE0':
+                pin_number = 8
+            elif self._name_ == 'CE1':
+                pin_number = 7
+            elif self._name_ == 'TXD0':
+                pin_number = 14
+            elif self._name_ == 'RXD0':
+                pin_number = 15
+            elif self._name_ == 'SDA1':
+                pin_number = 2
+            elif self._name_ == 'SCL1':
+                pin_number = 3
+            elif self._name_ == 'SDA0':
+                pin_number = 0
+            elif self._name_ == 'SCL0':
+                pin_number = 1
+            else:
+                raise ValueError(f'Unknown pin:  {self.name}')
         else:
-            raise ValueError(f'Unknown pin:  {self.name}')
+            raise ValueError(f'Unknown pin numbering:  {_gpio_pin_numbering}')
 
         return pin_number
 
