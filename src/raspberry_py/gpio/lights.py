@@ -1033,7 +1033,9 @@ class Pi5PixelBuffer(PixelBuf):
 
 class LedStrip:
     """
-    LED strip. This is a wrapper around pixel buffers for the Raspberry Pi, providing high-level functions.
+    LED strip. This is a wrapper around pixel buffers for the Raspberry Pi, providing high-level functions. The
+    underlying libraries assume BCM pin numbering, so you must use `raspberry_py.gpio.setup(BCM)` in order for this to
+    work.
     """
 
     RED = Color(255, 0, 0)
@@ -1379,7 +1381,8 @@ class LedStrip:
 class FrameLedStrip(LedStrip):
     """
     LED strip arranged in a rectangular frame. The LED strip must start in the bottom-left corner of the frame and wrap
-    clockwise around the frame.
+    clockwise around the frame. The underlying libraries assume BCM pin numbering, so you must use
+    `raspberry_py.gpio.setup(BCM)` in order for this to work.
     """
 
     def __init__(
