@@ -1044,6 +1044,37 @@ class LedStrip:
     WHITE = Color(255, 255, 255)
     OFF = Color(0, 0, 0)
 
+    class InvalidPixelError(ValueError):
+        """
+        Error raised when an invalid pixel is referenced (e.g., beyond the length of the strip).
+        """
+
+        def __init__(
+                self,
+                i: int,
+                length: int
+        ):
+            """
+            Initialize the error.
+
+            :param i: Pixel index referenced in error.
+            :param length: Length of strip.
+            """
+
+            self.i = i
+            self.length = length
+
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'Index {self.i} on length {self.length}'
+
     @staticmethod
     def wheel(
             pos: int
@@ -1102,7 +1133,10 @@ class LedStrip:
         :param color: Color.
         """
 
-        self.pixels[pixel] = color
+        if pixel < len(self.pixels):
+            self.pixels[pixel] = color
+        else:
+            raise LedStrip.InvalidPixelError(pixel, len(self.pixels))
 
     def __getitem__(
             self,
@@ -1115,7 +1149,10 @@ class LedStrip:
         :return: Color.
         """
 
-        return self.pixels[pixel]
+        if pixel < len(self.pixels):
+            return self.pixels[pixel]
+        else:
+            raise LedStrip.InvalidPixelError(pixel, len(self.pixels))
 
     def set_led_at_distance(
             self,

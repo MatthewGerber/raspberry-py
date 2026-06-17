@@ -455,7 +455,7 @@ class Hygrothermograph(Component):
 
         t = time.time()
         while time.time() - t < self.TIMEOUT_SECS:
-            if gpio.input(self.pin) == value:
+            if gpio.input(int(self.pin)) == value:
                 break
         else:
             return False
@@ -528,10 +528,10 @@ class InfraredMotionSensor(Component):
 
         gpio.setup(sensor_pin, gpio.IN)
         gpio.add_event_detect(
-            self.sensor_pin,
+            int(self.sensor_pin),
             gpio.BOTH,
             callback=lambda channel: self.set_state(
-                InfraredMotionSensor.State(gpio.input(self.sensor_pin) == gpio.HIGH)
+                InfraredMotionSensor.State(gpio.input(int(self.sensor_pin)) == gpio.HIGH)
             ),
             bouncetime=10
         )
@@ -607,7 +607,7 @@ class UltrasonicRangeFinder(Component):
         # wait for the echo pin to flip to high
         wait_start_time = time.time()
         while time.time() - wait_start_time < UltrasonicRangeFinder.ECHO_TIMEOUT_SECONDS:
-            if gpio.input(self.echo_pin) == gpio.HIGH:
+            if gpio.input(int(self.echo_pin)) == gpio.HIGH:
                 echo_start_time = time.time()
                 break
         else:
@@ -616,7 +616,7 @@ class UltrasonicRangeFinder(Component):
 
         # mark the time and wait for the echo pin to flip to low
         while time.time() - echo_start_time < UltrasonicRangeFinder.ECHO_TIMEOUT_SECONDS:
-            if gpio.input(self.echo_pin) == gpio.LOW:
+            if gpio.input(int(self.echo_pin)) == gpio.LOW:
                 echo_end_time = time.time()
                 break
         else:
@@ -1526,32 +1526,32 @@ class RotaryEncoder(Component):
 
                 # detect rising and falling of the phase-a signal
                 gpio.add_event_detect(
-                    self.phase_a_pin,
+                    int(self.phase_a_pin),
                     gpio.BOTH,
-                    callback=lambda channel: self.a_changed(gpio.input(self.phase_a_pin) == gpio.HIGH)
+                    callback=lambda channel: self.a_changed(gpio.input(int(self.phase_a_pin)) == gpio.HIGH)
                 )
 
                 # detect rising and falling of the phase-b signal
                 gpio.add_event_detect(
-                    self.phase_b_pin,
+                    int(self.phase_b_pin),
                     gpio.BOTH,
-                    callback=lambda channel: self.b_changed(gpio.input(self.phase_b_pin) == gpio.HIGH)
+                    callback=lambda channel: self.b_changed(gpio.input(int(self.phase_b_pin)) == gpio.HIGH)
                 )
 
             elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_TWO_EDGE:
 
                 # detect rising and falling of the phase-a pin
                 gpio.add_event_detect(
-                    self.phase_a_pin,
+                    int(self.phase_a_pin),
                     gpio.BOTH,
-                    callback=lambda channel: self.a_changed(gpio.input(self.phase_a_pin) == gpio.HIGH)
+                    callback=lambda channel: self.a_changed(gpio.input(int(self.phase_a_pin)) == gpio.HIGH)
                 )
 
             elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_ONE_EDGE:
 
                 # detect rising of the phase-a pin
                 gpio.add_event_detect(
-                    self.phase_a_pin,
+                    int(self.phase_a_pin),
                     gpio.RISING,
                     callback=lambda channel: self.a_changed(True)
                 )
@@ -1569,7 +1569,7 @@ class RotaryEncoder(Component):
             :param high: Whether phase-a is high (True) or low (False).
             """
 
-            if high == gpio.input(self.phase_b_pin):
+            if high == gpio.input(int(self.phase_b_pin)):
                 self.phase_change_index = self.phase_change_index - 1
                 self.clockwise = False
             else:
@@ -1588,7 +1588,7 @@ class RotaryEncoder(Component):
             :param high: Whether phase-b is high (True) or low (False).
             """
 
-            if high == gpio.input(self.phase_a_pin):
+            if high == gpio.input(int(self.phase_a_pin)):
                 self.phase_change_index = self.phase_change_index + 1
                 self.clockwise = True
             else:

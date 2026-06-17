@@ -1,7 +1,11 @@
-from raspberry_py.gpio import CkPin
+import RPi.GPIO as gpio
+
+from raspberry_py.gpio import CkPin, setup
 from raspberry_py.gpio.power import Relay
 from raspberry_py.gpio.sensors import Tachometer
 from raspberry_py.rest.application import app
+
+setup(gpio.BOARD)
 
 power = Relay(
     transistor_base_pin=CkPin.GPIO17

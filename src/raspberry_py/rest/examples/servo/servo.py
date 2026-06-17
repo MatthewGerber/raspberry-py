@@ -1,7 +1,10 @@
-from raspberry_py.gpio import CkPin
+import RPi.GPIO as gpio
+
+from raspberry_py.gpio import CkPin, setup
 from raspberry_py.gpio.motors import Servo, ServoDriverSoftwarePWM
 from raspberry_py.rest.application import app
 
+setup(gpio.BOARD)
 
 servo = Servo(
     driver=ServoDriverSoftwarePWM(

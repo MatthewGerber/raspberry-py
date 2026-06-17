@@ -1,12 +1,15 @@
+import RPi.GPIO as gpio
 from smbus2 import SMBus
 
-from raspberry_py.gpio import CkPin
+from raspberry_py.gpio import CkPin, setup
 from raspberry_py.gpio.adc import ADS7830
 from raspberry_py.gpio.lights import LED
 from raspberry_py.gpio.motors import DcMotor, Servo, DcMotorDriverL293D, ServoDriverSoftwarePWM
 from raspberry_py.gpio.sensors import Thermistor, Photoresistor, UltrasonicRangeFinder
 from raspberry_py.gpio.sounds import ActiveBuzzer
 from raspberry_py.rest.application import app
+
+setup(gpio.BOARD)
 
 # some components require a/d conversion
 thermistor_ad_channel = 0

@@ -48,6 +48,7 @@ def main():
     joystick.start_updating_state(0.1)
     time.sleep(20.0)
     joystick.stop_updating_state()
+    time.sleep(1.0)
 
     adc.close()
     cleanup()

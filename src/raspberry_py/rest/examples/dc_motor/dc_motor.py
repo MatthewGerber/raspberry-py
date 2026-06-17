@@ -1,6 +1,10 @@
-from raspberry_py.gpio import CkPin
+import RPi.GPIO as gpio
+
+from raspberry_py.gpio import CkPin, setup
 from raspberry_py.gpio.motors import DcMotor, DcMotorDriverL293D
 from raspberry_py.rest.application import app
+
+setup(gpio.BOARD)
 
 motor = DcMotor(
     driver=DcMotorDriverL293D(
