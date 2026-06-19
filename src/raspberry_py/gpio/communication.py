@@ -99,18 +99,17 @@ class LockingSerial:
             self
     ):
         """
-        Flush the manual buffer.
+        Manually write and flush the internal buffer.
         """
 
         with self.lock:
-
             if not self.manual_buffer:
                 raise ValueError('Expected to be in manual buffer mode.')
-
-            self.connection.write(bytes(self.buffer))
-            self.connection.flush()
-            self.update_throughput(len(self.buffer) if len(self.buffer) > 0 else None, None)
-            self.buffer.clear()
+            elif len(self.buffer) > 0:
+                self.connection.write(bytes(self.buffer))
+                self.connection.flush()
+                self.update_throughput(len(self.buffer) if len(self.buffer) > 0 else None, None)
+                self.buffer.clear()
 
     def update_throughput(
             self,
