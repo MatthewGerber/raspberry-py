@@ -1410,7 +1410,8 @@ class LedStrip:
         """
 
         for i in range(len(self.pixels)):
-            self.pixels[i] = Color(0, 0, 0)
+            if self.pixels[i] != LedStrip.OFF:
+                self.pixels[i] = LedStrip.OFF
 
         self.pixels.show()
 
@@ -1445,6 +1446,7 @@ class FrameLedStrip(LedStrip):
 
         self.width_mm = width_mm
         self.height_mm = height_mm
+        self.curr_pixels = (None, None, None, None)
 
     def get_led_idx_for_x(
             self,
@@ -1500,10 +1502,13 @@ class FrameLedStrip(LedStrip):
         :param color: Color.
         """
 
-        self[self.get_led_idx_for_y(y_mm, True)] = color
-        self[self.get_led_idx_for_y(y_mm, False)] = color
-        self[self.get_led_idx_for_x(x_mm, True)] = color
-        self[self.get_led_idx_for_x(x_mm, False)] = color
+        new_pixels = (
+            self.get_led_idx_for_y(y_mm, True),
+            self.get_led_idx_for_y(y_mm, False),
+            self.get_led_idx_for_x(x_mm, True),
+            self.get_led_idx_for_x(x_mm, False)
+        )
+        self.set_new_pixels(new_pixels, color)
 
     def corners(
             self,
@@ -1515,7 +1520,29 @@ class FrameLedStrip(LedStrip):
         :param color: Color.
         """
 
-        self[self.get_led_idx_for_y(0.0, True)] = color
-        self[self.get_led_idx_for_y(self.height_mm, True)] = color
-        self[self.get_led_idx_for_y(0.0, False)] = color
-        self[self.get_led_idx_for_y(self.height_mm, False)] = color
+        new_pixels = (
+            self.get_led_idx_for_y(0.0, True),
+            self.get_led_idx_for_y(self.height_mm, True),
+            self.get_led_idx_for_y(0.0, False),
+            self.get_led_idx_for_y(self.height_mm, False)
+        )
+        self.set_new_pixels(new_pixels, color)
+
+    def set_new_pixels(
+            self,
+            new_pixels: Tuple[int, int, int, int],
+            color: RGBW
+    ):
+        """
+        Set new pixels.
+
+        :param new_pixels: New pixels.
+        :param color: Color.
+        """
+
+        if self.curr_pixels != new_pixels:
+            self.turn_off()
+            for i in new_pixels:
+                self[i] = color
+            self.show()
+            self.curr_pixels = new_pixels
