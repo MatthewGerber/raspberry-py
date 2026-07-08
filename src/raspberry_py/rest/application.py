@@ -1571,6 +1571,8 @@ export async function is_checked(element) {
             )
         )
 
+# configure logging before initializing flask app, so that our logging is not ignored by flask.
+logging.basicConfig(level=logging.INFO)
 
 app = RpyFlask(__name__)
 

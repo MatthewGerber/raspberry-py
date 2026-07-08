@@ -495,7 +495,7 @@ class Clock(Component):
             if state.running:
                 logging.warning('Attempted to start clock that is running.')
             else:
-                self.run_thread = Thread(target=self.__run__)
+                self.run_thread = Thread(target=self.__run__, daemon=True)
                 self.run_thread.start()
 
         while not self.is_running():
