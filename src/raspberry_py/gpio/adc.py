@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple, Dict, Union
 
 from smbus2 import SMBus
 
@@ -188,6 +188,18 @@ class AdcDevice(Component, ABC):
         self.address = address
         self.digital_range = digital_range
         self.channel_rescaled_range = channel_rescaled_range
+
+    def open(
+            self,
+            bus: Union[int, str]
+    ):
+        """
+        Opens the device.
+
+        :param bus: Bus number or path.
+        """
+
+        self.bus.open(bus)
 
     def close(self):
         """
