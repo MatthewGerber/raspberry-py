@@ -9,3 +9,4 @@ setup(gpio.BOARD)
 led = LED(output_pin=CkPin.GPIO4)
 led.id = 'led-1'
 app.add_component(led)
+app.start(__name__)

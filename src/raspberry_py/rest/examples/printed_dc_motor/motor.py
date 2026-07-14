@@ -22,3 +22,5 @@ tachometer = Tachometer(
 )
 tachometer.id = 'tachometer-1'
 app.add_component(tachometer)
+
+app.start(__name__)

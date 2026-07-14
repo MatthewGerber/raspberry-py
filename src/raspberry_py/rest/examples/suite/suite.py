@@ -83,3 +83,5 @@ active_buzzer = ActiveBuzzer(
 )
 active_buzzer.id = 'active_buzzer-1'
 app.add_component(active_buzzer)
+
+app.start(__name__)

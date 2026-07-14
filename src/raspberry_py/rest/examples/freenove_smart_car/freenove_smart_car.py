@@ -60,3 +60,4 @@ elevator = RaspberryPyElevator(
 elevator.id = 'elevator-1'
 app.add_component(elevator)
 car.event(lambda s: elevator.start() if s.on else elevator.stop())
+app.start(__name__)

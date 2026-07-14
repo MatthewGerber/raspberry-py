@@ -16,3 +16,5 @@ motor = DcMotor(
 )
 motor.id = 'motor-1'
 app.add_component(motor)
+app.start(__name__)
+

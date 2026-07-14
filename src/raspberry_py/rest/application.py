@@ -450,11 +450,45 @@ class RpyFlask(Flask):
 
         self.id_component = {}
         self.root_components = []
+        self.call_history = CallHistory()
+        self.call_history.id = 'app-call-history'
         self.on_exit_callbacks: List[Callable[[], Any]] = []
 
-        state_dir = expanduser('~/.raspberry-py')
+        self.state_path: Optional[str] = None
+
+        # allow cross-site access from an html front-end
+        CORS(self)
+
+    def start(
+            self,
+            name: str
+    ):
+        """
+        Start the application.
+
+        :param name: Name of the application.
+        """
+
+        logging.info(f'Starting RpyFlask app:  {name}')
+
+        state_dir = join(expanduser('~'), '.raspberry-py')
         os.makedirs(state_dir, exist_ok=True)
-        self.state_path = join(state_dir, 'state.pickle')
+        self.state_path = join(state_dir, f'{name}-state.pickle')
+
+        # add the special call history component, which tracks rest calls.
+        self.add_component(self.call_history)
+        if os.path.exists(self.state_path):
+            logging.info(f'Loading state:  {self.state_path}')
+            with open(self.state_path, 'rb') as f:
+                history_state: CallHistory.State = pickle.load(f)
+                self.call_history.state = history_state
+                logging.info(f'Loaded call history state ({history_state}):  {self.state_path}')
+        else:
+            logging.info(f'No call history state exists:  {self.state_path}')
+
+        # hook atexit to the app's callback and to clean up
+        atexit.register(self.on_exit)
+        atexit.register(cleanup)
 
     def add_component(
             self,
@@ -489,36 +523,6 @@ class RpyFlask(Flask):
         for component in component.get_subcomponents():
             self._add_component(component, False)
 
-    def save_state(
-            self
-    ):
-        """
-        Save state.
-        """
-
-        with open(self.state_path, 'wb') as f:
-            history = [c for c in self.id_component.values() if isinstance(c, CallHistory)][0]
-            history_state: CallHistory.State = history.state
-            pickle.dump(history_state, f)
-            logging.info(f'Saved call history state ({history_state}):  {self.state_path}')
-
-    def load_state(
-            self
-    ):
-        """
-        Load state.
-        """
-
-        if os.path.exists(self.state_path):
-            logging.info(f'Loading state:  {self.state_path}')
-            with open(self.state_path, 'rb') as f:
-                history = [c for c in self.id_component.values() if isinstance(c, CallHistory)][0]
-                history_state: CallHistory.State = pickle.load(f)
-                history.state = history_state
-                logging.info(f'Loaded call history state ({history_state}):  {self.state_path}')
-        else:
-            logging.info(f'No call history state exists:  {self.state_path}')
-
     def on_exit(
             self
     ):
@@ -526,7 +530,10 @@ class RpyFlask(Flask):
         Save state and signal that the process running the app is about to exit.
         """
 
-        self.save_state()
+        with open(self.state_path, 'wb') as f:
+            history_state: CallHistory.State = self.call_history.state
+            pickle.dump(history_state, f)
+            logging.info(f'Saved call history state ({history_state}):  {self.state_path}')
 
         for callback in self.on_exit_callbacks:
             callback()
@@ -1571,23 +1578,10 @@ export async function is_checked(element) {
             )
         )
 
+
 # configure logging before initializing flask app, so that our logging is not ignored by flask.
 logging.basicConfig(level=logging.INFO)
-
 app = RpyFlask(__name__)
-
-# add the special call history component, which tracks rest calls.
-call_history = CallHistory()
-call_history.id = 'app-call-history'
-app.add_component(call_history)
-app.load_state()
-
-# allow cross-site access from an html front-end
-CORS(app)
-
-# hook atexit to the app's callback and to clean up
-atexit.register(app.on_exit)
-atexit.register(cleanup)
 
 
 @app.route('/list')
@@ -1640,7 +1634,7 @@ def call(
     response, _ = call_reference.execute()
 
     if add_to_history:
-        call_history.add(call_reference)
+        app.call_history.add(call_reference)
 
     return response
 

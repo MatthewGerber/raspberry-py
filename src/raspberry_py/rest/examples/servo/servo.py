@@ -21,3 +21,4 @@ servo = Servo(
 )
 servo.id = 'servo-1'
 app.add_component(servo)
+app.start(__name__)
