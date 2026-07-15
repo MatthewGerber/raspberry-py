@@ -23,6 +23,9 @@ from raspberry_py.rest.application import RpyFlask
 from raspberry_py.utils import IncrementalSampleAverager, get_bytes, get_float, get_base_64_str
 
 
+logger = logging.getLogger(__name__)
+
+
 class Photoresistor(Component):
     """
     Photoresistor, to be connected via ADC.
@@ -1884,14 +1887,14 @@ class RotaryEncoder(Component):
         :param wait_interval_seconds: Wait interval (seconds).
         """
 
-        logging.info('Waiting for stationarity.')
+        logger.info('Waiting for stationarity.')
         num_phase_changes = None
         while (new_num_phase_changes := self.interface.get_state().num_phase_changes) != num_phase_changes:
             num_phase_changes = new_num_phase_changes
-            logging.debug('Waiting for stationarity.')
+            logger.debug('Waiting for stationarity.')
             time.sleep(wait_interval_seconds)
 
-        logging.info('Stationary.')
+        logger.info('Stationary.')
 
     def update_state(
             self,

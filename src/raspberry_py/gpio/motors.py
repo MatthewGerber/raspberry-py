@@ -15,6 +15,9 @@ from raspberry_py.rest.application import RpyFlask
 from raspberry_py.utils import get_float
 
 
+logger = logging.getLogger(__name__)
+
+
 class DcMotorDriver(ABC):
     """
     DC motor driver.
@@ -377,7 +380,7 @@ class DcMotor(Component):
 
         constrained_speed = self.constrain_speed(state.speed)
         if constrained_speed != state.speed:
-            logging.warning(
+            logger.warning(
                 f'Requested motor speed ({state.speed}) is out of bounds [{self.min_speed},{self.max_speed}]. '
                 f'Constraining to be in bounds.'
             )
@@ -826,7 +829,7 @@ class Servo(Component):
 
         constrained_degrees = min(self.max_degree, max(state.degrees, self.min_degree))
         if constrained_degrees != state.degrees:
-            logging.warning(
+            logger.warning(
                 f'Requested servo degrees ({state.degrees}) is out of bounds [{self.min_degree},{self.max_degree}]. '
                 f'Constraining to be in bounds.'
             )

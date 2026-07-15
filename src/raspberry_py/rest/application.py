@@ -18,6 +18,11 @@ from flask_cors import CORS
 
 from raspberry_py.gpio import Component, cleanup
 
+
+# configure logging before initializing flask app, so that our logging is not ignored by flask.
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # keyboard keys
 LEFT_ARROW_KEYS = ['Left', 'ArrowLeft']
 RIGHT_ARROW_KEYS = ['Right', 'ArrowRight']
@@ -295,7 +300,7 @@ class CallHistory(Component):
 
         if self.record_macro:
             self.macro_calls.append(call_to_execute)
-            logging.info(f'Added macro call:  {call_to_execute}')
+            logger.info(f'Added macro call:  {call_to_execute}')
 
         return flask_response, function_return_value
 
@@ -370,7 +375,7 @@ class CallHistory(Component):
         """
 
         if self.record_macro:
-            logging.warning('Already recording a macro. It does not make sense to call start_macro.')
+            logger.warning('Already recording a macro. It does not make sense to call start_macro.')
         else:
             self.record_macro = True
 
@@ -400,10 +405,10 @@ class CallHistory(Component):
             self.set_state(CallHistory.State(calls))
             self.macro_calls.clear()
             self.record_macro = False
-            logging.info(f'Saved new macro:  {macro_call}')
+            logger.info(f'Saved new macro:  {macro_call}')
 
         else:
-            logging.warning('Cannot save macro when not currently recording one.')
+            logger.warning('Cannot save macro when not currently recording one.')
 
     def recording_macro(
             self
@@ -491,7 +496,7 @@ class RpyFlask(Flask):
         :param name: Name of the application.
         """
 
-        logging.info(f'Starting RpyFlask app:  {name}')
+        logger.info(f'Starting RpyFlask app:  {name}')
 
         state_dir = join(expanduser('~'), '.raspberry-py')
         os.makedirs(state_dir, exist_ok=True)
@@ -500,13 +505,13 @@ class RpyFlask(Flask):
         # add the special call history component, which tracks rest calls.
         self.add_component(self.call_history)
         if os.path.exists(self.state_path):
-            logging.info(f'Loading state:  {self.state_path}')
+            logger.info(f'Loading state:  {self.state_path}')
             with open(self.state_path, 'rb') as f:
                 history_state: CallHistory.State = pickle.load(f)
                 self.call_history.state = history_state
-                logging.info(f'Loaded call history state ({history_state}):  {self.state_path}')
+                logger.info(f'Loaded call history state ({history_state}):  {self.state_path}')
         else:
-            logging.info(f'No call history state exists:  {self.state_path}')
+            logger.info(f'No call history state exists:  {self.state_path}')
 
         # hook atexit to the app's callback and to clean up
         atexit.register(self.on_exit)
@@ -555,7 +560,7 @@ class RpyFlask(Flask):
         with open(self.state_path, 'wb') as f:
             history_state: CallHistory.State = self.call_history.state
             pickle.dump(history_state, f)
-            logging.info(f'Saved call history state ({history_state}):  {self.state_path}')
+            logger.info(f'Saved call history state ({history_state}):  {self.state_path}')
 
         for callback in self.on_exit_callbacks:
             callback()
@@ -1632,8 +1637,6 @@ export async function is_checked(element) {
         )
 
 
-# configure logging before initializing flask app, so that our logging is not ignored by flask.
-logging.basicConfig(level=logging.INFO)
 app = RpyFlask(__name__)
 
 

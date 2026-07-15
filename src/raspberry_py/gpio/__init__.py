@@ -9,6 +9,8 @@ from typing import List, Callable, Optional, Dict, Tuple, Union
 
 import RPi.GPIO as gpio
 
+
+logger = logging.getLogger(__name__)
 _gpio_pin_numbering = gpio.BOARD
 
 
@@ -339,9 +341,9 @@ class Component:
 
         with self.state_lock:
             if self.only_report_state_changes and state == self.state:
-                logging.debug(f'State of {self} is already {state}. Not setting state or triggering events.')
+                logger.debug(f'State of {self} is already {state}. Not setting state or triggering events.')
             else:
-                logging.debug(f'Setting state of {self} to {state}.')
+                logger.debug(f'Setting state of {self} to {state}.')
                 self.state = state
                 for event in self.events:
                     if event.trigger is None or event.trigger(self.state):
@@ -493,7 +495,7 @@ class Clock(Component):
         with self.state_lock:
             state: Clock.State = self.state
             if state.running:
-                logging.warning('Attempted to start clock that is running.')
+                logger.warning('Attempted to start clock that is running.')
             else:
                 self.run_thread = Thread(target=self.__run__, daemon=True)
                 self.run_thread.start()
@@ -514,12 +516,12 @@ class Clock(Component):
             if self.state.running:
                 self.state.running = False
             else:
-                logging.warning('Attempted to stop clock that is not running.')
+                logger.warning('Attempted to stop clock that is not running.')
 
         if self.run_thread is not None:
             self.run_thread.join()
 
-        logging.info('Stopped clock.')
+        logger.info('Stopped clock.')
 
     def is_running(
             self
