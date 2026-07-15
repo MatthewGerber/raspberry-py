@@ -862,6 +862,17 @@ class Camera(Component):
 
         self.run_face_detection = False
 
+    def running_face_detection(
+            self
+    ) -> bool:
+        """
+        Get whether face detection is running.
+
+        :return: True if detecting faces and False otherwise.
+        """
+
+        return self.run_face_detection
+
     def enable_face_circles(
             self
     ):
@@ -879,6 +890,17 @@ class Camera(Component):
         """
 
         self.circle_detected_faces = False
+
+    def circling_faces(
+            self
+    ) -> bool:
+        """
+        Get whether faces are being circled.
+
+        :return: True if faces are being circled and False otherwise.
+        """
+
+        return self.circle_detected_faces
 
     def detect_faces(
             self,

@@ -3,7 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from enum import IntEnum
-from typing import Optional, Callable, Tuple, List, Union
+from typing import Optional, Callable, Tuple, List, Union, cast
 
 import RPi.GPIO as gpio
 import numpy as np
@@ -420,6 +420,17 @@ class DcMotor(Component):
         state: DcMotor.State = self.state
         self.set_state(DcMotor.State(on=False, speed=state.speed))
 
+    def started(
+            self
+    ) -> bool:
+        """
+        Get whether the motor is started.
+
+        :return: True if started and False otherwise.
+        """
+
+        return cast(DcMotor.State, self.state).on
+
     def set_speed(
             self,
             speed: int
@@ -458,7 +469,7 @@ class DcMotor(Component):
         curr_state: DcMotor.State = self.state
 
         return [
-            RpyFlask.get_switch(self.id, self.start, self.stop, None, curr_state.on),
+            RpyFlask.get_switch(self.id, self.start, self.stop, None, curr_state.on, (self.started, timedelta(seconds=5))),
             RpyFlask.get_range(self.id, self.min_speed, self.max_speed, 1, self.get_speed(), False,False, [], [], [], False, self.set_speed, None, False)
         ]
 
@@ -875,6 +886,16 @@ class Servo(Component):
         state: Servo.State = self.state
         self.set_state(Servo.State(on=state.on, enabled=True, degrees=state.degrees))
 
+    def disable(
+            self
+    ):
+        """
+        Disable the stepper.
+        """
+
+        state: Servo.State = self.state
+        self.set_state(Servo.State(on=state.on, enabled=False, degrees=state.degrees))
+
     def start(
             self
     ):
@@ -895,15 +916,16 @@ class Servo(Component):
         state: Servo.State = self.state
         self.set_state(Servo.State(on=False, enabled=state.enabled, degrees=state.degrees))
 
-    def disable(
+    def started(
             self
-    ):
+    ) -> bool:
         """
-        Disable the stepper.
+        Get whether the servo is started.
+
+        :return: True if started and False otherwise.
         """
 
-        state: Servo.State = self.state
-        self.set_state(Servo.State(on=state.on, enabled=False, degrees=state.degrees))
+        return cast(Servo.State, self.state).on
 
     def get_ui_elements(
             self
@@ -917,7 +939,7 @@ class Servo(Component):
         curr_state: Servo.State = self.state
 
         return [
-            RpyFlask.get_switch(self.id, self.start, self.stop, None, curr_state.on),
+            RpyFlask.get_switch(self.id, self.start, self.stop, None, curr_state.on, (self.started, timedelta(seconds=1))),
             RpyFlask.get_range(self.id, int(self.min_degree), int(self.max_degree), 1, int(self.get_degrees()), False, False, [], [], [], False, self.set_degrees,None, False)
         ]
 
@@ -1657,7 +1679,7 @@ class Stepper(Component):
         """
 
         return [
-            RpyFlask.get_switch(self.id, self.start, self.stop, None, False)
+            RpyFlask.get_switch(self.id, self.start, self.stop, None, False, None)
         ]
 
     def __init__(

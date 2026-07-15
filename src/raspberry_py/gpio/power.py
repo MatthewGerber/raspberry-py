@@ -1,4 +1,5 @@
-from typing import List, Tuple, Union
+from datetime import timedelta
+from typing import List, Tuple, Union, cast
 
 import RPi.GPIO as gpio
 from raspberry_py.gpio import Component, CkPin
@@ -85,6 +86,17 @@ class Relay(Component):
 
         self.set_state(Relay.State(closed=False))
 
+    def closed(
+            self
+    ) -> bool:
+        """
+        Get whether the relay is closed.
+
+        :return: True if closed and False otherwise.
+        """
+
+        return cast(Relay.State, self.state).closed
+
     def get_ui_elements(
             self
     ) -> List[Tuple[Union[str, Tuple[str, str]], str]]:
@@ -95,7 +107,7 @@ class Relay(Component):
         """
 
         return [
-            RpyFlask.get_switch(self.id, self.close, self.open, None, False)
+            RpyFlask.get_switch(self.id, self.close, self.open, None, self.closed(), (self.closed, timedelta(seconds=1)))
         ]
 
     def __init__(

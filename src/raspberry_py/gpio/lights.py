@@ -162,7 +162,7 @@ class LED(Component):
         """
 
         return [
-            RpyFlask.get_switch(self.id, self.turn_on, self.turn_off, None, self.is_on())
+            RpyFlask.get_switch(self.id, self.turn_on, self.turn_off, None, self.is_on(), (self.is_on, timedelta(seconds=1)))
         ]
 
 

@@ -350,6 +350,17 @@ class CallHistory(Component):
 
         self.record_history = False
 
+    def recording_history(
+            self
+    ) -> bool:
+        """
+        Get whether history is currently being recorded.
+
+        :return: True if recording and False otherwise.
+        """
+
+        return self.record_history
+
     def start_macro(
             self
     ):
@@ -394,6 +405,17 @@ class CallHistory(Component):
         else:
             logging.warning('Cannot save macro when not currently recording one.')
 
+    def recording_macro(
+            self
+    ) -> bool:
+        """
+        Get whether a macro is currently being recorded.
+
+        :return: True if recording and False otherwise.
+        """
+
+        return self.record_macro
+
     @staticmethod
     def run_macro(
             macro_calls: List[Call]
@@ -426,8 +448,8 @@ class CallHistory(Component):
 
         return [
             (list_id, list_ui_element),
-            RpyFlask.get_switch(self.id, self.enable_record_history, self.disable_record_history, 'Record History', self.record_history),
-            RpyFlask.get_switch(self.id, self.start_macro, self.save_macro, 'Record Macro', self.record_macro)
+            RpyFlask.get_switch(self.id, self.enable_record_history, self.disable_record_history, 'Record History', self.record_history, (self.recording_history, timedelta(seconds=1))),
+            RpyFlask.get_switch(self.id, self.start_macro, self.save_macro, 'Record Macro', self.record_macro, (self.recording_macro, timedelta(seconds=1)))
         ]
 
 
@@ -636,7 +658,8 @@ export async function is_checked(element) {
             on_function: Optional[Callable[[], None]],
             off_function: Optional[Callable[[], None]],
             text: Optional[str],
-            initially_on: bool
+            initially_on: bool,
+            get_on_off_function_interval: Optional[Tuple[Callable[[], bool], timedelta]]
     ) -> Tuple[str, str]:
         """
         Get switch UI element.
@@ -646,6 +669,8 @@ export async function is_checked(element) {
         :param off_function: Function to call when switch is switched off, or None for no scripting (value only).
         :param text: Readable text to display.
         :param initially_on: Initially on.
+        :param get_on_off_function_interval: 2-tuple of function and interval to call to refresh the switch state, or
+        None for no switch-state refresh.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
@@ -667,6 +692,33 @@ export async function is_checked(element) {
 
             element_id = f'{component_id}-{on_function_name}-{off_function_name}'
             element_var = element_id.replace('-', '_')
+
+            if get_on_off_function_interval is not None:
+                get_on_off_function, interval = get_on_off_function_interval
+                get_on_off_function_name = get_on_off_function.__name__
+                get_on_off_js_function_name = f'{element_id}_{get_on_off_function_name}'.replace('-', '_')
+                get_on_off_js = (
+                    f'async function {get_on_off_js_function_name}() {{\n'
+                    f'  $.ajax({{\n'
+                    f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{get_on_off_function_name}",\n'
+                    f'    type: "GET",\n'
+                    f'    success: async function (return_value) {{\n'
+                    f'      {element_var}.prop("checked", return_value);\n'
+                    f'      await new Promise(r => setTimeout(r, {interval.total_seconds() * 1000}));\n'
+                    f'      await {get_on_off_js_function_name}();\n'
+                    f'    }},\n'
+                    f'    error: async function(xhr, error){{\n'
+                    f'      console.log(error);\n'
+                    f'      await new Promise(r => setTimeout(r, {interval.total_seconds() * 1000}));\n'
+                    f'      await {get_on_off_js_function_name}();\n'
+                    f'    }}\n'
+                    f'  }});\n'
+                    f'}}\n'
+                    f'{get_on_off_js_function_name}();\n'
+                )
+            else:
+                get_on_off_js = ''
+
             script = (
                 f'\n<script type="module">\n'
                 f'import {{rest_host, rest_port}} from "./globals.js";\n'
@@ -677,6 +729,7 @@ export async function is_checked(element) {
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'}});\n'
+                f'{get_on_off_js}'
                 f'</script>'
             )
 
