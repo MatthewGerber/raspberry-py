@@ -1441,16 +1441,23 @@ class FrameLedStrip(LedStrip):
             pixels: Union[NeoPixel, Pi5PixelBuffer],
             led_spacing_mm: float,
             width_mm: float,
-            height_mm: float
+            height_mm: float,
+            illuminated_width_height_x_off_y_off_mm: Optional[Tuple[float, float, float, float]] = None
     ):
         """
         Initialize the strip.
 
         :param pixels: Pixels, either `NeoPixel` (Raspberry Pi 4) or `Pi5PixelBuffer` (Raspberry Pi 5).
         :param led_spacing_mm: Spacing (mm) between the centers of two sequential LEDs on the strip.
-        :param width_mm: Width (mm).
-        :param height_mm: Height (mm).
+        :param width_mm: Width (mm) of mounted light strip.
+        :param height_mm: Height (mm) of mounted light strip.
+        :param illuminated_width_height_x_off_y_off_mm: Illuminated width, height, x offset, and y offset. The
+        illuminated frame is a rectangle within the mounted strip with its own x/y coordinates. The illuminated frame's
+        bottom-left corner is at (x_off, y_off) within the mounted light strip.
         """
+
+        if illuminated_width_height_x_off_y_off_mm is None:
+            illuminated_width_height_x_off_y_off_mm = (width_mm, height_mm, 0.0, 0.0)
 
         super().__init__(
             pixels,
@@ -1459,6 +1466,18 @@ class FrameLedStrip(LedStrip):
 
         self.width_mm = width_mm
         self.height_mm = height_mm
+        (
+            self.illuminated_width_mm,
+            self.illuminated_height_mm,
+            self.illuminated_x_offset,
+            self.illuminated_y_offset
+        ) = illuminated_width_height_x_off_y_off_mm
+
+        self.left_gap = self.illuminated_x_offset
+        self.right_gap = self.width_mm - self.illuminated_width_mm - self.left_gap
+        self.bottom_gap = self.illuminated_y_offset
+        self.top_gap = self.height_mm - self.illuminated_height_mm - self.bottom_gap
+        assert all(v >= 0.0 for v in [self.left_gap, self.right_gap, self.bottom_gap, self.top_gap])
 
     def get_led_idx_for_x(
             self,
@@ -1474,9 +1493,9 @@ class FrameLedStrip(LedStrip):
         """
 
         if bottom:
-            mm = self.height_mm + self.width_mm + self.height_mm + (self.width_mm - x_mm)
+            mm = self.height_mm + self.width_mm + self.height_mm + self.width_mm - self.left_gap - x_mm
         else:
-            mm = self.height_mm + x_mm
+            mm = self.height_mm + self.left_gap + x_mm
 
         return round(mm / self.led_spacing_mm)
 
@@ -1488,15 +1507,15 @@ class FrameLedStrip(LedStrip):
         """
         Get LED index for a given y position.
 
-        :param y_mm: y position (mm from bottom).
+        :param y_mm: y position (mm from bottom border).
         :param left: Whether the LED is on the left (True) or right (False).
         :return: LED index.
         """
 
         if left:
-            mm = y_mm
+            mm = self.bottom_gap + y_mm
         else:
-            mm = self.height_mm + self.width_mm + (self.height_mm - y_mm)
+            mm = self.height_mm + self.width_mm + self.height_mm - self.bottom_gap - y_mm
 
         return round(mm / self.led_spacing_mm)
 
