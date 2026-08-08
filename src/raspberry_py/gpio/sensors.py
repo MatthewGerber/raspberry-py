@@ -1899,14 +1899,18 @@ class RotaryEncoder(Component):
     def update_state(
             self,
             update_velocity_and_acceleration: bool = True
-    ):
+    ) -> 'RotaryEncoder.State':
         """
         Update state.
 
         :param update_velocity_and_acceleration: Whether to update velocity and acceleration estimates.
+        :return: Updated state.
         """
 
-        self.set_state(self.interface.get_state(update_velocity_and_acceleration))
+        state = self.interface.get_state(update_velocity_and_acceleration)
+        self.set_state(state)
+
+        return state
 
     def set_net_total_degrees(
             self,
@@ -1931,10 +1935,7 @@ class RotaryEncoder(Component):
         :return: Degrees.
         """
 
-        self.update_state(update_velocity_and_acceleration)
-        state: RotaryEncoder.State = self.state
-
-        return state.net_total_degrees
+        return self.update_state(update_velocity_and_acceleration).net_total_degrees
 
     def get_degrees(
             self,
@@ -1947,10 +1948,7 @@ class RotaryEncoder(Component):
         :return: Degrees.
         """
 
-        self.update_state(update_velocity_and_acceleration)
-        state: RotaryEncoder.State = self.state
-
-        return state.degrees
+        return self.update_state(update_velocity_and_acceleration).degrees
 
     def get_angular_velocity(
             self,
@@ -1963,10 +1961,7 @@ class RotaryEncoder(Component):
         :return: Angular velocity (degrees/second).
         """
 
-        self.update_state(update_velocity_and_acceleration)
-        state: RotaryEncoder.State = self.state
-
-        return state.angular_velocity
+        return self.update_state(update_velocity_and_acceleration).angular_velocity
 
     def get_angular_acceleration(
             self,
@@ -1979,10 +1974,7 @@ class RotaryEncoder(Component):
         :return: Angular acceleration (degrees/second^2).
         """
 
-        self.update_state(update_velocity_and_acceleration)
-        state: RotaryEncoder.State = self.state
-
-        return state.angular_acceleration
+        return self.update_state(update_velocity_and_acceleration).angular_acceleration
 
     def get_clockwise(
             self,
@@ -1995,10 +1987,7 @@ class RotaryEncoder(Component):
         :return: Clockwise.
         """
 
-        self.update_state(update_velocity_and_acceleration)
-        state: RotaryEncoder.State = self.state
-
-        return state.clockwise
+        return self.update_state(update_velocity_and_acceleration).clockwise
 
     def cleanup(
             self
