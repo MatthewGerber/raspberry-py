@@ -973,11 +973,11 @@ class Servo(Component):
 
 
 # A stepper motor driver that operates synchronously returns a 2-tuple of (1) float value indicating the number of steps
-# skipped due to limiting and (2) step sequence index.
+# skipped due to limiting and (2) step-call sequence index.
 StepperMotorDriverSynchronousReturn = Tuple[float, int]
 
 # A stepper motor driver operating asynchronously returns a function that can be called to wait for the return value,
-# which will be the stepper identifier, the number of steps skipped due to limiting, and the step sequence index.
+# which will be the stepper identifier, the number of steps skipped due to limiting, and the step-call sequence index.
 StepperMotorDriverAsynchronousReturn = Callable[[], Tuple[int, float, int]]
 
 StepperMotorDriverReturn = Union[StepperMotorDriverSynchronousReturn, StepperMotorDriverAsynchronousReturn]
@@ -1479,7 +1479,7 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         """
         Wait for asynchronous result.
 
-        :return: 3-tuple of the stepper id, skipped steps, and index.
+        :return: 3-tuple of the stepper id, skipped steps, and the step-call index that completed.
         """
 
         num_bytes_to_read = 7
