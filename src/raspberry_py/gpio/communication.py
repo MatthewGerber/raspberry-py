@@ -1,8 +1,14 @@
+import logging
 import time
+from statistics import mean
 from threading import RLock
 from typing import Optional
 
 from serial import Serial
+
+from raspberry_py.utils import get_bytes
+
+logger = logging.getLogger(__name__)
 
 
 class LockingSerial:
@@ -141,3 +147,50 @@ class LockingSerial:
                 )
 
         self.throughput_time_epoch_seconds = current_time_epoch_seconds
+
+
+def synchronize_epoch_time(
+        serial: LockingSerial,
+        cmd_get_current_time_us: int,
+        cmd_set_epoch_time: int
+):
+    """
+    Synchronize the epoch time from Python to the receiver of the serial communication line.
+
+    :param serial: Serial.
+    :param cmd_get_current_time_us: Command to get the current time (us) from the receiver.
+    :param cmd_set_epoch_time: Command to set the current time (epoch) on the receiver.
+    """
+
+    curr_time_us_samples = [
+        int.from_bytes(
+            serial.write_then_read(
+                cmd_get_current_time_us.to_bytes(1) +
+                (0).to_bytes(1),
+                True,
+                4,
+                False
+            ),
+            signed=False
+        )
+        for _ in range(100)
+    ]
+    roundtrip_times_secs = [
+        (t2 - t1) / 10 ** 6
+        for t1, t2 in zip(curr_time_us_samples[:-1], curr_time_us_samples[1:], strict=True)
+    ]
+    average_rtt_secs = mean(roundtrip_times_secs)
+    half_trip_seconds = average_rtt_secs / 2.0
+    epoch_time_for_arduino = time.time() + half_trip_seconds
+    sync_success = bool(serial.write_then_read(
+        cmd_set_epoch_time.to_bytes(1) +
+        (0).to_bytes(1) +
+        get_bytes(epoch_time_for_arduino),
+        True,
+        1,
+        False
+    ))
+    if sync_success:
+        logger.info(f'Synchronized epoch time. Half-trip seconds:  {half_trip_seconds}')
+    else:
+        raise ValueError('Failed to synchronize epoch time.')

@@ -14,7 +14,6 @@ from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
 from raspberry_py.rest.application import RpyFlask
 from raspberry_py.utils import get_float
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -973,12 +972,13 @@ class Servo(Component):
 
 
 # A stepper motor driver that operates synchronously returns a 2-tuple of (1) float value indicating the number of steps
-# skipped due to limiting and (2) step-call sequence index.
-StepperMotorDriverSynchronousReturn = Tuple[float, int]
+# skipped due to limiting, (2) step-call sequence index, and (3) done time (epoch).
+StepperMotorDriverSynchronousReturn = Tuple[float, int, float]
 
 # A stepper motor driver operating asynchronously returns a function that can be called to wait for the return value,
-# which will be the stepper identifier, the number of steps skipped due to limiting, and the step-call sequence index.
-StepperMotorDriverAsynchronousReturn = Callable[[], Tuple[int, float, int]]
+# which will be the stepper identifier followed by the values of the synchronous return above.
+StepperMotorDriverAsynchronousReturnTuple = Tuple[int, float, int, float]
+StepperMotorDriverAsynchronousReturn = Callable[[], StepperMotorDriverAsynchronousReturnTuple]
 
 StepperMotorDriverReturn = Union[StepperMotorDriverSynchronousReturn, StepperMotorDriverAsynchronousReturn]
 
@@ -1013,7 +1013,7 @@ class StepperMotorDriver(ABC):
             time_to_step: timedelta
     ) -> StepperMotorDriverReturn:
         """
-        Step the motor.
+        Step the motor (only increments the step-call index).
 
         :param stepper: Stepper.
         :param num_steps: Number of steps.
@@ -1023,7 +1023,7 @@ class StepperMotorDriver(ABC):
 
         self.idx += 1
 
-        return 0.0, self.idx
+        return 0.0, self.idx, 0.0
 
     @abstractmethod
     def stop(
@@ -1152,6 +1152,7 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
         direction = np.sign(num_steps)
         initial_state: Stepper.State = stepper.state
         initial_step = initial_state.step
+        initial_time = time.time()
         target_step = initial_step + num_steps
         curr_time = time.time()
         skipped_steps = 0
@@ -1169,7 +1170,7 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
                 # drive to the next half step, achieving the full step.
                 self.drive(direction)
 
-                # update state. we do this at each step so that event listeners can react in real time as the stepper moves.
+                # update state at each step so that event listeners can react in real time as the stepper moves.
                 new_time = time.time()
                 new_state = Stepper.State(
                     next_step,
@@ -1181,15 +1182,17 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
                 curr_time = new_time
                 time.sleep(delay_seconds_per_step / 2.0)
 
+        finish_time = time.time()
+
         result_state: Stepper.State = stepper.state
         if skipped_steps == 0 and result_state.step != target_step:
             raise ValueError(f'Expected stepper state ({result_state.step}) to be goal state ({target_step}).')
 
         step_idx = self.idx
 
-        super().step(stepper, num_steps, time_to_step)
+        super().step(stepper, num_steps, timedelta(seconds=finish_time - initial_time))
 
-        return skipped_steps, step_idx
+        return skipped_steps, step_idx, finish_time
 
     def drive(
             self,
@@ -1288,7 +1291,9 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             1,
             False
         ))
-        if not success:
+        if success:
+            logger.info(f'Initialized ULN2003 driver {self.identifier}.')
+        else:
             raise ValueError('Failed to initialize Arduino stepper motor driver.')
 
     def step(
@@ -1325,9 +1330,9 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         if self.asynchronous:
             return_value = self.wait_for_async_result
         else:
-            identifier, skipped_steps, idx = self.wait_for_async_result()
+            identifier, skipped_steps, idx, done_time = self.wait_for_async_result()
             assert identifier == self.identifier
-            return_value = (skipped_steps, idx)
+            return_value = (skipped_steps, idx, done_time)
 
         super().step(stepper, num_steps, time_to_step)
 
@@ -1335,11 +1340,11 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
 
     def wait_for_async_result(
             self
-    ) -> Tuple[int, float, int]:
+    ) -> StepperMotorDriverAsynchronousReturnTuple:
         """
         Wait for asynchronous result.
 
-        :return: 3-tuple of the stepper id, skipped steps, and index.
+        :return: 4-tuple of the stepper id, skipped steps, index, and the done time epoch.
         """
 
         result_bytes = self.serial.connection.read(7)
@@ -1347,8 +1352,9 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
         skipped_steps = get_float(result_bytes[1:5])
         idx = int.from_bytes(result_bytes[5:7], signed=False)
+        done_time_epoch = get_float(result_bytes[7:11])
 
-        return stepper_id, skipped_steps, idx
+        return stepper_id, skipped_steps, idx, done_time_epoch
 
     def stop(self):
         """
@@ -1428,7 +1434,9 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
             1,
             False
         ))
-        if not success:
+        if success:
+            logger.info(f'Initialized A4988 driver {self.identifier}.')
+        else:
             raise ValueError('Failed to initialize Arduino stepper motor driver.')
 
     def step(
@@ -1465,9 +1473,9 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         if self.asynchronous:
             return_value = self.wait_for_async_result
         else:
-            identifier, skipped_steps, idx = self.wait_for_async_result()
+            identifier, skipped_steps, idx, done_time_us = self.wait_for_async_result()
             assert identifier == self.identifier
-            return_value = (skipped_steps, idx)
+            return_value = (skipped_steps, idx, done_time_us)
 
         super().step(stepper, num_steps, time_to_step)
 
@@ -1475,21 +1483,22 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
 
     def wait_for_async_result(
             self
-    ) -> Tuple[int, float, int]:
+    ) -> StepperMotorDriverAsynchronousReturnTuple:
         """
         Wait for asynchronous result.
 
-        :return: 3-tuple of the stepper id, skipped steps, and the step-call index that completed.
+        :return: 4-tuple of the stepper id, skipped steps, the step-call index that completed, and the done time epoch.
         """
 
-        num_bytes_to_read = 7
+        num_bytes_to_read = 1
         result_bytes = self.serial.connection.read(num_bytes_to_read)
         assert len(result_bytes) == 7
         stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
         skipped_steps = get_float(result_bytes[1:5])
         idx = int.from_bytes(result_bytes[5:7], signed=False)
+        done_time_epoch = get_float(result_bytes[7:11])
 
-        return stepper_id, skipped_steps, idx
+        return stepper_id, skipped_steps, idx, done_time_epoch
 
     def stop(self):
         """
@@ -1577,18 +1586,17 @@ class Stepper(Component):
         num_steps = state.step - initial_state.step
         start_time = time.time()
         self.driver_step_return_value = self.driver.step(self, num_steps, state.time_to_step)
-        end_time = time.time()
 
-        # return value will be a 2-tuple of skipped steps and sequence index if the driver is synchronous. we can update
-        # the state now. if the driver is asynchronous, then we cannot update the stepper state here. it will need to be
-        # done elsewhere by the caller.
+        # return value will be a 3-tuple of skipped steps, sequence index, and done time epoch if the driver is
+        # synchronous. we can update the state now. if the driver is asynchronous, then we cannot update the stepper
+        # state here. it will need to be done elsewhere by the caller.
         if isinstance(self.driver_step_return_value, tuple):
-            skipped_steps, _ = self.driver_step_return_value
+            skipped_steps, _, done_time_epoch = self.driver_step_return_value
             num_steps_taken = round(num_steps - skipped_steps)
             super().set_state(
                 Stepper.State(
                     initial_state.step + num_steps_taken,
-                    timedelta(seconds=end_time - start_time)
+                    timedelta(seconds=done_time_epoch - start_time)
                 )
             )
 
