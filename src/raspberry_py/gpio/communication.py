@@ -151,13 +151,15 @@ class LockingSerial:
     def synchronize_epoch_time(
             self,
             cmd_get_current_time_us: int,
-            cmd_set_epoch_time: int
+            cmd_set_epoch_time: int,
+            cmd_get_epoch_time: int
     ):
         """
         Synchronize the epoch time from Python to the receiver of the serial communication line.
 
         :param cmd_get_current_time_us: Command to get the current time (us) from the receiver.
         :param cmd_set_epoch_time: Command to set the current time (epoch) on the receiver.
+        :param cmd_get_epoch_time: Command to get the current time (epoch) from the receiver.
         """
 
         if self.manual_buffer:
@@ -201,6 +203,10 @@ class LockingSerial:
             )
         else:
             raise ValueError('Failed to synchronize epoch time.')
+
+        logging.info(
+            f'Epoch (Python):  {time.time()}; epoch (Arduino):  {self.get_epoch_time(cmd_get_epoch_time)}'
+        )
 
     def get_epoch_time(
             self,
