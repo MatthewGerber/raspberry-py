@@ -20,7 +20,7 @@ from raspberry_py.gpio.adc import AdcDevice
 from raspberry_py.gpio.communication import LockingSerial
 from raspberry_py.gpio.controls import TwoPoleButton
 from raspberry_py.rest.application import RpyFlask
-from raspberry_py.utils import IncrementalSampleAverager, get_bytes, get_float, get_base_64_str
+from raspberry_py.utils import IncrementalSampleAverager, get_double_bytes, get_float, get_base_64_str
 
 
 logger = logging.getLogger(__name__)
@@ -1773,9 +1773,9 @@ class RotaryEncoder(Component):
                 self.phase_b_pin.to_bytes(1) +
                 self.phase_changes_per_rotation.to_bytes(2) +
                 self.phase_change_mode.value.to_bytes(1) +
-                get_bytes(self.angle_step_size) +
-                get_bytes(self.angular_velocity_step_size) +
-                get_bytes(self.angular_acceleration_step_size) +
+                get_double_bytes(self.angle_step_size) +
+                get_double_bytes(self.angular_velocity_step_size) +
+                get_double_bytes(self.angular_acceleration_step_size) +
                 self.state_update_hz.to_bytes(1),
                 True,
                 0,
@@ -1795,21 +1795,21 @@ class RotaryEncoder(Component):
             state_bytes = self.serial.write_then_read(
                 RotaryEncoder.Arduino.Command.GET_STATE.to_bytes(1) + self.identifier.to_bytes(1),
                 True,
-                21,
+                33,
                 False
             )
             num_phase_changes = int.from_bytes(state_bytes[0:4], signed=False)
-            net_total_degrees = get_float(state_bytes[4:8])
+            net_total_degrees = get_float(state_bytes[4:12])
             degrees = net_total_degrees % 360.0
 
             return RotaryEncoder.State(
                 num_phase_changes=num_phase_changes,
                 net_total_degrees=net_total_degrees,
                 degrees=degrees,
-                angular_velocity=get_float(state_bytes[8:12]),
-                angular_acceleration=get_float(state_bytes[12:16]),
-                clockwise=bool(int.from_bytes(state_bytes[16:17], signed=False)),
-                epoch_ms=int.from_bytes(state_bytes[17:21], signed=False)
+                angular_velocity=get_float(state_bytes[12:20]),
+                angular_acceleration=get_float(state_bytes[20:28]),
+                clockwise=bool(int.from_bytes(state_bytes[28:29], signed=False)),
+                epoch_ms=int.from_bytes(state_bytes[29:33], signed=False)
             )
 
         def set_net_total_degrees(
@@ -1825,7 +1825,7 @@ class RotaryEncoder(Component):
             self.serial.write_then_read(
                 RotaryEncoder.Arduino.Command.SET_NET_TOTAL_DEGREES.to_bytes(1) +
                 self.identifier.to_bytes(1) +
-                get_bytes(net_total_degrees),
+                get_double_bytes(net_total_degrees),
                 True,
                 0,
                 False

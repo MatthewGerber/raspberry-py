@@ -1232,6 +1232,8 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
     # Maximum number of steps is the maximum two-byte unsigned integer.
     MAX_TWO_BYTE_UNSIGNED_INT = 2 ** 16 - 1
 
+    STEPPER_DONE_RESPONSE_NUM_BYTES = 19
+
     class Command(IntEnum):
         """
         Commands that can be sent to the Arduino.
@@ -1347,12 +1349,12 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         :return: 4-tuple of the stepper id, skipped steps, the step-call index that completed, and the done time epoch.
         """
 
-        result_bytes = self.serial.connection.read(7)
-        assert len(result_bytes) == 7
+        result_bytes = self.serial.connection.read(self.STEPPER_DONE_RESPONSE_NUM_BYTES)
+        assert len(result_bytes) == self.STEPPER_DONE_RESPONSE_NUM_BYTES
         stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
-        skipped_steps = get_float(result_bytes[1:5])
-        idx = int.from_bytes(result_bytes[5:7], signed=False)
-        done_time_epoch = get_float(result_bytes[7:11]) + self.serial.latency_seconds
+        skipped_steps = get_float(result_bytes[1:9])
+        idx = int.from_bytes(result_bytes[9:11], signed=False)
+        done_time_epoch = get_float(result_bytes[11:19]) + self.serial.latency_seconds
 
         return stepper_id, skipped_steps, idx, done_time_epoch
 
@@ -1380,6 +1382,8 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
 
     # Maximum number of steps is the maximum two-byte unsigned integer.
     MAX_TWO_BYTE_UNSIGNED_INT = 2 ** 16 - 1
+
+    STEPPER_DONE_RESPONSE_NUM_BYTES = 19
 
     class Command(IntEnum):
         """
@@ -1490,13 +1494,12 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         :return: 4-tuple of the stepper id, skipped steps, the step-call index that completed, and the done time epoch.
         """
 
-        num_bytes_to_read = 1
-        result_bytes = self.serial.connection.read(num_bytes_to_read)
-        assert len(result_bytes) == 7
+        result_bytes = self.serial.connection.read(self.STEPPER_DONE_RESPONSE_NUM_BYTES)
+        assert len(result_bytes) == self.STEPPER_DONE_RESPONSE_NUM_BYTES
         stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
-        skipped_steps = get_float(result_bytes[1:5])
-        idx = int.from_bytes(result_bytes[5:7], signed=False)
-        done_time_epoch = get_float(result_bytes[7:11]) + self.serial.latency_seconds
+        skipped_steps = get_float(result_bytes[1:9])
+        idx = int.from_bytes(result_bytes[9:11], signed=False)
+        done_time_epoch = get_float(result_bytes[11:19]) + self.serial.latency_seconds
 
         return stepper_id, skipped_steps, idx, done_time_epoch
 

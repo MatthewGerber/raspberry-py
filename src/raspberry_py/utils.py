@@ -238,33 +238,33 @@ class IncrementalSampleAverager:
         return f'{{:{format_spec}}}'.format(self.get_value())
 
 
-def get_bytes(
+def get_double_bytes(
         value: float
 ) -> bytes:
     """
-    Get a 4-byte array for a float.
+    Get an 8-byte array (double) for a Python float.
 
-    :param value: Value.
-    :return: Bytes.
+    :param value: Python float.
+    :return: 8-byte array for double-precision floating-point value.
     """
 
-    float_bytes = struct.pack('f', value)
-    assert len(float_bytes) == 4
-
+    float_bytes = struct.pack('<d', value)
+    assert len(float_bytes) == 8
     return float_bytes
 
 
 def get_float(
-    float_bytes: bytes
+    double_bytes: bytes
 ) -> float:
     """
-    Get float for bytes.
+    Get Python float for an 8-byte array representing a double-precision floating-point value.
 
-    :param float_bytes: Bytes.
-    :return: Float.
+    :param double_bytes: 8-byte array.
+    :return: Python float.
     """
 
-    return struct.unpack('f', float_bytes)[0]
+    assert len(double_bytes) == 8
+    return struct.unpack('<d', double_bytes)[0]
 
 
 def get_base_64_str(

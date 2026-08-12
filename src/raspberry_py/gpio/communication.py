@@ -6,7 +6,7 @@ from typing import Optional
 
 from serial import Serial
 
-from raspberry_py.utils import get_bytes, get_float
+from raspberry_py.utils import get_double_bytes, get_float
 
 logger = logging.getLogger(__name__)
 
@@ -197,10 +197,11 @@ class LockingSerial:
         # set the receiver's epoch time as the current time plus write latency, so that the value that is set at the
         # receiver is as accurate at possible at the time when it is set.
         epoch_time_at_receiver = time.time() + self.latency_seconds
+        logger.info(f'Setting epoch time at receiver:  {epoch_time_at_receiver}')
         sync_success = bool(self.write_then_read(
             set_epoch_time_cmd.to_bytes(1) +
             (0).to_bytes(1) +
-            get_bytes(epoch_time_at_receiver),
+            get_double_bytes(epoch_time_at_receiver),
             True,
             1,
             False
@@ -236,6 +237,6 @@ class LockingSerial:
             get_epoch_time_cmd.to_bytes(1) +
             (0).to_bytes(1),
             True,
-            4,
+            8,
             False
         )) + self.latency_seconds
