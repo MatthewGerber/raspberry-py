@@ -971,7 +971,7 @@ class Servo(Component):
         self.max_degree = max_degree
 
 
-# A stepper motor driver that operates synchronously returns a 2-tuple of (1) float value indicating the number of steps
+# A stepper motor driver that operates synchronously returns a 3-tuple of (1) float value indicating the number of steps
 # skipped due to limiting, (2) step-call sequence index, and (3) done time (epoch).
 StepperMotorDriverSynchronousReturn = Tuple[float, int, float]
 
@@ -1182,7 +1182,7 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
                 curr_time = new_time
                 time.sleep(delay_seconds_per_step / 2.0)
 
-        finish_time = time.time()
+        done_time_epoch = time.time()
 
         result_state: Stepper.State = stepper.state
         if skipped_steps == 0 and result_state.step != target_step:
@@ -1190,9 +1190,9 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
 
         step_idx = self.idx
 
-        super().step(stepper, num_steps, timedelta(seconds=finish_time - initial_time))
+        super().step(stepper, num_steps, timedelta(seconds=done_time_epoch - initial_time))
 
-        return skipped_steps, step_idx, finish_time
+        return skipped_steps, step_idx, done_time_epoch
 
     def drive(
             self,
@@ -1330,9 +1330,9 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         if self.asynchronous:
             return_value = self.wait_for_async_result
         else:
-            identifier, skipped_steps, idx, done_time = self.wait_for_async_result()
+            identifier, skipped_steps, idx, done_time_epoch = self.wait_for_async_result()
             assert identifier == self.identifier
-            return_value = (skipped_steps, idx, done_time)
+            return_value = (skipped_steps, idx, done_time_epoch)
 
         super().step(stepper, num_steps, time_to_step)
 
@@ -1344,7 +1344,7 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         """
         Wait for asynchronous result.
 
-        :return: 4-tuple of the stepper id, skipped steps, index, and the done time epoch.
+        :return: 4-tuple of the stepper id, skipped steps, the step-call index that completed, and the done time epoch.
         """
 
         result_bytes = self.serial.connection.read(7)
@@ -1352,7 +1352,7 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
         skipped_steps = get_float(result_bytes[1:5])
         idx = int.from_bytes(result_bytes[5:7], signed=False)
-        done_time_epoch = get_float(result_bytes[7:11])
+        done_time_epoch = get_float(result_bytes[7:11]) + self.serial.latency_seconds
 
         return stepper_id, skipped_steps, idx, done_time_epoch
 
@@ -1473,9 +1473,9 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         if self.asynchronous:
             return_value = self.wait_for_async_result
         else:
-            identifier, skipped_steps, idx, done_time_us = self.wait_for_async_result()
+            identifier, skipped_steps, idx, done_time_epoch = self.wait_for_async_result()
             assert identifier == self.identifier
-            return_value = (skipped_steps, idx, done_time_us)
+            return_value = (skipped_steps, idx, done_time_epoch)
 
         super().step(stepper, num_steps, time_to_step)
 
@@ -1496,7 +1496,7 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
         skipped_steps = get_float(result_bytes[1:5])
         idx = int.from_bytes(result_bytes[5:7], signed=False)
-        done_time_epoch = get_float(result_bytes[7:11])
+        done_time_epoch = get_float(result_bytes[7:11]) + self.serial.latency_seconds
 
         return stepper_id, skipped_steps, idx, done_time_epoch
 

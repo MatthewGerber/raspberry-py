@@ -42,6 +42,7 @@ class LockingSerial:
         self.bytes_read_per_second = 0.0
         self.bytes_written_per_second = 0.0
         self.buffer = []
+        self.latency_seconds: Optional[float] = None
 
     def write_then_read(
             self,
@@ -148,18 +149,18 @@ class LockingSerial:
 
         self.throughput_time_epoch_seconds = current_time_epoch_seconds
 
-    def synchronize_epoch_time(
+    def synchronize_receiver_epoch_time(
             self,
-            cmd_get_current_time_us: int,
-            cmd_set_epoch_time: int,
-            cmd_get_epoch_time: int
+            get_current_time_us_cmd: int,
+            set_epoch_time_cmd: int,
+            get_epoch_time_cmd: int
     ):
         """
         Synchronize the epoch time from Python to the receiver of the serial communication line.
 
-        :param cmd_get_current_time_us: Command to get the current time (us) from the receiver.
-        :param cmd_set_epoch_time: Command to set the current time (epoch) on the receiver.
-        :param cmd_get_epoch_time: Command to get the current time (epoch) from the receiver.
+        :param get_current_time_us_cmd: Command to get the current time (us) from the receiver.
+        :param set_epoch_time_cmd: Command to set the current time (epoch) on the receiver.
+        :param get_epoch_time_cmd: Command to get the current time (epoch) from the receiver.
         """
 
         if self.manual_buffer:
@@ -167,10 +168,11 @@ class LockingSerial:
 
         logger.info('Synchronizing epoch time with serial receiver.')
 
+        # draw 200 current-time samples, ignoring the first 100 to avoid start-up or lazy-loading effects.
         curr_time_us_samples = [
             int.from_bytes(
                 self.write_then_read(
-                    cmd_get_current_time_us.to_bytes(1) +
+                    get_current_time_us_cmd.to_bytes(1) +
                     (0).to_bytes(1),
                     True,
                     4,
@@ -178,20 +180,27 @@ class LockingSerial:
                 ),
                 signed=False
             )
-            for _ in range(100)
-        ]
+            for _ in range(200)
+        ][100:]
+
+        # convert to round-trip times
         round_trip_times_secs = [
             (t2 - t1) / (10 ** 6)
             for t1, t2 in zip(curr_time_us_samples[:-1], curr_time_us_samples[1:], strict=True)
         ]
         round_trip_times_mean_secs = mean(round_trip_times_secs)
         round_trip_times_std = stdev(round_trip_times_secs)
-        half_trip_seconds = round_trip_times_mean_secs / 2.0
-        epoch_time_for_arduino = time.time() + half_trip_seconds
+
+        # assume symmetric write-read latency and estimate half-trip time
+        self.latency_seconds = round_trip_times_mean_secs / 2.0
+
+        # set the receiver's epoch time as the current time plus write latency, so that the value that is set at the
+        # receiver is as accurate at possible at the time when it is set.
+        epoch_time_at_receiver = time.time() + self.latency_seconds
         sync_success = bool(self.write_then_read(
-            cmd_set_epoch_time.to_bytes(1) +
+            set_epoch_time_cmd.to_bytes(1) +
             (0).to_bytes(1) +
-            get_bytes(epoch_time_for_arduino),
+            get_bytes(epoch_time_at_receiver),
             True,
             1,
             False
@@ -199,33 +208,34 @@ class LockingSerial:
         if sync_success:
             logger.info(
                 f'Synchronized epoch time. RTT stdev={round_trip_times_std}; '
-                f'half-trip seconds:  {half_trip_seconds}'
+                f'latency seconds:  {self.latency_seconds}'
             )
         else:
             raise ValueError('Failed to synchronize epoch time.')
 
         logging.info(
-            f'Epoch (Python):  {time.time()}; epoch (Arduino):  {self.get_epoch_time(cmd_get_epoch_time)}'
+            f'Epoch (Python):  {time.time()}; epoch (Arduino):  {self.get_receiver_epoch_time(get_epoch_time_cmd)}'
         )
 
-    def get_epoch_time(
+    def get_receiver_epoch_time(
             self,
-            cmd: int
+            get_epoch_time_cmd: int
     ) -> float:
         """
-        Get epoch time. Must have previously synchronized using `synchronize_epoch_time`.
+        Get epoch time at the receiver. Must have previously synchronized using `synchronize_epoch_time`.
 
-        :param cmd: Command.
+        :param get_epoch_time_cmd: Command to get epoch time at the receiver.
         :return: Epoch time.
         """
 
         if self.manual_buffer:
             raise ValueError('Cannot get epoch time when buffering manually.')
 
+        # adjust the epoch time by latency, so that the returned value is approximately correct immediately upon return.
         return get_float(self.write_then_read(
-            cmd.to_bytes(1) +
+            get_epoch_time_cmd.to_bytes(1) +
             (0).to_bytes(1),
             True,
             4,
             False
-        ))
+        )) + self.latency_seconds
