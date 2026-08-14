@@ -1771,8 +1771,6 @@ class RotaryEncoder(Component):
                 self.identifier.to_bytes(1) +
                 self.phase_a_pin.to_bytes(1) +
                 self.phase_b_pin.to_bytes(1) +
-                self.phase_changes_per_rotation.to_bytes(2) +
-                self.phase_change_mode.value.to_bytes(1) +
                 get_double_bytes(self.angle_step_size) +
                 get_double_bytes(self.angular_velocity_step_size) +
                 get_double_bytes(self.angular_acceleration_step_size) +
