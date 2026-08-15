@@ -12,7 +12,6 @@ from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.communication import LockingSerial
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
 from raspberry_py.rest.application import RpyFlask
-from raspberry_py.utils import get_float
 
 logger = logging.getLogger(__name__)
 
@@ -1232,7 +1231,7 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
     # Maximum number of steps is the maximum two-byte unsigned integer.
     MAX_TWO_BYTE_UNSIGNED_INT = 2 ** 16 - 1
 
-    STEPPER_DONE_RESPONSE_NUM_BYTES = 19
+    STEPPER_DONE_RESPONSE_NUM_BYTES = 11
 
     class Command(IntEnum):
         """
@@ -1349,12 +1348,14 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         :return: 4-tuple of the stepper id, skipped steps, the step-call index that completed, and the done time epoch.
         """
 
+        float_scale = 0.001
+
         result_bytes = self.serial.connection.read(self.STEPPER_DONE_RESPONSE_NUM_BYTES)
         assert len(result_bytes) == self.STEPPER_DONE_RESPONSE_NUM_BYTES
         stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
-        skipped_steps = get_float(result_bytes[1:9])
-        idx = int.from_bytes(result_bytes[9:11], signed=False)
-        done_time_epoch = get_float(result_bytes[11:19]) + self.serial.latency_seconds
+        skipped_steps = int.from_bytes(result_bytes[1:5]) * float_scale
+        idx = int.from_bytes(result_bytes[5:7], signed=False)
+        done_time_epoch = int.from_bytes(result_bytes[7:11]) * float_scale + self.serial.latency_seconds
 
         return stepper_id, skipped_steps, idx, done_time_epoch
 
@@ -1383,7 +1384,7 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
     # Maximum number of steps is the maximum two-byte unsigned integer.
     MAX_TWO_BYTE_UNSIGNED_INT = 2 ** 16 - 1
 
-    STEPPER_DONE_RESPONSE_NUM_BYTES = 19
+    STEPPER_DONE_RESPONSE_NUM_BYTES = 11
 
     class Command(IntEnum):
         """
@@ -1494,12 +1495,14 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         :return: 4-tuple of the stepper id, skipped steps, the step-call index that completed, and the done time epoch.
         """
 
+        float_scale = 0.001
+
         result_bytes = self.serial.connection.read(self.STEPPER_DONE_RESPONSE_NUM_BYTES)
         assert len(result_bytes) == self.STEPPER_DONE_RESPONSE_NUM_BYTES
         stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
-        skipped_steps = get_float(result_bytes[1:9])
-        idx = int.from_bytes(result_bytes[9:11], signed=False)
-        done_time_epoch = get_float(result_bytes[11:19]) + self.serial.latency_seconds
+        skipped_steps = int.from_bytes(result_bytes[1:5]) * float_scale
+        idx = int.from_bytes(result_bytes[5:7], signed=False)
+        done_time_epoch = int.from_bytes(result_bytes[7:11]) * float_scale + self.serial.latency_seconds
 
         return stepper_id, skipped_steps, idx, done_time_epoch
 

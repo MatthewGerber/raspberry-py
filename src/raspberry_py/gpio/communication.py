@@ -4,9 +4,8 @@ from statistics import mean, stdev
 from threading import RLock
 from typing import Optional
 
+from raspberry_py.utils import get_double_bytes, get_python_float_from_double_bytes
 from serial import Serial
-
-from raspberry_py.utils import get_double_bytes, get_float
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +200,7 @@ class LockingSerial:
         sync_success = bool(self.write_then_read(
             set_epoch_time_cmd.to_bytes(1) +
             (0).to_bytes(1) +
-            get_double_bytes(epoch_time_at_receiver),
+            get_double_bytes(epoch_time_at_receiver),  # send double to preserve python's native accuracy
             True,
             1,
             False
@@ -233,7 +232,7 @@ class LockingSerial:
             raise ValueError('Cannot get epoch time when buffering manually.')
 
         # adjust the epoch time by latency, so that the returned value is approximately correct immediately upon return.
-        return get_float(self.write_then_read(
+        return get_python_float_from_double_bytes(self.write_then_read(
             get_epoch_time_cmd.to_bytes(1) +
             (0).to_bytes(1),
             True,

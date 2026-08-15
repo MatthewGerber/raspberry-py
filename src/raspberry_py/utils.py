@@ -238,6 +238,35 @@ class IncrementalSampleAverager:
         return f'{{:{format_spec}}}'.format(self.get_value())
 
 
+def get_single_bytes(
+        value: float
+) -> bytes:
+    """
+    Get a 4-byte array (single) for a Python float.
+
+    :param value: Python float.
+    :return: 4-byte array (little endian) for single-precision floating-point value.
+    """
+
+    float_bytes = struct.pack('<f', value)
+    assert len(float_bytes) == 4
+    return float_bytes
+
+
+def get_python_float_from_single_bytes(
+    single_bytes: bytes
+) -> float:
+    """
+    Get Python float for a 4-byte array representing a single-precision floating-point value.
+
+    :param single_bytes: 4-byte array (little endian).
+    :return: Python float.
+    """
+
+    assert len(single_bytes) == 4
+    return struct.unpack('<f', single_bytes)[0]
+
+
 def get_double_bytes(
         value: float
 ) -> bytes:
@@ -245,7 +274,7 @@ def get_double_bytes(
     Get an 8-byte array (double) for a Python float.
 
     :param value: Python float.
-    :return: 8-byte array for double-precision floating-point value.
+    :return: 8-byte array (little endian) for double-precision floating-point value.
     """
 
     float_bytes = struct.pack('<d', value)
@@ -253,13 +282,13 @@ def get_double_bytes(
     return float_bytes
 
 
-def get_float(
+def get_python_float_from_double_bytes(
     double_bytes: bytes
 ) -> float:
     """
     Get Python float for an 8-byte array representing a double-precision floating-point value.
 
-    :param double_bytes: 8-byte array.
+    :param double_bytes: 8-byte array (little endian).
     :return: Python float.
     """
 
