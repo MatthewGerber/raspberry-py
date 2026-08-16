@@ -171,8 +171,8 @@ class LockingSerial:
         curr_time_us_samples = [
             int.from_bytes(
                 self.write_then_read(
-                    get_current_time_us_cmd.to_bytes(1) +
-                    (0).to_bytes(1),
+                    get_current_time_us_cmd.to_bytes(1, signed=False) +
+                    (0).to_bytes(1, signed=False),
                     True,
                     4,
                     False
@@ -198,8 +198,8 @@ class LockingSerial:
         epoch_time_at_receiver = time.time() + self.latency_seconds
         logger.info(f'Setting epoch time at receiver:  {epoch_time_at_receiver}')
         sync_success = bool(self.write_then_read(
-            set_epoch_time_cmd.to_bytes(1) +
-            (0).to_bytes(1) +
+            set_epoch_time_cmd.to_bytes(1, signed=False) +
+            (0).to_bytes(1, signed=False) +
             get_double_bytes(epoch_time_at_receiver),  # send double to preserve python's native accuracy
             True,
             1,
@@ -233,8 +233,8 @@ class LockingSerial:
 
         # adjust the epoch time by latency, so that the returned value is approximately correct immediately upon return.
         return get_python_float_from_double_bytes(self.write_then_read(
-            get_epoch_time_cmd.to_bytes(1) +
-            (0).to_bytes(1),
+            get_epoch_time_cmd.to_bytes(1, signed=False) +
+            (0).to_bytes(1, signed=False),
             True,
             8,
             False

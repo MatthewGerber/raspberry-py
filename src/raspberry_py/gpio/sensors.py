@@ -1725,6 +1725,7 @@ class RotaryEncoder(Component):
                 angular_acceleration_step_size: float,
                 serial: LockingSerial,
                 identifier: int,
+                float_scale: int,
                 state_update_hz: int
         ):
             """
@@ -1740,8 +1741,15 @@ class RotaryEncoder(Component):
             :param angular_acceleration_step_size: Step size for angular acceleration smoothing.
             :param serial: Serial connection to the Arduino.
             :param identifier: Identifier associated with the rotary encoder on the Pi and Arduino.
+            :param float_scale: Scaling to apply when sending/receiving floating-point values as fixed-point integers.
+            This should be a positive integer, for example 1000 for scaling to the thousandths place. Floats are
+            multiplied by this value before sending and then divided by this value upon receipt to recover the original
+            floating-point value.
             :param state_update_hz: State updates per second.
             """
+
+            if float_scale <= 0:
+                raise ValueError(f'Float scaling requires a positive integer, but got:  {float_scale}')
 
             super().__init__(
                 phase_a_pin=phase_a_pin,
@@ -1755,6 +1763,7 @@ class RotaryEncoder(Component):
 
             self.serial = serial
             self.identifier = identifier
+            self.float_scale = float_scale
             self.state_update_hz = state_update_hz
 
         def start(
@@ -1765,14 +1774,15 @@ class RotaryEncoder(Component):
             """
 
             self.serial.write_then_read(
-                RotaryEncoder.Arduino.Command.INIT.to_bytes(1) +
-                self.identifier.to_bytes(1) +
-                self.phase_a_pin.to_bytes(1) +
-                self.phase_b_pin.to_bytes(1) +
+                RotaryEncoder.Arduino.Command.INIT.to_bytes(1, signed=False) +
+                self.identifier.to_bytes(1, signed=False) +
+                self.phase_a_pin.to_bytes(1, signed=False) +
+                self.phase_b_pin.to_bytes(1, signed=False) +
                 get_single_bytes(self.angle_step_size) +
                 get_single_bytes(self.angular_velocity_step_size) +
                 get_single_bytes(self.angular_acceleration_step_size) +
-                self.state_update_hz.to_bytes(1),
+                self.float_scale.to_bytes(4, signed=False) +
+                self.state_update_hz.to_bytes(1, signed=False),
                 True,
                 0,
                 False
@@ -1788,24 +1798,23 @@ class RotaryEncoder(Component):
             :param update_velocity_and_acceleration: Whether to update velocity and acceleration estimates.
             """
 
-            float_scale = 0.001
-
             state_bytes = self.serial.write_then_read(
-                RotaryEncoder.Arduino.Command.GET_STATE.to_bytes(1) + self.identifier.to_bytes(1),
+                RotaryEncoder.Arduino.Command.GET_STATE.to_bytes(1, signed=False) +
+                self.identifier.to_bytes(1, signed=False),
                 True,
                 21,
                 False
             )
             num_phase_changes = int.from_bytes(state_bytes[0:4], signed=False)
-            net_total_degrees = int.from_bytes(state_bytes[4:8]) * float_scale
+            net_total_degrees = int.from_bytes(state_bytes[4:8], signed=True) / self.float_scale
             degrees = net_total_degrees % 360.0
 
             return RotaryEncoder.State(
                 num_phase_changes=num_phase_changes,
                 net_total_degrees=net_total_degrees,
                 degrees=degrees,
-                angular_velocity=int.from_bytes(state_bytes[8:12]) * float_scale,
-                angular_acceleration=int.from_bytes(state_bytes[12:16]) * float_scale,
+                angular_velocity=int.from_bytes(state_bytes[8:12], signed=True) / self.float_scale,
+                angular_acceleration=int.from_bytes(state_bytes[12:16], signed=True) / self.float_scale,
                 clockwise=bool(int.from_bytes(state_bytes[16:17], signed=False)),
                 epoch_ms=int.from_bytes(state_bytes[17:21], signed=False)
             )
@@ -1821,9 +1830,9 @@ class RotaryEncoder(Component):
             """
 
             self.serial.write_then_read(
-                RotaryEncoder.Arduino.Command.SET_NET_TOTAL_DEGREES.to_bytes(1) +
-                self.identifier.to_bytes(1) +
-                int(net_total_degrees * 1000.0).to_bytes(4, signed=True),
+                RotaryEncoder.Arduino.Command.SET_NET_TOTAL_DEGREES.to_bytes(1, signed=False) +
+                self.identifier.to_bytes(1, signed=False) +
+                int(net_total_degrees * self.float_scale).to_bytes(4, signed=True),
                 True,
                 0,
                 False
@@ -1837,8 +1846,8 @@ class RotaryEncoder(Component):
             """
 
             self.serial.write_then_read(
-                RotaryEncoder.Arduino.Command.STOP.to_bytes(1) +
-                self.identifier.to_bytes(1),
+                RotaryEncoder.Arduino.Command.STOP.to_bytes(1, signed=False) +
+                self.identifier.to_bytes(1, signed=False),
                 True,
                 0,
                 False

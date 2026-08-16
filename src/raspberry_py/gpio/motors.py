@@ -255,10 +255,10 @@ class DcMotorDriverIndirectArduino(DcMotorDriver):
 
         if not previous_state.on and new_state.on:
             self.serial.write_then_read(
-                DcMotorDriverIndirectArduino.Command.INIT.to_bytes(1) +
-                self.identifier.to_bytes(1) +
-                self.arduino_direction_pin.to_bytes(1) +
-                self.arduino_pwm_pin.to_bytes(1),
+                DcMotorDriverIndirectArduino.Command.INIT.to_bytes(1, signed=False) +
+                self.identifier.to_bytes(1, signed=False) +
+                self.arduino_direction_pin.to_bytes(1, signed=False) +
+                self.arduino_pwm_pin.to_bytes(1, signed=False),
                 True,
                 0,
                 False
@@ -272,10 +272,10 @@ class DcMotorDriverIndirectArduino(DcMotorDriver):
 
         if new_speed is not None and promise_ms is not None:
             self.serial.write_then_read(
-                DcMotorDriverIndirectArduino.Command.SET_SPEED.to_bytes(1) +
-                self.identifier.to_bytes(1) +
+                DcMotorDriverIndirectArduino.Command.SET_SPEED.to_bytes(1, signed=False) +
+                self.identifier.to_bytes(1, signed=False) +
                 new_speed.to_bytes(2, signed=True) +
-                promise_ms.to_bytes(2),
+                promise_ms.to_bytes(2, signed=False),
                 True,
                 0,
                 False
@@ -1250,7 +1250,8 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             driver_pin_4: int,
             identifier: int,
             serial: LockingSerial,
-            asynchronous: bool
+            asynchronous: bool,
+            float_scale: int
     ):
         """
         Initialize the driver.
@@ -1262,7 +1263,14 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         :param identifier: Identifier.
         :param serial: Serial connection to the Arduino.
         :param asynchronous: Whether the driver should operate asynchronously.
+        :param float_scale: Scaling to apply when sending/receiving floating-point values as fixed-point integers. This
+        should be a positive integer, for example 1000 for scaling to the thousandths place. Floats are multiplied by
+        this value before sending and then divided by this value upon receipt to recover the original floating-point
+        value.
         """
+
+        if float_scale <= 0:
+            raise ValueError(f'Float scaling requires a positive integer, but got:  {float_scale}')
 
         super().__init__(
             driver_pin_1,
@@ -1274,6 +1282,7 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         self.identifier = identifier
         self.serial = serial
         self.asynchronous = asynchronous
+        self.float_scale = float_scale
 
     def start(self):
         """
@@ -1281,13 +1290,14 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         """
 
         success = bool(self.serial.write_then_read(
-            StepperMotorDriverArduinoUln2003.Command.INIT.to_bytes(1) +
-            self.identifier.to_bytes(1) +
-            self.driver_pin_1.to_bytes(1) +
-            self.driver_pin_2.to_bytes(1) +
-            self.driver_pin_3.to_bytes(1) +
-            self.driver_pin_4.to_bytes(1) +
-            (-1).to_bytes(2, signed=True),
+            StepperMotorDriverArduinoUln2003.Command.INIT.to_bytes(1, signed=False) +
+            self.identifier.to_bytes(1, signed=False) +
+            self.driver_pin_1.to_bytes(1, signed=False) +
+            self.driver_pin_2.to_bytes(1, signed=False) +
+            self.driver_pin_3.to_bytes(1, signed=False) +
+            self.driver_pin_4.to_bytes(1, signed=False) +
+            (-1).to_bytes(2, signed=True) +
+            self.float_scale.to_bytes(4, signed=False),
             True,
             1,
             False
@@ -1320,11 +1330,11 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             raise ValueError(f'Maximum time (ms) to step:  {StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT}')
 
         bytes_to_write = (
-            StepperMotorDriverArduinoUln2003.Command.STEP.to_bytes(1) +
-            self.identifier.to_bytes(1) +
+            StepperMotorDriverArduinoUln2003.Command.STEP.to_bytes(1, signed=False) +
+            self.identifier.to_bytes(1, signed=False) +
             num_steps.to_bytes(2, signed=True) +
-            ms_to_step.to_bytes(2) +
-            self.idx.to_bytes(2)
+            ms_to_step.to_bytes(2, signed=False) +
+            self.idx.to_bytes(2, signed=False)
         )
         self.serial.write_then_read(bytes_to_write, True, 0, False)
 
@@ -1348,14 +1358,14 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         :return: 4-tuple of the stepper id, skipped steps, the step-call index that completed, and the done time epoch.
         """
 
-        float_scale = 0.001
-
         result_bytes = self.serial.connection.read(self.STEPPER_DONE_RESPONSE_NUM_BYTES)
         assert len(result_bytes) == self.STEPPER_DONE_RESPONSE_NUM_BYTES
         stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
-        skipped_steps = int.from_bytes(result_bytes[1:5]) * float_scale
+        skipped_steps = int.from_bytes(result_bytes[1:5], signed=True) / self.float_scale
         idx = int.from_bytes(result_bytes[5:7], signed=False)
-        done_time_epoch = int.from_bytes(result_bytes[7:11]) * float_scale + self.serial.latency_seconds
+        done_time_epoch = (
+            int.from_bytes(result_bytes[7:11], signed=False) / self.float_scale + self.serial.latency_seconds
+        )
 
         return stepper_id, skipped_steps, idx, done_time_epoch
 
@@ -1365,8 +1375,8 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         """
 
         success = bool(self.serial.write_then_read(
-            StepperMotorDriverArduinoUln2003.Command.STOP.to_bytes(1) +
-            self.identifier.to_bytes(1),
+            StepperMotorDriverArduinoUln2003.Command.STOP.to_bytes(1, signed=False) +
+            self.identifier.to_bytes(1, signed=False),
             True,
             1,
             False
@@ -1402,7 +1412,8 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
             direction_pin: int,
             identifier: int,
             serial: LockingSerial,
-            asynchronous: bool
+            asynchronous: bool,
+            float_scale: int
     ):
         """
         Initialize the driver.
@@ -1413,7 +1424,14 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         :param identifier: Identifier.
         :param serial: Serial connection to the Arduino.
         :param asynchronous: Whether the driver should operate asynchronously.
+        :param float_scale: Scaling to apply when sending/receiving floating-point values as fixed-point integers. This
+        should be a positive integer, for example 1000 for scaling to the thousandths place. Floats are multiplied by
+        this value before sending and then divided by this value upon receipt to recover the original floating-point
+        value.
         """
+
+        if float_scale <= 0:
+            raise ValueError(f'Float scaling requires a positive integer, but got:  {float_scale}')
 
         super().__init__()
 
@@ -1423,6 +1441,7 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         self.identifier = identifier
         self.serial = serial
         self.asynchronous = asynchronous
+        self.float_scale = float_scale
 
     def start(self):
         """
@@ -1430,11 +1449,12 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         """
 
         success = bool(self.serial.write_then_read(
-            StepperMotorDriverArduinoA4988.Command.INIT.to_bytes(1) +
-            self.identifier.to_bytes(1) +
-            self.driver_pin.to_bytes(1) +
+            StepperMotorDriverArduinoA4988.Command.INIT.to_bytes(1, signed=False) +
+            self.identifier.to_bytes(1, signed=False) +
+            self.driver_pin.to_bytes(1, signed=False) +
             self.disable_pin.to_bytes(2, signed=True) +
-            self.direction_pin.to_bytes(2, signed=True),
+            self.direction_pin.to_bytes(2, signed=True) +
+            self.float_scale.to_bytes(4, signed=False),
             True,
             1,
             False
@@ -1467,11 +1487,11 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
             raise ValueError(f'Maximum time (ms) to step:  {StepperMotorDriverArduinoA4988.MAX_TWO_BYTE_UNSIGNED_INT}')
 
         bytes_to_write = (
-            StepperMotorDriverArduinoA4988.Command.STEP.to_bytes(1) +
-            self.identifier.to_bytes(1) +
+            StepperMotorDriverArduinoA4988.Command.STEP.to_bytes(1, signed=False) +
+            self.identifier.to_bytes(1, signed=False) +
             num_steps.to_bytes(2, signed=True) +
-            ms_to_step.to_bytes(2) +
-            self.idx.to_bytes(2)
+            ms_to_step.to_bytes(2, signed=False) +
+            self.idx.to_bytes(2, signed=False)
         )
         self.serial.write_then_read(bytes_to_write, True, 0, False)
 
@@ -1495,14 +1515,14 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         :return: 4-tuple of the stepper id, skipped steps, the step-call index that completed, and the done time epoch.
         """
 
-        float_scale = 0.001
-
         result_bytes = self.serial.connection.read(self.STEPPER_DONE_RESPONSE_NUM_BYTES)
         assert len(result_bytes) == self.STEPPER_DONE_RESPONSE_NUM_BYTES
         stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
-        skipped_steps = int.from_bytes(result_bytes[1:5]) * float_scale
+        skipped_steps = int.from_bytes(result_bytes[1:5], signed=True) / self.float_scale
         idx = int.from_bytes(result_bytes[5:7], signed=False)
-        done_time_epoch = int.from_bytes(result_bytes[7:11]) * float_scale + self.serial.latency_seconds
+        done_time_epoch = (
+            int.from_bytes(result_bytes[7:11], signed=False) / self.float_scale + self.serial.latency_seconds
+        )
 
         return stepper_id, skipped_steps, idx, done_time_epoch
 
@@ -1512,8 +1532,8 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         """
 
         success = bool(self.serial.write_then_read(
-            StepperMotorDriverArduinoA4988.Command.STOP.to_bytes(1) +
-            self.identifier.to_bytes(1),
+            StepperMotorDriverArduinoA4988.Command.STOP.to_bytes(1, signed=False) +
+            self.identifier.to_bytes(1, signed=False),
             True,
             1,
             False
