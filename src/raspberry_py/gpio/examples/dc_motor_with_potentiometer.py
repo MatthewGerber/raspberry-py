@@ -7,13 +7,13 @@ from raspberry_py.gpio import setup, CkPin, cleanup
 from raspberry_py.gpio.adc import ADS7830
 from raspberry_py.gpio.motors import DcMotor, DcMotorDriverL293D
 
+logger = logging.getLogger(__name__)
+
 
 def main():
     """
     This example drives a DC motor as shown on page 164 of the tutorial.
     """
-
-    logging.getLogger().setLevel(logging.DEBUG)
 
     setup()
 

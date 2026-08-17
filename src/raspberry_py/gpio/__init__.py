@@ -9,7 +9,6 @@ from typing import List, Callable, Optional, Dict, Tuple, Union
 
 import RPi.GPIO as gpio
 
-
 logger = logging.getLogger(__name__)
 _gpio_pin_numbering = gpio.BOARD
 

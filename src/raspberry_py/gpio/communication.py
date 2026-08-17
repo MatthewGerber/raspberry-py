@@ -1,6 +1,6 @@
 import logging
 import time
-from statistics import mean
+from statistics import mean, stdev
 from threading import RLock
 from typing import Optional
 
@@ -198,16 +198,19 @@ class LockingSerial:
             for t1, t2 in zip(remote_current_time_us_samples[:-1], remote_current_time_us_samples[1:], strict=True)
         ]
         round_trip_times_mean_us = mean(round_trip_times_us)
+        round_trip_times_std = stdev(round_trip_times_us)
+
+        logger.info(f'Average RTT={round_trip_times_mean_us:.1f} us; stdev={round_trip_times_std:.1f} us')
 
         # assume symmetric write-read latency and estimate half-trip time
         self.half_trip_time_us = round_trip_times_mean_us / 2.0
         self.remote_epoch_us = self.get_remote_current_time_us(get_current_time_us_cmd) + self.half_trip_time_us
         self.remote_epoch_local_sec = time.time()
 
-        # wait a while before testing sync
-        time.sleep(5.0)
+        # wait a bit before testing sync
+        time.sleep(1.0)
 
-        logging.info(
+        logger.info(
             f'Synchronized. Remote epoch time:  {self.get_remote_epoch_time_sec(get_current_time_us_cmd)}; '
             f'local epoch time:  {time.time()}.'
         )
