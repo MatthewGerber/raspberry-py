@@ -254,7 +254,7 @@ def get_single_bytes(
 
 
 def get_python_float_from_single_bytes(
-    single_bytes: bytes
+        single_bytes: bytes
 ) -> float:
     """
     Get Python float for a 4-byte array representing a single-precision floating-point value.
@@ -283,7 +283,7 @@ def get_double_bytes(
 
 
 def get_python_float_from_double_bytes(
-    double_bytes: bytes
+        double_bytes: bytes
 ) -> float:
     """
     Get Python float for an 8-byte array representing a double-precision floating-point value.
@@ -295,6 +295,58 @@ def get_python_float_from_double_bytes(
     assert len(double_bytes) == 8
     return struct.unpack('<d', double_bytes)[0]
 
+
+def get_float_scale_bytes(
+        float_scale: int
+) -> bytes:
+    """
+    Gets 4-byte representation of a float scale value, typically sent to a remote endpoint to synchronize the scaling.
+
+    :param float_scale: Scaling to apply when sending/receiving floating-point values as fixed-point integers. This
+    should be a positive integer, for example 1000 for scaling to the thousandths place. Floats are multiplied by this
+    value before sending and then divided by this value upon receipt to recover the original floating-point value.
+    :return: 4-byte representation of an unsigned long.
+    """
+
+    if float_scale <= 0:
+        raise ValueError(f'Float scale must be positive, but got {float_scale}.')
+
+    return float_scale.to_bytes(4, signed=False)
+
+
+def get_fixed_point_long_bytes_from_python_float(
+        value: float,
+        float_scale: int
+) -> bytes:
+    """
+    Get a 4-byte array representing a signed long value after multiplying it by a scale.
+
+    :param value: Python float.
+    :param float_scale: Scaling to apply when sending/receiving floating-point values as fixed-point integers. This
+    should be a positive integer, for example 1000 for scaling to the thousandths place. Floats are multiplied by this
+    value before sending and then divided by this value upon receipt to recover the original floating-point value.
+    :return: 4-byte array.
+    """
+
+    return int(value * float_scale).to_bytes(4, signed=True)
+
+
+def get_python_float_from_fixed_point_long_bytes(
+        long_bytes: bytes,
+        float_scale: int
+) -> float:
+    """
+    Get Python float for a 4-byte array representing a signed long value after multiplying it by a scale.
+
+    :param long_bytes: 4-byte array for a signed long value resulting from multiplying the original float by the float
+    scale.
+    :param float_scale: Scaling to apply when sending/receiving floating-point values as fixed-point integers. This
+    should be a positive integer, for example 1000 for scaling to the thousandths place. Floats are multiplied by this
+    value before sending and then divided by this value upon receipt to recover the original floating-point value.
+    :return: Python float.
+    """
+
+    return int.from_bytes(long_bytes, signed=True) / float(float_scale)
 
 def get_base_64_str(
         buffer: bytes

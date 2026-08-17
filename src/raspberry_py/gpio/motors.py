@@ -12,6 +12,7 @@ from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.communication import LockingSerial
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
 from raspberry_py.rest.application import RpyFlask
+from raspberry_py.utils import get_python_float_from_fixed_point_long_bytes, get_float_scale_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -1296,8 +1297,9 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             self.driver_pin_2.to_bytes(1, signed=False) +
             self.driver_pin_3.to_bytes(1, signed=False) +
             self.driver_pin_4.to_bytes(1, signed=False) +
-            (-1).to_bytes(2, signed=True) +
-            self.float_scale.to_bytes(4, signed=False),
+            (-1).to_bytes(2, signed=True) +  # optional disable pin (-1 for none)
+            (-1).to_bytes(2, signed=True) +  # optional direction pin (-1 for none)
+            get_float_scale_bytes(self.float_scale),
             True,
             1,
             False
@@ -1327,7 +1329,9 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
 
         ms_to_step = int(time_to_step.total_seconds() * 1000.0)
         if ms_to_step > StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT:
-            raise ValueError(f'Maximum time (ms) to step:  {StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT}')
+            raise ValueError(
+                f'Maximum time (ms) to step:  {StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT}'
+            )
 
         bytes_to_write = (
             StepperMotorDriverArduinoUln2003.Command.STEP.to_bytes(1, signed=False) +
@@ -1361,10 +1365,10 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         result_bytes = self.serial.connection.read(self.STEPPER_DONE_RESPONSE_NUM_BYTES)
         assert len(result_bytes) == self.STEPPER_DONE_RESPONSE_NUM_BYTES
         stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
-        skipped_steps = int.from_bytes(result_bytes[1:5], signed=True) / self.float_scale
+        skipped_steps = get_python_float_from_fixed_point_long_bytes(result_bytes[1:5], self.float_scale)
         idx = int.from_bytes(result_bytes[5:7], signed=False)
-        done_time_epoch = (
-            int.from_bytes(result_bytes[7:11], signed=False) / self.float_scale + self.serial.latency_seconds
+        done_time_epoch = self.serial.convert_remote_time_us_to_local_seconds(
+            int.from_bytes(result_bytes[7:11], signed=False)
         )
 
         return stepper_id, skipped_steps, idx, done_time_epoch
@@ -1454,7 +1458,7 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
             self.driver_pin.to_bytes(1, signed=False) +
             self.disable_pin.to_bytes(2, signed=True) +
             self.direction_pin.to_bytes(2, signed=True) +
-            self.float_scale.to_bytes(4, signed=False),
+            get_float_scale_bytes(self.float_scale),
             True,
             1,
             False
@@ -1518,10 +1522,10 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         result_bytes = self.serial.connection.read(self.STEPPER_DONE_RESPONSE_NUM_BYTES)
         assert len(result_bytes) == self.STEPPER_DONE_RESPONSE_NUM_BYTES
         stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
-        skipped_steps = int.from_bytes(result_bytes[1:5], signed=True) / self.float_scale
+        skipped_steps = get_python_float_from_fixed_point_long_bytes(result_bytes[1:5], self.float_scale)
         idx = int.from_bytes(result_bytes[5:7], signed=False)
-        done_time_epoch = (
-            int.from_bytes(result_bytes[7:11], signed=False) / self.float_scale + self.serial.latency_seconds
+        done_time_epoch = self.serial.convert_remote_time_us_to_local_seconds(
+            int.from_bytes(result_bytes[7:11], signed=False)
         )
 
         return stepper_id, skipped_steps, idx, done_time_epoch

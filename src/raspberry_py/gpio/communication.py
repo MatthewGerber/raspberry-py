@@ -1,10 +1,9 @@
 import logging
 import time
-from statistics import mean, stdev
+from statistics import mean
 from threading import RLock
 from typing import Optional
 
-from raspberry_py.utils import get_double_bytes, get_python_float_from_double_bytes
 from serial import Serial
 
 logger = logging.getLogger(__name__)
@@ -41,7 +40,9 @@ class LockingSerial:
         self.bytes_read_per_second = 0.0
         self.bytes_written_per_second = 0.0
         self.buffer = []
-        self.latency_seconds: Optional[float] = None
+        self.half_trip_time_us: Optional[float] = None
+        self.remote_epoch_us: Optional[int] = None
+        self.remote_epoch_local_sec: Optional[float] = None
 
     def write_then_read(
             self,
@@ -148,94 +149,97 @@ class LockingSerial:
 
         self.throughput_time_epoch_seconds = current_time_epoch_seconds
 
-    def synchronize_receiver_epoch_time(
+    def get_remote_current_time_us(
             self,
-            get_current_time_us_cmd: int,
-            set_epoch_time_cmd: int,
-            get_epoch_time_cmd: int
+            get_current_time_us_cmd: int
+    ) -> int:
+        """
+        Get current time from the remote.
+
+        :param get_current_time_us_cmd: Command to get the current time (us) from the remote.
+        :return: Current time at the remote (us).
+        """
+
+        return int.from_bytes(
+            self.write_then_read(
+                get_current_time_us_cmd.to_bytes(1, signed=False) +
+                (0).to_bytes(1, signed=False),
+                True,
+                4,
+                False
+            ),
+            signed=False
+        )
+
+    def synchronize_remote_epoch_time(
+            self,
+            get_current_time_us_cmd: int
     ):
         """
-        Synchronize the epoch time from Python to the receiver of the serial communication line.
+        Synchronize the epoch time from Python to the remote.
 
-        :param get_current_time_us_cmd: Command to get the current time (us) from the receiver.
-        :param set_epoch_time_cmd: Command to set the current time (epoch) on the receiver.
-        :param get_epoch_time_cmd: Command to get the current time (epoch) from the receiver.
+        :param get_current_time_us_cmd: Command to get the current time (us) from the remote.
         """
 
         if self.manual_buffer:
             raise ValueError('Cannot synchronize epoch time when buffering manually.')
 
-        logger.info('Synchronizing epoch time with serial receiver.')
+        logger.info('Synchronizing remote epoch time.')
 
         # draw 200 current-time samples, ignoring the first 100 to avoid start-up or lazy-loading effects.
-        curr_time_us_samples = [
-            int.from_bytes(
-                self.write_then_read(
-                    get_current_time_us_cmd.to_bytes(1, signed=False) +
-                    (0).to_bytes(1, signed=False),
-                    True,
-                    4,
-                    False
-                ),
-                signed=False
-            )
+        remote_current_time_us_samples = [
+            self.get_remote_current_time_us(get_current_time_us_cmd)
             for _ in range(200)
         ][100:]
 
         # convert to round-trip times
-        round_trip_times_secs = [
-            (t2 - t1) / (10 ** 6)
-            for t1, t2 in zip(curr_time_us_samples[:-1], curr_time_us_samples[1:], strict=True)
+        round_trip_times_us = [
+            t2 - t1
+            for t1, t2 in zip(remote_current_time_us_samples[:-1], remote_current_time_us_samples[1:], strict=True)
         ]
-        round_trip_times_mean_secs = mean(round_trip_times_secs)
-        round_trip_times_std = stdev(round_trip_times_secs)
+        round_trip_times_mean_us = mean(round_trip_times_us)
 
         # assume symmetric write-read latency and estimate half-trip time
-        self.latency_seconds = round_trip_times_mean_secs / 2.0
+        self.half_trip_time_us = round_trip_times_mean_us / 2.0
+        self.remote_epoch_us = self.get_remote_current_time_us(get_current_time_us_cmd) + self.half_trip_time_us
+        self.remote_epoch_local_sec = time.time()
 
-        # set the receiver's epoch time as the current time plus write latency, so that the value that is set at the
-        # receiver is as accurate at possible at the time when it is set.
-        epoch_time_at_receiver = time.time() + self.latency_seconds
-        logger.info(f'Setting epoch time at receiver:  {epoch_time_at_receiver}')
-        sync_success = bool(self.write_then_read(
-            set_epoch_time_cmd.to_bytes(1, signed=False) +
-            (0).to_bytes(1, signed=False) +
-            get_double_bytes(epoch_time_at_receiver),  # send double to preserve python's native accuracy
-            True,
-            1,
-            False
-        ))
-        if sync_success:
-            logger.info(
-                f'Synchronized epoch time. RTT stdev={round_trip_times_std}; '
-                f'latency seconds:  {self.latency_seconds}'
-            )
-        else:
-            raise ValueError('Failed to synchronize epoch time.')
+        # wait a while before testing sync
+        time.sleep(5.0)
 
         logging.info(
-            f'Epoch (Python):  {time.time()}; epoch (Arduino):  {self.get_receiver_epoch_time(get_epoch_time_cmd)}'
+            f'Synchronized. Remote epoch time:  {self.get_remote_epoch_time_sec(get_current_time_us_cmd)}; '
+            f'local epoch time:  {time.time()}.'
         )
 
-    def get_receiver_epoch_time(
+    def get_remote_epoch_time_sec(
             self,
             get_epoch_time_cmd: int
     ) -> float:
         """
-        Get epoch time at the receiver. Must have previously synchronized using `synchronize_epoch_time`.
+        Get remote epoch time (seconds). Must have previously synchronized using `synchronize_remote_epoch_time`.
 
-        :param get_epoch_time_cmd: Command to get epoch time at the receiver.
-        :return: Epoch time.
+        :param get_epoch_time_cmd: Command to get epoch time from the remote.
+        :return: Epoch time (seconds) at the remote, which is intended to be accurately only immediately upon return.
         """
 
         if self.manual_buffer:
             raise ValueError('Cannot get epoch time when buffering manually.')
 
-        # adjust the epoch time by latency, so that the returned value is approximately correct immediately upon return.
-        return get_python_float_from_double_bytes(self.write_then_read(
-            get_epoch_time_cmd.to_bytes(1, signed=False) +
-            (0).to_bytes(1, signed=False),
-            True,
-            8,
-            False
-        )) + self.latency_seconds
+        return self.convert_remote_time_us_to_local_seconds(self.get_remote_current_time_us(get_epoch_time_cmd))
+
+    def convert_remote_time_us_to_local_seconds(
+            self,
+            remote_time_us: int
+    ) -> float:
+        """
+        Convert remote time (us) to local seconds, adjusting for latency.
+
+        :param remote_time_us: Remote time (us).
+        :return: Remote time converted to local epoch time (seconds), adjusted for latency.
+        """
+
+        elapsed_remote_time_us_adjusted = remote_time_us + self.half_trip_time_us - self.remote_epoch_us
+        elapsed_remote_time_sec_adjusted = elapsed_remote_time_us_adjusted / (10.0 ** 6)
+
+        return self.remote_epoch_local_sec + elapsed_remote_time_sec_adjusted
