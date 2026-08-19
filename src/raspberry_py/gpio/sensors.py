@@ -1904,7 +1904,7 @@ class RotaryEncoder(Component):
 
         logger.info('Waiting for stationarity.')
         num_phase_changes = None
-        while (new_num_phase_changes := self.interface.get_state().num_phase_changes) != num_phase_changes:
+        while new_num_phase_changes := self.interface.get_state().num_phase_changes != num_phase_changes:
             num_phase_changes = new_num_phase_changes
             logger.debug('Waiting for stationarity.')
             time.sleep(wait_interval_seconds)
