@@ -1781,6 +1781,8 @@ class RotaryEncoder(Component):
             Start the interface.
             """
 
+            logger.info(f'Starting Arduino rotary encoder interface {self.identifier}.')
+
             self.serial.write_then_read(
                 RotaryEncoder.Arduino.Command.INIT.to_bytes(1, signed=False) +
                 self.identifier.to_bytes(1, signed=False) +
@@ -1795,6 +1797,8 @@ class RotaryEncoder(Component):
                 0,
                 False
             )
+
+            logger.info('Started.')
 
         def get_state(
                 self,
