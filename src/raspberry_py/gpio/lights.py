@@ -2,7 +2,7 @@ import time
 from datetime import timedelta
 from enum import Enum, auto
 from threading import Thread
-from typing import List, Optional, Union, Dict, Tuple
+from typing import List, Optional, Union, Dict, Tuple, Set, Callable
 
 import RPi.GPIO as gpio
 import numpy as np
@@ -1309,17 +1309,20 @@ class LedStrip:
     def theater_chase_rainbow(
             self,
             delay: timedelta,
-            iterations: int
+            stop: Callable[[float], bool]
     ):
         """
         Rainbow movie theater light style chaser animation.
 
         :param delay: Delay.
-        :param iterations: Iterations.
+        :param stop: Function that takes the current elapsed time and returns True when the animation should stop.
         """
 
+        start_time = time.time()
         delay_sec = delay.total_seconds()
-        for j in range(256 * iterations):
+        j = 0
+        while not stop(time.time() - start_time):
+
             for q in range(3):
 
                 for i in range(0, len(self), 3):
@@ -1329,6 +1332,10 @@ class LedStrip:
                 time.sleep(delay_sec)
                 for i in range(0, len(self), 3):
                     self[i + q] = LedStrip.OFF
+
+            j += 1
+
+        self.turn_off()
 
     def strobe(
             self,
@@ -1479,6 +1486,8 @@ class FrameLedStrip(LedStrip):
         self.top_gap = self.height_mm - self.illuminated_height_mm - self.bottom_gap
         assert all(v >= 0.0 for v in [self.left_gap, self.right_gap, self.bottom_gap, self.top_gap])
 
+        self.set_pixels = set()
+
     def get_led_idx_for_x(
             self,
             x_mm: float,
@@ -1533,12 +1542,12 @@ class FrameLedStrip(LedStrip):
         :param color: Color.
         """
 
-        new_pixels = (
+        new_pixels = {
             self.get_led_idx_for_y(y_mm, True),
             self.get_led_idx_for_y(y_mm, False),
             self.get_led_idx_for_x(x_mm, True),
             self.get_led_idx_for_x(x_mm, False)
-        )
+        }
         self.set_new_pixels(new_pixels, color)
 
     def corners(
@@ -1551,17 +1560,17 @@ class FrameLedStrip(LedStrip):
         :param color: Color.
         """
 
-        new_pixels = (
+        new_pixels = {
             self.get_led_idx_for_y(0.0, True),
             self.get_led_idx_for_y(self.height_mm, True),
             self.get_led_idx_for_y(0.0, False),
             self.get_led_idx_for_y(self.height_mm, False)
-        )
+        }
         self.set_new_pixels(new_pixels, color)
 
     def set_new_pixels(
             self,
-            new_pixels: Tuple[int, int, int, int],
+            new_pixels: Set[int],
             color: RGBW
     ):
         """
@@ -1571,7 +1580,13 @@ class FrameLedStrip(LedStrip):
         :param color: Color.
         """
 
-        self.turn_off()
+        for i in self.set_pixels:
+            if i not in new_pixels:
+                self[i] = LedStrip.OFF
+
         for i in new_pixels:
             self[i] = color
+
         self.show()
+
+        self.set_pixels = new_pixels
