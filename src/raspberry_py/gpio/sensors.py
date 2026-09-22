@@ -20,7 +20,16 @@ from raspberry_py.gpio.adc import AdcDevice
 from raspberry_py.gpio.communication import LockingSerial
 from raspberry_py.gpio.controls import TwoPoleButton
 from raspberry_py.rest.application import RpyFlask
-from raspberry_py.utils import IncrementalSampleAverager, get_bytes, get_float, get_base_64_str
+from raspberry_py.utils import (
+    IncrementalSampleAverager,
+    get_base_64_str,
+    get_single_bytes,
+    get_python_float_from_fixed_point_long_bytes,
+    get_fixed_point_long_bytes_from_python_float,
+    get_float_scale_bytes
+)
+
+logger = logging.getLogger(__name__)
 
 
 class Photoresistor(Component):
@@ -455,7 +464,7 @@ class Hygrothermograph(Component):
 
         t = time.time()
         while time.time() - t < self.TIMEOUT_SECS:
-            if gpio.input(self.pin) == value:
+            if gpio.input(int(self.pin)) == value:
                 break
         else:
             return False
@@ -528,10 +537,10 @@ class InfraredMotionSensor(Component):
 
         gpio.setup(sensor_pin, gpio.IN)
         gpio.add_event_detect(
-            self.sensor_pin,
+            int(self.sensor_pin),
             gpio.BOTH,
             callback=lambda channel: self.set_state(
-                InfraredMotionSensor.State(gpio.input(self.sensor_pin) == gpio.HIGH)
+                InfraredMotionSensor.State(gpio.input(int(self.sensor_pin)) == gpio.HIGH)
             ),
             bouncetime=10
         )
@@ -607,7 +616,7 @@ class UltrasonicRangeFinder(Component):
         # wait for the echo pin to flip to high
         wait_start_time = time.time()
         while time.time() - wait_start_time < UltrasonicRangeFinder.ECHO_TIMEOUT_SECONDS:
-            if gpio.input(self.echo_pin) == gpio.HIGH:
+            if gpio.input(int(self.echo_pin)) == gpio.HIGH:
                 echo_start_time = time.time()
                 break
         else:
@@ -616,7 +625,7 @@ class UltrasonicRangeFinder(Component):
 
         # mark the time and wait for the echo pin to flip to low
         while time.time() - echo_start_time < UltrasonicRangeFinder.ECHO_TIMEOUT_SECONDS:
-            if gpio.input(self.echo_pin) == gpio.LOW:
+            if gpio.input(int(self.echo_pin)) == gpio.LOW:
                 echo_end_time = time.time()
                 break
         else:
@@ -842,7 +851,7 @@ class Camera(Component):
         # encode as jpg -> base64 string
         image_jpg_bytes = cv2.imencode('.jpg', image_bytes)[1]
 
-        return get_base_64_str(image_jpg_bytes)
+        return get_base_64_str(image_jpg_bytes)  # type: ignore
 
     def enable_face_detection(
             self
@@ -862,6 +871,17 @@ class Camera(Component):
 
         self.run_face_detection = False
 
+    def running_face_detection(
+            self
+    ) -> bool:
+        """
+        Get whether face detection is running.
+
+        :return: True if detecting faces and False otherwise.
+        """
+
+        return self.run_face_detection
+
     def enable_face_circles(
             self
     ):
@@ -879,6 +899,17 @@ class Camera(Component):
         """
 
         self.circle_detected_faces = False
+
+    def circling_faces(
+            self
+    ) -> bool:
+        """
+        Get whether faces are being circled.
+
+        :return: True if faces are being circled and False otherwise.
+        """
+
+        return self.circle_detected_faces
 
     def detect_faces(
             self,
@@ -1526,32 +1557,32 @@ class RotaryEncoder(Component):
 
                 # detect rising and falling of the phase-a signal
                 gpio.add_event_detect(
-                    self.phase_a_pin,
+                    int(self.phase_a_pin),
                     gpio.BOTH,
-                    callback=lambda channel: self.a_changed(gpio.input(self.phase_a_pin) == gpio.HIGH)
+                    callback=lambda channel: self.a_changed(gpio.input(int(self.phase_a_pin)) == gpio.HIGH)
                 )
 
                 # detect rising and falling of the phase-b signal
                 gpio.add_event_detect(
-                    self.phase_b_pin,
+                    int(self.phase_b_pin),
                     gpio.BOTH,
-                    callback=lambda channel: self.b_changed(gpio.input(self.phase_b_pin) == gpio.HIGH)
+                    callback=lambda channel: self.b_changed(gpio.input(int(self.phase_b_pin)) == gpio.HIGH)
                 )
 
             elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_TWO_EDGE:
 
                 # detect rising and falling of the phase-a pin
                 gpio.add_event_detect(
-                    self.phase_a_pin,
+                    int(self.phase_a_pin),
                     gpio.BOTH,
-                    callback=lambda channel: self.a_changed(gpio.input(self.phase_a_pin) == gpio.HIGH)
+                    callback=lambda channel: self.a_changed(gpio.input(int(self.phase_a_pin)) == gpio.HIGH)
                 )
 
             elif self.phase_change_mode == RotaryEncoder.PhaseChangeMode.ONE_SIGNAL_ONE_EDGE:
 
                 # detect rising of the phase-a pin
                 gpio.add_event_detect(
-                    self.phase_a_pin,
+                    int(self.phase_a_pin),
                     gpio.RISING,
                     callback=lambda channel: self.a_changed(True)
                 )
@@ -1569,7 +1600,7 @@ class RotaryEncoder(Component):
             :param high: Whether phase-a is high (True) or low (False).
             """
 
-            if high == gpio.input(self.phase_b_pin):
+            if high == gpio.input(int(self.phase_b_pin)):
                 self.phase_change_index = self.phase_change_index - 1
                 self.clockwise = False
             else:
@@ -1588,7 +1619,7 @@ class RotaryEncoder(Component):
             :param high: Whether phase-b is high (True) or low (False).
             """
 
-            if high == gpio.input(self.phase_a_pin):
+            if high == gpio.input(int(self.phase_a_pin)):
                 self.phase_change_index = self.phase_change_index + 1
                 self.clockwise = True
             else:
@@ -1702,6 +1733,7 @@ class RotaryEncoder(Component):
                 angular_acceleration_step_size: float,
                 serial: LockingSerial,
                 identifier: int,
+                float_scale: int,
                 state_update_hz: int
         ):
             """
@@ -1717,8 +1749,15 @@ class RotaryEncoder(Component):
             :param angular_acceleration_step_size: Step size for angular acceleration smoothing.
             :param serial: Serial connection to the Arduino.
             :param identifier: Identifier associated with the rotary encoder on the Pi and Arduino.
+            :param float_scale: Scaling to apply when sending/receiving floating-point values as fixed-point integers.
+            This should be a positive integer, for example 1000 for scaling to the thousandths place. Floats are
+            multiplied by this value before sending and then divided by this value upon receipt to recover the original
+            floating-point value.
             :param state_update_hz: State updates per second.
             """
+
+            if float_scale <= 0:
+                raise ValueError(f'Float scaling requires a positive integer, but got:  {float_scale}')
 
             super().__init__(
                 phase_a_pin=phase_a_pin,
@@ -1732,6 +1771,7 @@ class RotaryEncoder(Component):
 
             self.serial = serial
             self.identifier = identifier
+            self.float_scale = float_scale
             self.state_update_hz = state_update_hz
 
         def start(
@@ -1741,21 +1781,24 @@ class RotaryEncoder(Component):
             Start the interface.
             """
 
+            logger.info(f'Starting Arduino rotary encoder interface {self.identifier}.')
+
             self.serial.write_then_read(
-                RotaryEncoder.Arduino.Command.INIT.to_bytes(1) +
-                self.identifier.to_bytes(1) +
-                self.phase_a_pin.to_bytes(1) +
-                self.phase_b_pin.to_bytes(1) +
-                self.phase_changes_per_rotation.to_bytes(2) +
-                self.phase_change_mode.value.to_bytes(1) +
-                get_bytes(self.angle_step_size) +
-                get_bytes(self.angular_velocity_step_size) +
-                get_bytes(self.angular_acceleration_step_size) +
-                self.state_update_hz.to_bytes(1),
+                RotaryEncoder.Arduino.Command.INIT.to_bytes(1, signed=False) +
+                self.identifier.to_bytes(1, signed=False) +
+                self.phase_a_pin.to_bytes(1, signed=False) +
+                self.phase_b_pin.to_bytes(1, signed=False) +
+                get_single_bytes(self.angle_step_size) +
+                get_single_bytes(self.angular_velocity_step_size) +
+                get_single_bytes(self.angular_acceleration_step_size) +
+                get_float_scale_bytes(self.float_scale) +
+                self.state_update_hz.to_bytes(1, signed=False),
                 True,
                 0,
                 False
             )
+
+            logger.info('Started.')
 
         def get_state(
                 self,
@@ -1768,21 +1811,22 @@ class RotaryEncoder(Component):
             """
 
             state_bytes = self.serial.write_then_read(
-                RotaryEncoder.Arduino.Command.GET_STATE.to_bytes(1) + self.identifier.to_bytes(1),
+                RotaryEncoder.Arduino.Command.GET_STATE.to_bytes(1, signed=False) +
+                self.identifier.to_bytes(1, signed=False),
                 True,
                 21,
                 False
             )
             num_phase_changes = int.from_bytes(state_bytes[0:4], signed=False)
-            net_total_degrees = get_float(state_bytes[4:8])
+            net_total_degrees = get_python_float_from_fixed_point_long_bytes(state_bytes[4:8], self.float_scale)
             degrees = net_total_degrees % 360.0
 
             return RotaryEncoder.State(
                 num_phase_changes=num_phase_changes,
                 net_total_degrees=net_total_degrees,
                 degrees=degrees,
-                angular_velocity=get_float(state_bytes[8:12]),
-                angular_acceleration=get_float(state_bytes[12:16]),
+                angular_velocity=get_python_float_from_fixed_point_long_bytes(state_bytes[8:12], self.float_scale),
+                angular_acceleration=get_python_float_from_fixed_point_long_bytes(state_bytes[12:16], self.float_scale),
                 clockwise=bool(int.from_bytes(state_bytes[16:17], signed=False)),
                 epoch_ms=int.from_bytes(state_bytes[17:21], signed=False)
             )
@@ -1798,9 +1842,9 @@ class RotaryEncoder(Component):
             """
 
             self.serial.write_then_read(
-                RotaryEncoder.Arduino.Command.SET_NET_TOTAL_DEGREES.to_bytes(1) +
-                self.identifier.to_bytes(1) +
-                get_bytes(net_total_degrees),
+                RotaryEncoder.Arduino.Command.SET_NET_TOTAL_DEGREES.to_bytes(1, signed=False) +
+                self.identifier.to_bytes(1, signed=False) +
+                get_fixed_point_long_bytes_from_python_float(net_total_degrees, self.float_scale),
                 True,
                 0,
                 False
@@ -1814,8 +1858,8 @@ class RotaryEncoder(Component):
             """
 
             self.serial.write_then_read(
-                RotaryEncoder.Arduino.Command.STOP.to_bytes() +
-                self.identifier.to_bytes(),
+                RotaryEncoder.Arduino.Command.STOP.to_bytes(1, signed=False) +
+                self.identifier.to_bytes(1, signed=False),
                 True,
                 0,
                 False
@@ -1862,26 +1906,30 @@ class RotaryEncoder(Component):
         :param wait_interval_seconds: Wait interval (seconds).
         """
 
-        logging.info('Waiting for stationarity.')
+        logger.info('Waiting for stationarity.')
         num_phase_changes = None
         while (new_num_phase_changes := self.interface.get_state().num_phase_changes) != num_phase_changes:
             num_phase_changes = new_num_phase_changes
-            logging.debug('Waiting for stationarity.')
+            logger.debug('Waiting for stationarity.')
             time.sleep(wait_interval_seconds)
 
-        logging.info('Stationary.')
+        logger.info('Stationary.')
 
     def update_state(
             self,
             update_velocity_and_acceleration: bool = True
-    ):
+    ) -> 'RotaryEncoder.State':
         """
         Update state.
 
         :param update_velocity_and_acceleration: Whether to update velocity and acceleration estimates.
+        :return: Updated state.
         """
 
-        self.set_state(self.interface.get_state(update_velocity_and_acceleration))
+        state = self.interface.get_state(update_velocity_and_acceleration)
+        self.set_state(state)
+
+        return state
 
     def set_net_total_degrees(
             self,
@@ -1906,10 +1954,7 @@ class RotaryEncoder(Component):
         :return: Degrees.
         """
 
-        self.update_state(update_velocity_and_acceleration)
-        state: RotaryEncoder.State = self.state
-
-        return state.net_total_degrees
+        return self.update_state(update_velocity_and_acceleration).net_total_degrees
 
     def get_degrees(
             self,
@@ -1922,10 +1967,7 @@ class RotaryEncoder(Component):
         :return: Degrees.
         """
 
-        self.update_state(update_velocity_and_acceleration)
-        state: RotaryEncoder.State = self.state
-
-        return state.degrees
+        return self.update_state(update_velocity_and_acceleration).degrees
 
     def get_angular_velocity(
             self,
@@ -1938,10 +1980,7 @@ class RotaryEncoder(Component):
         :return: Angular velocity (degrees/second).
         """
 
-        self.update_state(update_velocity_and_acceleration)
-        state: RotaryEncoder.State = self.state
-
-        return state.angular_velocity
+        return self.update_state(update_velocity_and_acceleration).angular_velocity
 
     def get_angular_acceleration(
             self,
@@ -1954,10 +1993,7 @@ class RotaryEncoder(Component):
         :return: Angular acceleration (degrees/second^2).
         """
 
-        self.update_state(update_velocity_and_acceleration)
-        state: RotaryEncoder.State = self.state
-
-        return state.angular_acceleration
+        return self.update_state(update_velocity_and_acceleration).angular_acceleration
 
     def get_clockwise(
             self,
@@ -1970,10 +2006,7 @@ class RotaryEncoder(Component):
         :return: Clockwise.
         """
 
-        self.update_state(update_velocity_and_acceleration)
-        state: RotaryEncoder.State = self.state
-
-        return state.clockwise
+        return self.update_state(update_velocity_and_acceleration).clockwise
 
     def cleanup(
             self

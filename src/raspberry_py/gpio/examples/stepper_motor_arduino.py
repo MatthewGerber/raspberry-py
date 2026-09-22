@@ -35,7 +35,8 @@ def main():
         driver_pin_4=8,
         identifier=1,
         serial=locking_serial,
-        asynchronous=True
+        asynchronous=True,
+        float_scale=1000
     )
 
     # create/start stepper

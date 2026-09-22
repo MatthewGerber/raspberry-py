@@ -18,6 +18,11 @@ from flask_cors import CORS
 
 from raspberry_py.gpio import Component, cleanup
 
+
+# configure logging before initializing flask app, so that our logging is not ignored by flask.
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # keyboard keys
 LEFT_ARROW_KEYS = ['Left', 'ArrowLeft']
 RIGHT_ARROW_KEYS = ['Right', 'ArrowRight']
@@ -295,7 +300,7 @@ class CallHistory(Component):
 
         if self.record_macro:
             self.macro_calls.append(call_to_execute)
-            logging.info(f'Added macro call:  {call_to_execute}')
+            logger.info(f'Added macro call:  {call_to_execute}')
 
         return flask_response, function_return_value
 
@@ -350,6 +355,17 @@ class CallHistory(Component):
 
         self.record_history = False
 
+    def recording_history(
+            self
+    ) -> bool:
+        """
+        Get whether history is currently being recorded.
+
+        :return: True if recording and False otherwise.
+        """
+
+        return self.record_history
+
     def start_macro(
             self
     ):
@@ -359,7 +375,7 @@ class CallHistory(Component):
         """
 
         if self.record_macro:
-            logging.warning('Already recording a macro. It does not make sense to call start_macro.')
+            logger.warning('Already recording a macro. It does not make sense to call start_macro.')
         else:
             self.record_macro = True
 
@@ -389,10 +405,21 @@ class CallHistory(Component):
             self.set_state(CallHistory.State(calls))
             self.macro_calls.clear()
             self.record_macro = False
-            logging.info(f'Saved new macro:  {macro_call}')
+            logger.info(f'Saved new macro:  {macro_call}')
 
         else:
-            logging.warning('Cannot save macro when not currently recording one.')
+            logger.warning('Cannot save macro when not currently recording one.')
+
+    def recording_macro(
+            self
+    ) -> bool:
+        """
+        Get whether a macro is currently being recorded.
+
+        :return: True if recording and False otherwise.
+        """
+
+        return self.record_macro
 
     @staticmethod
     def run_macro(
@@ -426,8 +453,8 @@ class CallHistory(Component):
 
         return [
             (list_id, list_ui_element),
-            RpyFlask.get_switch(self.id, self.enable_record_history, self.disable_record_history, 'Record History', self.record_history),
-            RpyFlask.get_switch(self.id, self.start_macro, self.save_macro, 'Record Macro', self.record_macro)
+            RpyFlask.get_switch(self.id, self.enable_record_history, self.disable_record_history, 'Record History', self.record_history, (self.recording_history, timedelta(seconds=1))),
+            RpyFlask.get_switch(self.id, self.start_macro, self.save_macro, 'Record Macro', self.record_macro, (self.recording_macro, timedelta(seconds=1)))
         ]
 
 
@@ -450,11 +477,45 @@ class RpyFlask(Flask):
 
         self.id_component = {}
         self.root_components = []
+        self.call_history = CallHistory()
+        self.call_history.id = 'app-call-history'
         self.on_exit_callbacks: List[Callable[[], Any]] = []
 
-        state_dir = expanduser('~/.raspberry-py')
+        self.state_path: Optional[str] = None
+
+        # allow cross-site access from an html front-end
+        CORS(self)
+
+    def start(
+            self,
+            name: str
+    ):
+        """
+        Start the application.
+
+        :param name: Name of the application.
+        """
+
+        logger.info(f'Starting RpyFlask app:  {name}')
+
+        state_dir = join(expanduser('~'), '.raspberry-py')
         os.makedirs(state_dir, exist_ok=True)
-        self.state_path = join(state_dir, 'state.pickle')
+        self.state_path = join(state_dir, f'{name}-state.pickle')
+
+        # add the special call history component, which tracks rest calls.
+        self.add_component(self.call_history)
+        if os.path.exists(self.state_path):
+            logger.info(f'Loading state:  {self.state_path}')
+            with open(self.state_path, 'rb') as f:
+                history_state: CallHistory.State = pickle.load(f)
+                self.call_history.state = history_state
+                logger.info(f'Loaded call history state ({history_state}):  {self.state_path}')
+        else:
+            logger.info(f'No call history state exists:  {self.state_path}')
+
+        # hook atexit to the app's callback and to clean up
+        atexit.register(self.on_exit)
+        atexit.register(cleanup)
 
     def add_component(
             self,
@@ -489,36 +550,6 @@ class RpyFlask(Flask):
         for component in component.get_subcomponents():
             self._add_component(component, False)
 
-    def save_state(
-            self
-    ):
-        """
-        Save state.
-        """
-
-        with open(self.state_path, 'wb') as f:
-            history = [c for c in self.id_component.values() if isinstance(c, CallHistory)][0]
-            history_state: CallHistory.State = history.state
-            pickle.dump(history_state, f)
-            logging.info(f'Saved call history state ({history_state}):  {self.state_path}')
-
-    def load_state(
-            self
-    ):
-        """
-        Load state.
-        """
-
-        if os.path.exists(self.state_path):
-            logging.info(f'Loading state:  {self.state_path}')
-            with open(self.state_path, 'rb') as f:
-                history = [c for c in self.id_component.values() if isinstance(c, CallHistory)][0]
-                history_state: CallHistory.State = pickle.load(f)
-                history.state = history_state
-                logging.info(f'Loaded call history state ({history_state}):  {self.state_path}')
-        else:
-            logging.info(f'No call history state exists:  {self.state_path}')
-
     def on_exit(
             self
     ):
@@ -526,7 +557,10 @@ class RpyFlask(Flask):
         Save state and signal that the process running the app is about to exit.
         """
 
-        self.save_state()
+        with open(self.state_path, 'wb') as f:
+            history_state: CallHistory.State = self.call_history.state
+            pickle.dump(history_state, f)
+            logger.info(f'Saved call history state ({history_state}):  {self.state_path}')
 
         for callback in self.on_exit_callbacks:
             callback()
@@ -629,7 +663,8 @@ export async function is_checked(element) {
             on_function: Optional[Callable[[], None]],
             off_function: Optional[Callable[[], None]],
             text: Optional[str],
-            initially_on: bool
+            initially_on: bool,
+            get_on_off_function_interval: Optional[Tuple[Callable[[], bool], timedelta]]
     ) -> Tuple[str, str]:
         """
         Get switch UI element.
@@ -639,6 +674,8 @@ export async function is_checked(element) {
         :param off_function: Function to call when switch is switched off, or None for no scripting (value only).
         :param text: Readable text to display.
         :param initially_on: Initially on.
+        :param get_on_off_function_interval: 2-tuple of function and interval to call to refresh the switch state, or
+        None for no switch-state refresh.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
@@ -660,6 +697,33 @@ export async function is_checked(element) {
 
             element_id = f'{component_id}-{on_function_name}-{off_function_name}'
             element_var = element_id.replace('-', '_')
+
+            if get_on_off_function_interval is not None:
+                get_on_off_function, interval = get_on_off_function_interval
+                get_on_off_function_name = get_on_off_function.__name__
+                get_on_off_js_function_name = f'{element_id}_{get_on_off_function_name}'.replace('-', '_')
+                get_on_off_js = (
+                    f'async function {get_on_off_js_function_name}() {{\n'
+                    f'  $.ajax({{\n'
+                    f'    url: "http://" + rest_host + ":" + rest_port + "/call/{component_id}/{get_on_off_function_name}",\n'
+                    f'    type: "GET",\n'
+                    f'    success: async function (return_value) {{\n'
+                    f'      {element_var}.prop("checked", return_value);\n'
+                    f'      await new Promise(r => setTimeout(r, {interval.total_seconds() * 1000}));\n'
+                    f'      await {get_on_off_js_function_name}();\n'
+                    f'    }},\n'
+                    f'    error: async function(xhr, error){{\n'
+                    f'      console.log(error);\n'
+                    f'      await new Promise(r => setTimeout(r, {interval.total_seconds() * 1000}));\n'
+                    f'      await {get_on_off_js_function_name}();\n'
+                    f'    }}\n'
+                    f'  }});\n'
+                    f'}}\n'
+                    f'{get_on_off_js_function_name}();\n'
+                )
+            else:
+                get_on_off_js = ''
+
             script = (
                 f'\n<script type="module">\n'
                 f'import {{rest_host, rest_port}} from "./globals.js";\n'
@@ -670,6 +734,7 @@ export async function is_checked(element) {
                 f'    type: "GET"\n'
                 f'  }});\n'
                 f'}});\n'
+                f'{get_on_off_js}'
                 f'</script>'
             )
 
@@ -1574,19 +1639,6 @@ export async function is_checked(element) {
 
 app = RpyFlask(__name__)
 
-# add the special call history component, which tracks rest calls.
-call_history = CallHistory()
-call_history.id = 'app-call-history'
-app.add_component(call_history)
-app.load_state()
-
-# allow cross-site access from an html front-end
-CORS(app)
-
-# hook atexit to the app's callback and to clean up
-atexit.register(app.on_exit)
-atexit.register(cleanup)
-
 
 @app.route('/list')
 def list_components() -> Response:
@@ -1638,7 +1690,7 @@ def call(
     response, _ = call_reference.execute()
 
     if add_to_history:
-        call_history.add(call_reference)
+        app.call_history.add(call_reference)
 
     return response
 

@@ -7,14 +7,14 @@ from raspberry_py.gpio import setup, cleanup, CkPin
 from raspberry_py.gpio.adc import ADS7830
 from raspberry_py.gpio.controls import Joystick
 
+logger = logging.getLogger(__name__)
+
 
 def main():
     """
     This example displays the values of a three-axis joystick via an analog-to-digital converter, as shown on page 153
     of the tutorial.
     """
-
-    logging.getLogger().setLevel(logging.CRITICAL)
 
     setup()
 
@@ -48,6 +48,7 @@ def main():
     joystick.start_updating_state(0.1)
     time.sleep(20.0)
     joystick.stop_updating_state()
+    time.sleep(1.0)
 
     adc.close()
     cleanup()

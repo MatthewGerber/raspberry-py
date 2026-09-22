@@ -2,7 +2,7 @@ import time
 from datetime import timedelta
 from enum import Enum, auto
 from threading import Thread
-from typing import List, Optional, Union, Dict, Tuple
+from typing import List, Optional, Union, Dict, Tuple, Set, Callable
 
 import RPi.GPIO as gpio
 import numpy as np
@@ -162,7 +162,7 @@ class LED(Component):
         """
 
         return [
-            RpyFlask.get_switch(self.id, self.turn_on, self.turn_off, None, self.is_on())
+            RpyFlask.get_switch(self.id, self.turn_on, self.turn_off, None, self.is_on(), (self.is_on, timedelta(seconds=1)))
         ]
 
 
@@ -1033,14 +1033,48 @@ class Pi5PixelBuffer(PixelBuf):
 
 class LedStrip:
     """
-    LED strip. This is a wrapper around pixel buffers for the Raspberry Pi, providing high-level functions.
+    LED strip. This is a wrapper around pixel buffers for the Raspberry Pi, providing high-level functions. The
+    underlying libraries assume BCM pin numbering, so you must use `raspberry_py.gpio.setup(BCM)` in order for this to
+    work.
     """
 
     RED = Color(255, 0, 0)
     GREEN = Color(0, 255, 0)
     BLUE = Color(0, 0, 255)
+    YELLOW = RED | GREEN
     WHITE = Color(255, 255, 255)
     OFF = Color(0, 0, 0)
+
+    class InvalidPixelError(ValueError):
+        """
+        Error raised when an invalid pixel is referenced (e.g., beyond the length of the strip).
+        """
+
+        def __init__(
+                self,
+                i: int,
+                length: int
+        ):
+            """
+            Initialize the error.
+
+            :param i: Pixel index referenced in error.
+            :param length: Length of strip.
+            """
+
+            self.i = i
+            self.length = length
+
+        def __str__(
+                self
+        ) -> str:
+            """
+            Get string.
+
+            :return: String.
+            """
+
+            return f'Index {self.i} on length {self.length}'
 
     @staticmethod
     def wheel(
@@ -1090,30 +1124,48 @@ class LedStrip:
 
     def __setitem__(
             self,
-            pixel: int,
-            color: RGBW
+            pixel: Union[int, slice],
+            color: Union[RGBW, List[RGBW]]
     ):
         """
-        Set LED to a color.
+        Set LED(s) to a color.
 
-        :param pixel: Pixel index.
-        :param color: Color.
+        :param pixel: Pixel index or slice to set.
+        :param color: Color or sequence of colors to set. If a slice of pixels is given, then a sequence of appropriate
+        length must also be given.
         """
 
-        self.pixels[pixel] = color
+        try:
+            self.pixels[pixel] = color
+        except IndexError as e:
+            raise LedStrip.InvalidPixelError(pixel, len(self.pixels)) from e
 
     def __getitem__(
             self,
-            pixel: int
-    ) -> RGBW:
+            pixel: Union[int, slice]
+    ) -> Union[RGBW, List[RGBW]]:
         """
         Get LED's color.
 
-        :param pixel: Pixel index.
-        :return: Color.
+        :param pixel: Pixel index or slice to get.
+        :return: Color(s).
         """
 
-        return self.pixels[pixel]
+        try:
+            return self.pixels[pixel]
+        except IndexError as e:
+            raise LedStrip.InvalidPixelError(pixel, len(self.pixels)) from e
+
+    def __len__(
+            self
+    ) -> int:
+        """
+        Get length in number of pixels.
+
+        :return: Length (number of pixels).
+        """
+
+        return len(self.pixels)
 
     def set_led_at_distance(
             self,
@@ -1131,7 +1183,7 @@ class LedStrip:
         if self.led_spacing_mm is None:
             raise ValueError('Must supply LED spacing to use distance-based control.')
 
-        i = min(len(self.pixels), int(mm / self.led_spacing_mm))
+        i = min(len(self), int(mm / self.led_spacing_mm))
         self[i] = color
 
         return i
@@ -1158,9 +1210,9 @@ class LedStrip:
         """
 
         delay_sec = delay.total_seconds()
-        for i in range(len(self.pixels)):
-            self.pixels[i] = color
-            self.pixels.show()
+        for i in range(len(self)):
+            self[i] = color
+            self.show()
             time.sleep(delay_sec)
 
     def theater_chase(
@@ -1180,12 +1232,12 @@ class LedStrip:
         delay_sec = delay.total_seconds()
         for j in range(iterations):
             for q in range(3):
-                for i in range(0, len(self.pixels), 3):
-                    self.pixels[i + q] = color
-                self.pixels.show()
+                for i in range(0, len(self), 3):
+                    self[i + q] = color
+                self.show()
                 time.sleep(delay_sec)
-                for i in range(0, len(self.pixels), 3):
-                    self.pixels[i + q] = 0
+                for i in range(0, len(self), 3):
+                    self[i + q] = LedStrip.OFF
 
     def step_through(
             self,
@@ -1204,10 +1256,10 @@ class LedStrip:
         delay_sec = delay.total_seconds()
         self.turn_off()
         for i in range(iterations):
-            for j in range(len(self.pixels)):
-                self.pixels[j] = color
+            for j in range(len(self)):
+                self[j] = color
                 if j > 0:
-                    self.pixels[j - 1] = 0
+                    self[j - 1] = LedStrip.OFF
                 self.show()
                 if delay_sec > 0.001:
                     time.sleep(delay_sec)
@@ -1228,10 +1280,10 @@ class LedStrip:
 
         delay_sec = delay.total_seconds()
         for j in range(256 * iterations):
-            for i in range(len(self.pixels)):
-                self.pixels[i] = self.wheel((i + j) & 255)
+            for i in range(len(self)):
+                self[i] = self.wheel((i + j) & 255)
 
-            self.pixels.show()
+            self.show()
             time.sleep(delay_sec)
 
     def rainbow_cycle(
@@ -1248,35 +1300,42 @@ class LedStrip:
 
         delay_sec = delay.total_seconds()
         for j in range(256 * iterations):
-            for i in range(len(self.pixels)):
-                self.pixels[i] = self.wheel((int(i * 256 / len(self.pixels)) + j) & 255)
+            for i in range(len(self)):
+                self[i] = self.wheel((int(i * 256 / len(self)) + j) & 255)
 
-            self.pixels.show()
+            self.show()
             time.sleep(delay_sec)
 
     def theater_chase_rainbow(
             self,
             delay: timedelta,
-            iterations: int
+            stop: Callable[[float], bool]
     ):
         """
         Rainbow movie theater light style chaser animation.
 
         :param delay: Delay.
-        :param iterations: Iterations.
+        :param stop: Function that takes the current elapsed time and returns True when the animation should stop.
         """
 
+        start_time = time.time()
         delay_sec = delay.total_seconds()
-        for j in range(256 * iterations):
+        j = 0
+        while not stop(time.time() - start_time):
+
             for q in range(3):
 
-                for i in range(0, len(self.pixels), 3):
-                    self.pixels[i + q] = self.wheel((i + j) % 255)
+                for i in range(0, len(self), 3):
+                    self[i + q] = self.wheel((i + j) % 255)
 
-                self.pixels.show()
+                self.show()
                 time.sleep(delay_sec)
-                for i in range(0, len(self.pixels), 3):
-                    self.pixels[i + q] = 0
+                for i in range(0, len(self), 3):
+                    self[i + q] = LedStrip.OFF
+
+            j += 1
+
+        self.turn_off()
 
     def strobe(
             self,
@@ -1294,7 +1353,7 @@ class LedStrip:
         :param total_duration: Total duration, or None to strobe forever.
         """
 
-        colors = [color] * len(self.pixels)
+        colors = [color] * len(self)
         start_time = time.time()
         on_duration_sec = on_duration.total_seconds()
         off_duration_sec = off_duration.total_seconds()
@@ -1306,7 +1365,7 @@ class LedStrip:
                 self.turn_off()
                 time.sleep(off_duration_sec)
             else:
-                self.pixels[:] = colors
+                self[:] = colors
                 self.show()
                 time.sleep(on_duration_sec)
             on = not on
@@ -1370,16 +1429,18 @@ class LedStrip:
         Turn off all pixels.
         """
 
-        for i in range(len(self.pixels)):
-            self.pixels[i] = Color(0, 0, 0)
+        for i in range(len(self)):
+            if self[i] != LedStrip.OFF:
+                self[i] = LedStrip.OFF
 
-        self.pixels.show()
+        self.show()
 
 
 class FrameLedStrip(LedStrip):
     """
     LED strip arranged in a rectangular frame. The LED strip must start in the bottom-left corner of the frame and wrap
-    clockwise around the frame.
+    clockwise around the frame. The underlying libraries assume BCM pin numbering, so you must use
+    `raspberry_py.gpio.setup(BCM)` in order for this to work.
     """
 
     def __init__(
@@ -1387,16 +1448,23 @@ class FrameLedStrip(LedStrip):
             pixels: Union[NeoPixel, Pi5PixelBuffer],
             led_spacing_mm: float,
             width_mm: float,
-            height_mm: float
+            height_mm: float,
+            illuminated_width_height_x_off_y_off_mm: Optional[Tuple[float, float, float, float]] = None
     ):
         """
         Initialize the strip.
 
         :param pixels: Pixels, either `NeoPixel` (Raspberry Pi 4) or `Pi5PixelBuffer` (Raspberry Pi 5).
         :param led_spacing_mm: Spacing (mm) between the centers of two sequential LEDs on the strip.
-        :param width_mm: Width (mm).
-        :param height_mm: Height (mm).
+        :param width_mm: Width (mm) of mounted light strip.
+        :param height_mm: Height (mm) of mounted light strip.
+        :param illuminated_width_height_x_off_y_off_mm: Illuminated width, height, x offset, and y offset. The
+        illuminated frame is a rectangle within the mounted strip with its own x/y coordinates. The illuminated frame's
+        bottom-left corner is at (x_off, y_off) within the mounted light strip.
         """
+
+        if illuminated_width_height_x_off_y_off_mm is None:
+            illuminated_width_height_x_off_y_off_mm = (width_mm, height_mm, 0.0, 0.0)
 
         super().__init__(
             pixels,
@@ -1405,6 +1473,20 @@ class FrameLedStrip(LedStrip):
 
         self.width_mm = width_mm
         self.height_mm = height_mm
+        (
+            self.illuminated_width_mm,
+            self.illuminated_height_mm,
+            self.illuminated_x_offset,
+            self.illuminated_y_offset
+        ) = illuminated_width_height_x_off_y_off_mm
+
+        self.left_gap = self.illuminated_x_offset
+        self.right_gap = self.width_mm - self.illuminated_width_mm - self.left_gap
+        self.bottom_gap = self.illuminated_y_offset
+        self.top_gap = self.height_mm - self.illuminated_height_mm - self.bottom_gap
+        assert all(v >= 0.0 for v in [self.left_gap, self.right_gap, self.bottom_gap, self.top_gap])
+
+        self.set_pixels = set()
 
     def get_led_idx_for_x(
             self,
@@ -1420,9 +1502,9 @@ class FrameLedStrip(LedStrip):
         """
 
         if bottom:
-            mm = self.height_mm + self.width_mm + self.height_mm + (self.width_mm - x_mm)
+            mm = self.height_mm + self.width_mm + self.height_mm + self.width_mm - self.left_gap - x_mm
         else:
-            mm = self.height_mm + x_mm
+            mm = self.height_mm + self.left_gap + x_mm
 
         return round(mm / self.led_spacing_mm)
 
@@ -1434,15 +1516,15 @@ class FrameLedStrip(LedStrip):
         """
         Get LED index for a given y position.
 
-        :param y_mm: y position (mm from bottom).
+        :param y_mm: y position (mm from bottom border).
         :param left: Whether the LED is on the left (True) or right (False).
         :return: LED index.
         """
 
         if left:
-            mm = y_mm
+            mm = self.bottom_gap + y_mm
         else:
-            mm = self.height_mm + self.width_mm + (self.height_mm - y_mm)
+            mm = self.height_mm + self.width_mm + self.height_mm - self.bottom_gap - y_mm
 
         return round(mm / self.led_spacing_mm)
 
@@ -1460,10 +1542,13 @@ class FrameLedStrip(LedStrip):
         :param color: Color.
         """
 
-        self[self.get_led_idx_for_y(y_mm, True)] = color
-        self[self.get_led_idx_for_y(y_mm, False)] = color
-        self[self.get_led_idx_for_x(x_mm, True)] = color
-        self[self.get_led_idx_for_x(x_mm, False)] = color
+        new_pixels = {
+            self.get_led_idx_for_y(y_mm, True),
+            self.get_led_idx_for_y(y_mm, False),
+            self.get_led_idx_for_x(x_mm, True),
+            self.get_led_idx_for_x(x_mm, False)
+        }
+        self.set_new_pixels(new_pixels, color)
 
     def corners(
             self,
@@ -1475,7 +1560,33 @@ class FrameLedStrip(LedStrip):
         :param color: Color.
         """
 
-        self[self.get_led_idx_for_y(0.0, True)] = color
-        self[self.get_led_idx_for_y(self.height_mm, True)] = color
-        self[self.get_led_idx_for_y(0.0, False)] = color
-        self[self.get_led_idx_for_y(self.height_mm, False)] = color
+        new_pixels = {
+            self.get_led_idx_for_y(0.0, True),
+            self.get_led_idx_for_y(self.height_mm, True),
+            self.get_led_idx_for_y(0.0, False),
+            self.get_led_idx_for_y(self.height_mm, False)
+        }
+        self.set_new_pixels(new_pixels, color)
+
+    def set_new_pixels(
+            self,
+            new_pixels: Set[int],
+            color: RGBW
+    ):
+        """
+        Set new pixels.
+
+        :param new_pixels: New pixels.
+        :param color: Color.
+        """
+
+        for i in self.set_pixels:
+            if i not in new_pixels:
+                self[i] = LedStrip.OFF
+
+        for i in new_pixels:
+            self[i] = color
+
+        self.show()
+
+        self.set_pixels = new_pixels

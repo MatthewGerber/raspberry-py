@@ -1,6 +1,6 @@
 import time
 from threading import Thread
-from typing import List
+from typing import List, Dict
 
 import RPi.GPIO as gpio
 
@@ -106,13 +106,13 @@ class TwoPoleButton(Component):
 
             self.set_state(
                 TwoPoleButton.State(
-                    pressed=gpio.input(self.input_pin) == gpio.LOW
+                    pressed=gpio.input(int(self.input_pin)) == gpio.LOW
                 )
             )
 
         # read after slight delay to let signal stabilize
         gpio.add_event_detect(
-            self.input_pin,
+            int(self.input_pin),
             gpio.BOTH,
             callback=lambda channel: read_after_delay(read_delay_ms / 1000.0),
             bouncetime=bounce_time_ms
@@ -198,7 +198,7 @@ class LimitSwitch(Component):
 
         super().__init__(
             state=LimitSwitch.State(
-                pressed=gpio.input(self.input_pin) == gpio.LOW
+                pressed=gpio.input(int(self.input_pin)) == gpio.LOW
              )
         )
 
@@ -212,7 +212,7 @@ class LimitSwitch(Component):
             time.sleep(seconds)
             self.set_state(
                 LimitSwitch.State(
-                    pressed=gpio.input(self.input_pin) == gpio.LOW
+                    pressed=gpio.input(int(self.input_pin)) == gpio.LOW
                 )
             )
 
@@ -315,38 +315,37 @@ class Joystick(Component):
             bounce_time_ms=10,
             read_delay_ms=50
         )
-
-        self.button.event(
-            lambda s: self.set_state(
-                Joystick.State(
-                    x=self.adc.get_channel_value()[self.x_channel],
-                    y=adc.invert_digital_value(
-                        self.adc.get_channel_value()[self.y_channel],
-                        self.y_channel
-                    ) if self.invert_y else self.adc.get_channel_value()[self.y_channel],
-                    z=s.pressed
-                )
-            )
-        )
+        self.button.event(lambda s: self.set_state(self.get_joystick_state(self.adc.get_channel_value(), s.pressed)))
 
         # listen for events from the adc and update joystick state when they occur
-        self.adc.event(
-            lambda s: self.set_state(
-                Joystick.State(
-                    x=s.channel_value[self.x_channel],
-                    y=adc.invert_digital_value(
-                        s.channel_value[self.y_channel],
-                        self.y_channel
-                    ) if self.invert_y else s.channel_value[self.y_channel],
-                    z=self.button.is_pressed()
-                )
-            )
-        )
+        self.adc.event(lambda s: self.set_state(self.get_joystick_state(s.channel_value, self.button.is_pressed())))
 
         # set up a clock and update the adc each tick. it doesn't matter that we pass None here (max tick rate), since
         # the caller will need to supply a tick interval when starting updates.
         self.update_state_clock = Clock(None)
         self.update_state_clock.event(lambda _: adc.update_state())
+
+    def get_joystick_state(
+            self,
+            channel_value: Dict[int, float],
+            button_is_pressed: bool
+    ) -> 'Joystick.State':
+        """
+        Get joystick state.
+
+        :param channel_value: Channel-value mapping.
+        :param button_is_pressed: Whether the button is pressed.
+        :return: New state.
+        """
+
+        return Joystick.State(
+            x=channel_value[self.x_channel],
+            y=self.adc.invert_digital_value(
+                channel_value[self.y_channel],
+                self.y_channel
+            ) if self.invert_y else channel_value[self.y_channel],
+            z=button_is_pressed
+        )
 
     def update_state(
             self
@@ -496,7 +495,7 @@ class MatrixKeypad(Component):
             # set the column low and check rows for low, indicating that the button has been pressed.
             gpio.output(scan_col_pin, gpio.LOW)
             for row, row_pin in enumerate(self.row_pins):
-                if gpio.input(row_pin) == gpio.LOW:
+                if gpio.input(int(row_pin)) == gpio.LOW:
                     key_matrix[row][scan_col] = self.key_matrix[row][scan_col]
 
             # set column back to high to scan next column

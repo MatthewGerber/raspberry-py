@@ -8,6 +8,7 @@ from raspberry_py.gpio.adc import ADS7830
 from raspberry_py.gpio.lights import LedBar
 from raspberry_py.gpio.sensors import Thermistor
 
+logger = logging.getLogger(__name__)
 
 def main():
     """
@@ -73,7 +74,7 @@ def main():
         fraction_temp_range = (temp_f - temp_low_f) / temp_range_f
         new_num_leds_on = min(num_leds, max(0, int(num_leds * fraction_temp_range)))
         if num_leds_on is None or num_leds_on != new_num_leds_on:
-            logging.info(f'Temp: {temp_f}, LEDs: {new_num_leds_on}')
+            logger.info(f'Temp: {temp_f}, LEDs: {new_num_leds_on}')
             num_leds_on = new_num_leds_on
             led_bar.turn_off()
             led_bar.turn_on(list(range(0, num_leds_on)))

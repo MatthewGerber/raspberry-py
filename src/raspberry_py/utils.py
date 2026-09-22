@@ -238,34 +238,115 @@ class IncrementalSampleAverager:
         return f'{{:{format_spec}}}'.format(self.get_value())
 
 
-def get_bytes(
+def get_single_bytes(
         value: float
 ) -> bytes:
     """
-    Get a 4-byte array for a float.
+    Get a 4-byte array (single) for a Python float.
 
-    :param value: Value.
-    :return: Bytes.
+    :param value: Python float.
+    :return: 4-byte array (little endian) for single-precision floating-point value.
     """
 
-    float_bytes = struct.pack('f', value)
+    float_bytes = struct.pack('<f', value)
     assert len(float_bytes) == 4
-
     return float_bytes
 
 
-def get_float(
-    float_bytes: bytes
+def get_python_float_from_single_bytes(
+        single_bytes: bytes
 ) -> float:
     """
-    Get float for bytes.
+    Get Python float for a 4-byte array representing a single-precision floating-point value.
 
-    :param float_bytes: Bytes.
-    :return: Float.
+    :param single_bytes: 4-byte array (little endian).
+    :return: Python float.
     """
 
-    return struct.unpack('f', float_bytes)[0]
+    assert len(single_bytes) == 4
+    return struct.unpack('<f', single_bytes)[0]
 
+
+def get_double_bytes(
+        value: float
+) -> bytes:
+    """
+    Get an 8-byte array (double) for a Python float.
+
+    :param value: Python float.
+    :return: 8-byte array (little endian) for double-precision floating-point value.
+    """
+
+    float_bytes = struct.pack('<d', value)
+    assert len(float_bytes) == 8
+    return float_bytes
+
+
+def get_python_float_from_double_bytes(
+        double_bytes: bytes
+) -> float:
+    """
+    Get Python float for an 8-byte array representing a double-precision floating-point value.
+
+    :param double_bytes: 8-byte array (little endian).
+    :return: Python float.
+    """
+
+    assert len(double_bytes) == 8
+    return struct.unpack('<d', double_bytes)[0]
+
+
+def get_float_scale_bytes(
+        float_scale: int
+) -> bytes:
+    """
+    Gets 4-byte representation of a float scale value, typically sent to a remote endpoint to synchronize the scaling.
+
+    :param float_scale: Scaling to apply when sending/receiving floating-point values as fixed-point integers. This
+    should be a positive integer, for example 1000 for scaling to the thousandths place. Floats are multiplied by this
+    value before sending and then divided by this value upon receipt to recover the original floating-point value.
+    :return: 4-byte representation of an unsigned long.
+    """
+
+    if float_scale <= 0:
+        raise ValueError(f'Float scale must be positive, but got {float_scale}.')
+
+    return float_scale.to_bytes(4, signed=False)
+
+
+def get_fixed_point_long_bytes_from_python_float(
+        value: float,
+        float_scale: int
+) -> bytes:
+    """
+    Get a 4-byte array representing a signed long value after multiplying it by a scale.
+
+    :param value: Python float.
+    :param float_scale: Scaling to apply when sending/receiving floating-point values as fixed-point integers. This
+    should be a positive integer, for example 1000 for scaling to the thousandths place. Floats are multiplied by this
+    value before sending and then divided by this value upon receipt to recover the original floating-point value.
+    :return: 4-byte array.
+    """
+
+    return int(value * float_scale).to_bytes(4, signed=True)
+
+
+def get_python_float_from_fixed_point_long_bytes(
+        long_bytes: bytes,
+        float_scale: int
+) -> float:
+    """
+    Get Python float for a 4-byte array representing a signed long value after multiplying it by a scale.
+
+    :param long_bytes: 4-byte array for a signed long value resulting from multiplying the original float by the float
+    scale.
+    :param float_scale: Scaling to apply when sending/receiving floating-point values as fixed-point integers. This
+    should be a positive integer, for example 1000 for scaling to the thousandths place. Floats are multiplied by this
+    value before sending and then divided by this value upon receipt to recover the original floating-point value.
+    :return: Python float.
+    """
+
+    return int.from_bytes(long_bytes, signed=True) / float(float_scale)
 
 def get_base_64_str(
         buffer: bytes

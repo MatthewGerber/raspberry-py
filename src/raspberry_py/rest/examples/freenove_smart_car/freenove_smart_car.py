@@ -1,8 +1,12 @@
-from raspberry_py.gpio import CkPin
+import RPi.GPIO as gpio
+
+from raspberry_py.gpio import CkPin, setup
 from raspberry_py.gpio.freenove.smart_car import Car, Wheel
 from raspberry_py.gpio.robotics import RaspberryPyArm, RaspberryPyElevator
 from raspberry_py.gpio.sensors import MjpgStreamer
 from raspberry_py.rest.application import app
+
+setup(gpio.BOARD)
 
 camera = MjpgStreamer(
     device='/dev/video0',
@@ -56,3 +60,4 @@ elevator = RaspberryPyElevator(
 elevator.id = 'elevator-1'
 app.add_component(elevator)
 car.event(lambda s: elevator.start() if s.on else elevator.stop())
+app.start(__name__)

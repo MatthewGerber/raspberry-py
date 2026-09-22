@@ -219,7 +219,8 @@ class Car(Component):
                         pixels=NeoPixel(
                             pin=microcontroller.Pin(CkPin.GPIO18.value),
                             n=8
-                        )
+                        ),
+                        led_spacing_mm=50
                     )
 
                 self.run_led_strip_thread = Thread(target=self.run_led_strip)
@@ -232,6 +233,17 @@ class Car(Component):
                     raise e
 
             self.set_state(Car.State(on=True))
+
+    def started(
+            self
+    ) -> bool:
+        """"
+        Get whether the car is started.
+
+        :return: True if started and False otherwise.
+        """
+
+        return self.on
 
     def update_analog_to_digital_state(
             self
@@ -407,6 +419,17 @@ class Car(Component):
 
         self.track_faces = False
 
+    def tracking_faces(
+            self
+    ) -> bool:
+        """
+        Get whether faces are being tracked.
+
+        :return: True if tracking and False otherwise.
+        """
+
+        return self.track_faces
+
     def track_light_intensity(
             self,
             left: float,
@@ -448,6 +471,17 @@ class Car(Component):
 
         self.track_light = False
 
+    def tracking_light(
+            self
+    ) -> bool:
+        """
+        Get whether light is being tracked.
+
+        :return: True if tracking light and False otherwise.
+        """
+
+        return self.track_light
+
     def get_battery_percent(
             self
     ) -> float:
@@ -479,7 +513,7 @@ class Car(Component):
         :return: List of 2-tuples of (1) element key and (2) element content.
         """
 
-        power_id, power_element = RpyFlask.get_switch(self.id, self.start, self.stop, 'Power', self.on)
+        power_id, power_element = RpyFlask.get_switch(self.id, self.start, self.stop, 'Power', self.on, (self.started, timedelta(seconds=1)))
 
         elements = [
             RpyFlask.get_range(self.camera_pan_servo.id, int(self.camera_pan_servo.min_degree), int(self.camera_pan_servo.max_degree), 3, int(self.camera_pan_servo.get_degrees()), False, False, ['s'], ['f'], ['r'], False, self.camera_pan_servo.set_degrees, 'Pan', True),
@@ -489,8 +523,8 @@ class Car(Component):
             RpyFlask.get_label(self.range_finder.id, self.range_finder.measure_distance_once, timedelta(seconds=1), 'Range (cm)', power_id, 1),
             RpyFlask.get_button(self.buzzer.id, self.buzzer.buzz, None, None, self.buzzer.stop, None, 'h', 'Horn'),
             (power_id, power_element),
-            RpyFlask.get_switch(self.id, self.enable_face_tracking, self.disable_face_tracking, 'Face Tracking', self.track_faces),
-            RpyFlask.get_switch(self.id, self.enable_light_tracking, self.disable_light_tracking, 'Light Tracking', self.track_light),
+            RpyFlask.get_switch(self.id, self.enable_face_tracking, self.disable_face_tracking, 'Face Tracking', self.track_faces, (self.tracking_faces, timedelta(seconds=5))),
+            RpyFlask.get_switch(self.id, self.enable_light_tracking, self.disable_light_tracking, 'Light Tracking', self.track_light, (self.tracking_light, timedelta(seconds=5))),
             RpyFlask.get_label(self.id, self.get_battery_percent, timedelta(seconds=10), 'Battery (%)', power_id, 1)
         ]
 
@@ -500,8 +534,8 @@ class Car(Component):
                 (camera_id, camera_element),
                 RpyFlask.get_range_html_attribute(camera_id, 'width', 100, 800, 10, self.camera.width, 'Display Size '),
                 RpyFlask.get_range(self.camera.id, 1, 5, 1, 1, False, False, [], [], [], False, self.camera.multiply_resolution, 'Display Resolution', False),
-                RpyFlask.get_switch(self.camera.id, self.camera.enable_face_detection, self.camera.disable_face_detection, 'Face Detection', self.camera.run_face_detection),
-                RpyFlask.get_switch(self.camera.id, self.camera.enable_face_circles, self.camera.disable_face_circles, 'Face Circles', self.camera.circle_detected_faces)
+                RpyFlask.get_switch(self.camera.id, self.camera.enable_face_detection, self.camera.disable_face_detection, 'Face Detection', self.camera.run_face_detection, (self.camera.running_face_detection, timedelta(seconds=5))),
+                RpyFlask.get_switch(self.camera.id, self.camera.enable_face_circles, self.camera.disable_face_circles, 'Face Circles', self.camera.circle_detected_faces, (self.camera.circling_faces, timedelta(seconds=5)))
             ]
             elements.extend(camera_elements)
         elif isinstance(self.camera, MjpgStreamer):

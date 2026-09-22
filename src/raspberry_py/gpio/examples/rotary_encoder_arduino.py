@@ -35,6 +35,7 @@ def main():
         angular_acceleration_step_size=1.0,
         serial=locking_serial,
         identifier=1,
+        float_scale=1000,
         state_update_hz=20
     )
     encoder = RotaryEncoder(arduino_interface)

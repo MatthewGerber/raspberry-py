@@ -68,6 +68,6 @@ def run(
         print('Theater chase...')
         led_strip.theater_chase(Color(0, 255, 0), iterations=10, delay=timedelta(milliseconds=10))
         print('Theater chase rainbow...')
-        led_strip.theater_chase_rainbow(timedelta(milliseconds=20), 1)
+        led_strip.theater_chase_rainbow(timedelta(milliseconds=20), lambda t: t > 10.0)
     finally:
         led_strip.turn_off()

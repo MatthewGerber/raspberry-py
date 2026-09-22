@@ -3,7 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from enum import IntEnum
-from typing import Optional, Callable, Tuple, List, Union
+from typing import Optional, Callable, Tuple, List, Union, cast
 
 import RPi.GPIO as gpio
 import numpy as np
@@ -12,7 +12,9 @@ from raspberry_py.gpio import Component, CkPin
 from raspberry_py.gpio.communication import LockingSerial
 from raspberry_py.gpio.integrated_circuits import PulseWaveModulatorPCA9685PW
 from raspberry_py.rest.application import RpyFlask
-from raspberry_py.utils import get_float
+from raspberry_py.utils import get_python_float_from_fixed_point_long_bytes, get_float_scale_bytes
+
+logger = logging.getLogger(__name__)
 
 
 class DcMotorDriver(ABC):
@@ -254,10 +256,10 @@ class DcMotorDriverIndirectArduino(DcMotorDriver):
 
         if not previous_state.on and new_state.on:
             self.serial.write_then_read(
-                DcMotorDriverIndirectArduino.Command.INIT.to_bytes(1) +
-                self.identifier.to_bytes(1) +
-                self.arduino_direction_pin.to_bytes(1) +
-                self.arduino_pwm_pin.to_bytes(1),
+                DcMotorDriverIndirectArduino.Command.INIT.to_bytes(1, signed=False) +
+                self.identifier.to_bytes(1, signed=False) +
+                self.arduino_direction_pin.to_bytes(1, signed=False) +
+                self.arduino_pwm_pin.to_bytes(1, signed=False),
                 True,
                 0,
                 False
@@ -271,10 +273,10 @@ class DcMotorDriverIndirectArduino(DcMotorDriver):
 
         if new_speed is not None and promise_ms is not None:
             self.serial.write_then_read(
-                DcMotorDriverIndirectArduino.Command.SET_SPEED.to_bytes(1) +
-                self.identifier.to_bytes(1) +
+                DcMotorDriverIndirectArduino.Command.SET_SPEED.to_bytes(1, signed=False) +
+                self.identifier.to_bytes(1, signed=False) +
                 new_speed.to_bytes(2, signed=True) +
-                promise_ms.to_bytes(2),
+                promise_ms.to_bytes(2, signed=False),
                 True,
                 0,
                 False
@@ -377,7 +379,7 @@ class DcMotor(Component):
 
         constrained_speed = self.constrain_speed(state.speed)
         if constrained_speed != state.speed:
-            logging.warning(
+            logger.warning(
                 f'Requested motor speed ({state.speed}) is out of bounds [{self.min_speed},{self.max_speed}]. '
                 f'Constraining to be in bounds.'
             )
@@ -420,6 +422,17 @@ class DcMotor(Component):
         state: DcMotor.State = self.state
         self.set_state(DcMotor.State(on=False, speed=state.speed))
 
+    def started(
+            self
+    ) -> bool:
+        """
+        Get whether the motor is started.
+
+        :return: True if started and False otherwise.
+        """
+
+        return cast(DcMotor.State, self.state).on
+
     def set_speed(
             self,
             speed: int
@@ -458,7 +471,7 @@ class DcMotor(Component):
         curr_state: DcMotor.State = self.state
 
         return [
-            RpyFlask.get_switch(self.id, self.start, self.stop, None, curr_state.on),
+            RpyFlask.get_switch(self.id, self.start, self.stop, None, curr_state.on, (self.started, timedelta(seconds=5))),
             RpyFlask.get_range(self.id, self.min_speed, self.max_speed, 1, self.get_speed(), False,False, [], [], [], False, self.set_speed, None, False)
         ]
 
@@ -815,7 +828,7 @@ class Servo(Component):
 
         constrained_degrees = min(self.max_degree, max(state.degrees, self.min_degree))
         if constrained_degrees != state.degrees:
-            logging.warning(
+            logger.warning(
                 f'Requested servo degrees ({state.degrees}) is out of bounds [{self.min_degree},{self.max_degree}]. '
                 f'Constraining to be in bounds.'
             )
@@ -875,6 +888,16 @@ class Servo(Component):
         state: Servo.State = self.state
         self.set_state(Servo.State(on=state.on, enabled=True, degrees=state.degrees))
 
+    def disable(
+            self
+    ):
+        """
+        Disable the stepper.
+        """
+
+        state: Servo.State = self.state
+        self.set_state(Servo.State(on=state.on, enabled=False, degrees=state.degrees))
+
     def start(
             self
     ):
@@ -895,15 +918,16 @@ class Servo(Component):
         state: Servo.State = self.state
         self.set_state(Servo.State(on=False, enabled=state.enabled, degrees=state.degrees))
 
-    def disable(
+    def started(
             self
-    ):
+    ) -> bool:
         """
-        Disable the stepper.
+        Get whether the servo is started.
+
+        :return: True if started and False otherwise.
         """
 
-        state: Servo.State = self.state
-        self.set_state(Servo.State(on=state.on, enabled=False, degrees=state.degrees))
+        return cast(Servo.State, self.state).on
 
     def get_ui_elements(
             self
@@ -917,7 +941,7 @@ class Servo(Component):
         curr_state: Servo.State = self.state
 
         return [
-            RpyFlask.get_switch(self.id, self.start, self.stop, None, curr_state.on),
+            RpyFlask.get_switch(self.id, self.start, self.stop, None, curr_state.on, (self.started, timedelta(seconds=1))),
             RpyFlask.get_range(self.id, int(self.min_degree), int(self.max_degree), 1, int(self.get_degrees()), False, False, [], [], [], False, self.set_degrees,None, False)
         ]
 
@@ -947,13 +971,14 @@ class Servo(Component):
         self.max_degree = max_degree
 
 
-# A stepper motor driver that operates synchronously returns a 2-tuple of (1) float value indicating the number of steps
-# skipped due to limiting and (2) step sequence index.
-StepperMotorDriverSynchronousReturn = Tuple[float, int]
+# A stepper motor driver that operates synchronously returns a 3-tuple of (1) float value indicating the number of steps
+# skipped due to limiting, (2) step-call sequence index, and (3) done time (epoch).
+StepperMotorDriverSynchronousReturn = Tuple[float, int, float]
 
 # A stepper motor driver operating asynchronously returns a function that can be called to wait for the return value,
-# which will be the stepper identifier, the number of steps skipped due to limiting, and the step sequence index.
-StepperMotorDriverAsynchronousReturn = Callable[[], Tuple[int, float, int]]
+# which will be the stepper identifier followed by the values of the synchronous return above.
+StepperMotorDriverAsynchronousReturnTuple = Tuple[int, float, int, float]
+StepperMotorDriverAsynchronousReturn = Callable[[], StepperMotorDriverAsynchronousReturnTuple]
 
 StepperMotorDriverReturn = Union[StepperMotorDriverSynchronousReturn, StepperMotorDriverAsynchronousReturn]
 
@@ -988,7 +1013,7 @@ class StepperMotorDriver(ABC):
             time_to_step: timedelta
     ) -> StepperMotorDriverReturn:
         """
-        Step the motor.
+        Step the motor (only increments the step-call index).
 
         :param stepper: Stepper.
         :param num_steps: Number of steps.
@@ -998,7 +1023,7 @@ class StepperMotorDriver(ABC):
 
         self.idx += 1
 
-        return 0.0, self.idx
+        return 0.0, self.idx, 0.0
 
     @abstractmethod
     def stop(
@@ -1127,6 +1152,7 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
         direction = np.sign(num_steps)
         initial_state: Stepper.State = stepper.state
         initial_step = initial_state.step
+        initial_time = time.time()
         target_step = initial_step + num_steps
         curr_time = time.time()
         skipped_steps = 0
@@ -1144,7 +1170,7 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
                 # drive to the next half step, achieving the full step.
                 self.drive(direction)
 
-                # update state. we do this at each step so that event listeners can react in real time as the stepper moves.
+                # update state at each step so that event listeners can react in real time as the stepper moves.
                 new_time = time.time()
                 new_state = Stepper.State(
                     next_step,
@@ -1156,15 +1182,17 @@ class StepperMotorDriverDirectUln2003(StepperMotorDriverUln2003):
                 curr_time = new_time
                 time.sleep(delay_seconds_per_step / 2.0)
 
+        done_time_epoch = time.time()
+
         result_state: Stepper.State = stepper.state
         if skipped_steps == 0 and result_state.step != target_step:
             raise ValueError(f'Expected stepper state ({result_state.step}) to be goal state ({target_step}).')
 
         step_idx = self.idx
 
-        super().step(stepper, num_steps, time_to_step)
+        super().step(stepper, num_steps, timedelta(seconds=done_time_epoch - initial_time))
 
-        return skipped_steps, step_idx
+        return skipped_steps, step_idx, done_time_epoch
 
     def drive(
             self,
@@ -1204,6 +1232,8 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
     # Maximum number of steps is the maximum two-byte unsigned integer.
     MAX_TWO_BYTE_UNSIGNED_INT = 2 ** 16 - 1
 
+    STEPPER_DONE_RESPONSE_NUM_BYTES = 11
+
     class Command(IntEnum):
         """
         Commands that can be sent to the Arduino.
@@ -1221,7 +1251,8 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
             driver_pin_4: int,
             identifier: int,
             serial: LockingSerial,
-            asynchronous: bool
+            asynchronous: bool,
+            float_scale: int
     ):
         """
         Initialize the driver.
@@ -1233,7 +1264,14 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         :param identifier: Identifier.
         :param serial: Serial connection to the Arduino.
         :param asynchronous: Whether the driver should operate asynchronously.
+        :param float_scale: Scaling to apply when sending/receiving floating-point values as fixed-point integers. This
+        should be a positive integer, for example 1000 for scaling to the thousandths place. Floats are multiplied by
+        this value before sending and then divided by this value upon receipt to recover the original floating-point
+        value.
         """
+
+        if float_scale <= 0:
+            raise ValueError(f'Float scaling requires a positive integer, but got:  {float_scale}')
 
         super().__init__(
             driver_pin_1,
@@ -1245,6 +1283,7 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         self.identifier = identifier
         self.serial = serial
         self.asynchronous = asynchronous
+        self.float_scale = float_scale
 
     def start(self):
         """
@@ -1252,18 +1291,22 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         """
 
         success = bool(self.serial.write_then_read(
-            StepperMotorDriverArduinoUln2003.Command.INIT.to_bytes(1) +
-            self.identifier.to_bytes(1) +
-            self.driver_pin_1.to_bytes(1) +
-            self.driver_pin_2.to_bytes(1) +
-            self.driver_pin_3.to_bytes(1) +
-            self.driver_pin_4.to_bytes(1) +
-            (-1).to_bytes(2, signed=True),
+            StepperMotorDriverArduinoUln2003.Command.INIT.to_bytes(1, signed=False) +
+            self.identifier.to_bytes(1, signed=False) +
+            self.driver_pin_1.to_bytes(1, signed=False) +
+            self.driver_pin_2.to_bytes(1, signed=False) +
+            self.driver_pin_3.to_bytes(1, signed=False) +
+            self.driver_pin_4.to_bytes(1, signed=False) +
+            (-1).to_bytes(2, signed=True) +  # optional disable pin (-1 for none)
+            (-1).to_bytes(2, signed=True) +  # optional direction pin (-1 for none)
+            get_float_scale_bytes(self.float_scale),
             True,
             1,
             False
         ))
-        if not success:
+        if success:
+            logger.info(f'Initialized ULN2003 driver {self.identifier}.')
+        else:
             raise ValueError('Failed to initialize Arduino stepper motor driver.')
 
     def step(
@@ -1286,23 +1329,25 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
 
         ms_to_step = int(time_to_step.total_seconds() * 1000.0)
         if ms_to_step > StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT:
-            raise ValueError(f'Maximum time (ms) to step:  {StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT}')
+            raise ValueError(
+                f'Maximum time (ms) to step:  {StepperMotorDriverArduinoUln2003.MAX_TWO_BYTE_UNSIGNED_INT}'
+            )
 
         bytes_to_write = (
-            StepperMotorDriverArduinoUln2003.Command.STEP.to_bytes(1) +
-            self.identifier.to_bytes(1) +
+            StepperMotorDriverArduinoUln2003.Command.STEP.to_bytes(1, signed=False) +
+            self.identifier.to_bytes(1, signed=False) +
             num_steps.to_bytes(2, signed=True) +
-            ms_to_step.to_bytes(2) +
-            self.idx.to_bytes(2)
+            ms_to_step.to_bytes(2, signed=False) +
+            self.idx.to_bytes(2, signed=False)
         )
         self.serial.write_then_read(bytes_to_write, True, 0, False)
 
         if self.asynchronous:
             return_value = self.wait_for_async_result
         else:
-            identifier, skipped_steps, idx = self.wait_for_async_result()
+            identifier, skipped_steps, idx, done_time_epoch = self.wait_for_async_result()
             assert identifier == self.identifier
-            return_value = (skipped_steps, idx)
+            return_value = (skipped_steps, idx, done_time_epoch)
 
         super().step(stepper, num_steps, time_to_step)
 
@@ -1310,20 +1355,23 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
 
     def wait_for_async_result(
             self
-    ) -> Tuple[int, float, int]:
+    ) -> StepperMotorDriverAsynchronousReturnTuple:
         """
         Wait for asynchronous result.
 
-        :return: 3-tuple of the stepper id, skipped steps, and index.
+        :return: 4-tuple of the stepper id, skipped steps, the step-call index that completed, and the done time epoch.
         """
 
-        result_bytes = self.serial.connection.read(7)
-        assert len(result_bytes) == 7
+        result_bytes = self.serial.connection.read(self.STEPPER_DONE_RESPONSE_NUM_BYTES)
+        assert len(result_bytes) == self.STEPPER_DONE_RESPONSE_NUM_BYTES
         stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
-        skipped_steps = get_float(result_bytes[1:5])
+        skipped_steps = get_python_float_from_fixed_point_long_bytes(result_bytes[1:5], self.float_scale)
         idx = int.from_bytes(result_bytes[5:7], signed=False)
+        done_time_epoch = self.serial.convert_remote_time_us_to_local_seconds(
+            int.from_bytes(result_bytes[7:11], signed=False)
+        )
 
-        return stepper_id, skipped_steps, idx
+        return stepper_id, skipped_steps, idx, done_time_epoch
 
     def stop(self):
         """
@@ -1331,8 +1379,8 @@ class StepperMotorDriverArduinoUln2003(StepperMotorDriverUln2003):
         """
 
         success = bool(self.serial.write_then_read(
-            StepperMotorDriverArduinoUln2003.Command.STOP.to_bytes(1) +
-            self.identifier.to_bytes(1),
+            StepperMotorDriverArduinoUln2003.Command.STOP.to_bytes(1, signed=False) +
+            self.identifier.to_bytes(1, signed=False),
             True,
             1,
             False
@@ -1350,6 +1398,8 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
     # Maximum number of steps is the maximum two-byte unsigned integer.
     MAX_TWO_BYTE_UNSIGNED_INT = 2 ** 16 - 1
 
+    STEPPER_DONE_RESPONSE_NUM_BYTES = 11
+
     class Command(IntEnum):
         """
         Commands that can be sent to the Arduino.
@@ -1366,7 +1416,8 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
             direction_pin: int,
             identifier: int,
             serial: LockingSerial,
-            asynchronous: bool
+            asynchronous: bool,
+            float_scale: int
     ):
         """
         Initialize the driver.
@@ -1377,7 +1428,14 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         :param identifier: Identifier.
         :param serial: Serial connection to the Arduino.
         :param asynchronous: Whether the driver should operate asynchronously.
+        :param float_scale: Scaling to apply when sending/receiving floating-point values as fixed-point integers. This
+        should be a positive integer, for example 1000 for scaling to the thousandths place. Floats are multiplied by
+        this value before sending and then divided by this value upon receipt to recover the original floating-point
+        value.
         """
+
+        if float_scale <= 0:
+            raise ValueError(f'Float scaling requires a positive integer, but got:  {float_scale}')
 
         super().__init__()
 
@@ -1387,6 +1445,7 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         self.identifier = identifier
         self.serial = serial
         self.asynchronous = asynchronous
+        self.float_scale = float_scale
 
     def start(self):
         """
@@ -1394,16 +1453,19 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         """
 
         success = bool(self.serial.write_then_read(
-            StepperMotorDriverArduinoA4988.Command.INIT.to_bytes(1) +
-            self.identifier.to_bytes(1) +
-            self.driver_pin.to_bytes(1) +
+            StepperMotorDriverArduinoA4988.Command.INIT.to_bytes(1, signed=False) +
+            self.identifier.to_bytes(1, signed=False) +
+            self.driver_pin.to_bytes(1, signed=False) +
             self.disable_pin.to_bytes(2, signed=True) +
-            self.direction_pin.to_bytes(2, signed=True),
+            self.direction_pin.to_bytes(2, signed=True) +
+            get_float_scale_bytes(self.float_scale),
             True,
             1,
             False
         ))
-        if not success:
+        if success:
+            logger.info(f'Initialized A4988 driver {self.identifier}.')
+        else:
             raise ValueError('Failed to initialize Arduino stepper motor driver.')
 
     def step(
@@ -1429,20 +1491,20 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
             raise ValueError(f'Maximum time (ms) to step:  {StepperMotorDriverArduinoA4988.MAX_TWO_BYTE_UNSIGNED_INT}')
 
         bytes_to_write = (
-            StepperMotorDriverArduinoA4988.Command.STEP.to_bytes(1) +
-            self.identifier.to_bytes(1) +
+            StepperMotorDriverArduinoA4988.Command.STEP.to_bytes(1, signed=False) +
+            self.identifier.to_bytes(1, signed=False) +
             num_steps.to_bytes(2, signed=True) +
-            ms_to_step.to_bytes(2) +
-            self.idx.to_bytes(2)
+            ms_to_step.to_bytes(2, signed=False) +
+            self.idx.to_bytes(2, signed=False)
         )
         self.serial.write_then_read(bytes_to_write, True, 0, False)
 
         if self.asynchronous:
             return_value = self.wait_for_async_result
         else:
-            identifier, skipped_steps, idx = self.wait_for_async_result()
+            identifier, skipped_steps, idx, done_time_epoch = self.wait_for_async_result()
             assert identifier == self.identifier
-            return_value = (skipped_steps, idx)
+            return_value = (skipped_steps, idx, done_time_epoch)
 
         super().step(stepper, num_steps, time_to_step)
 
@@ -1450,21 +1512,23 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
 
     def wait_for_async_result(
             self
-    ) -> Tuple[int, float, int]:
+    ) -> StepperMotorDriverAsynchronousReturnTuple:
         """
         Wait for asynchronous result.
 
-        :return: 3-tuple of the stepper id, skipped steps, and index.
+        :return: 4-tuple of the stepper id, skipped steps, the step-call index that completed, and the done time epoch.
         """
 
-        num_bytes_to_read = 7
-        result_bytes = self.serial.connection.read(num_bytes_to_read)
-        assert len(result_bytes) == 7
+        result_bytes = self.serial.connection.read(self.STEPPER_DONE_RESPONSE_NUM_BYTES)
+        assert len(result_bytes) == self.STEPPER_DONE_RESPONSE_NUM_BYTES
         stepper_id = int.from_bytes(result_bytes[0:1], signed=False)
-        skipped_steps = get_float(result_bytes[1:5])
+        skipped_steps = get_python_float_from_fixed_point_long_bytes(result_bytes[1:5], self.float_scale)
         idx = int.from_bytes(result_bytes[5:7], signed=False)
+        done_time_epoch = self.serial.convert_remote_time_us_to_local_seconds(
+            int.from_bytes(result_bytes[7:11], signed=False)
+        )
 
-        return stepper_id, skipped_steps, idx
+        return stepper_id, skipped_steps, idx, done_time_epoch
 
     def stop(self):
         """
@@ -1472,8 +1536,8 @@ class StepperMotorDriverArduinoA4988(StepperMotorDriver):
         """
 
         success = bool(self.serial.write_then_read(
-            StepperMotorDriverArduinoA4988.Command.STOP.to_bytes(1) +
-            self.identifier.to_bytes(1),
+            StepperMotorDriverArduinoA4988.Command.STOP.to_bytes(1, signed=False) +
+            self.identifier.to_bytes(1, signed=False),
             True,
             1,
             False
@@ -1552,18 +1616,17 @@ class Stepper(Component):
         num_steps = state.step - initial_state.step
         start_time = time.time()
         self.driver_step_return_value = self.driver.step(self, num_steps, state.time_to_step)
-        end_time = time.time()
 
-        # return value will be a 2-tuple of skipped steps and sequence index if the driver is synchronous. we can update
-        # the state now. if the driver is asynchronous, then we cannot update the stepper state here. it will need to be
-        # done elsewhere by the caller.
+        # return value will be a 3-tuple of skipped steps, sequence index, and done time epoch if the driver is
+        # synchronous. we can update the state now. if the driver is asynchronous, then we cannot update the stepper
+        # state here. it will need to be done elsewhere by the caller.
         if isinstance(self.driver_step_return_value, tuple):
-            skipped_steps, _ = self.driver_step_return_value
+            skipped_steps, _, done_time_epoch = self.driver_step_return_value
             num_steps_taken = round(num_steps - skipped_steps)
             super().set_state(
                 Stepper.State(
                     initial_state.step + num_steps_taken,
-                    timedelta(seconds=end_time - start_time)
+                    timedelta(seconds=done_time_epoch - start_time)
                 )
             )
 
@@ -1657,7 +1720,7 @@ class Stepper(Component):
         """
 
         return [
-            RpyFlask.get_switch(self.id, self.start, self.stop, None, False)
+            RpyFlask.get_switch(self.id, self.start, self.stop, None, False, None)
         ]
 
     def __init__(
