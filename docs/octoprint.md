@@ -86,7 +86,14 @@ sudo kill 1418
    /usr/bin/nohup octoprint serve --port 5001 &
    ```
    I use port 5001 above (different from the OctoPrint default of 5000) because the Flask REST server that is part of 
-   the present raspberry-py package uses port 5000. In the above, be sure to replace `/path/to/` as appropriate.  
+   the present raspberry-py package uses port 5000. In the above, be sure to replace `/path/to/` as appropriate. Save 
+   and close `run.sh`, then make it executable and restart the Pi:
+   ```shell
+   chmod +x run.sh
+   sudo shutdown -r now
+   ```
+   Visit `localhost:5001` from the Pi's local display or `<ip>:5001` from the same network where `ip` is the Pi's IP 
+   address.
 3. The following script, which you can save as `webcam.sh`, will toggle the mjpeg-streamer on and off:
    ```shell
    #!/bin/sh
