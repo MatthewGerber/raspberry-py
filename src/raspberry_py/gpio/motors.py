@@ -1648,6 +1648,7 @@ class Stepper(Component):
 
         initial_state: Stepper.State = self.state
         self.set_state(Stepper.State(initial_state.step + steps, time_to_step))
+        assert self.driver_step_return_value is not None
 
         return self.driver_step_return_value
 

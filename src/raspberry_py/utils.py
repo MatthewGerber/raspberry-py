@@ -1,7 +1,25 @@
 import base64
+import socket
 import struct
 from typing import Optional
 
+
+def get_local_ip_address():
+    """
+    Get local IP address.
+
+    :return: Local IP address.
+    """
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    try:
+        s.connect(('1.1.1.1', 1))
+        ip = s.getsockname()[0]
+    finally:
+        s.close()
+
+    return ip
 
 def get_cpu_temp() -> float:
     """

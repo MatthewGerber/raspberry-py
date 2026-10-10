@@ -1,5 +1,5 @@
 from time import sleep
-from typing import List
+from typing import List, Optional
 
 import smbus2
 
@@ -60,6 +60,27 @@ class Lcd1602:
             """
 
             self.bus.close()
+
+    @staticmethod
+    def init_lcd(
+            num_lines: int,
+            pcf8574_address: Optional[int]
+    ) -> 'Lcd1602':
+        """
+        Initialize an LCD based on the LCD1602 module and PCF8574 IC provided in the example kit.
+
+        :param num_lines: Number of lines, typically 2.
+        :param pcf8574_address: I2C address, or None to use the default (typical).
+        :return: Initialized LCD.
+        """
+
+        if pcf8574_address is None:
+            pcf8574_address =  Lcd1602.Pcf8574.PCF8574_ADDRESS
+
+        lcd = Lcd1602(pin_rs=0, pin_e=2, pins_db=[4, 5, 6, 7], pcf8574_address=pcf8574_address)
+        lcd.begin(num_lines)
+
+        return lcd
 
     # commands
     LCD_CLEAR_DISPLAY = 0x01
