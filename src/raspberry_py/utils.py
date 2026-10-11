@@ -21,17 +21,20 @@ def get_local_ip_address():
 
     return ip
 
-def get_cpu_temp() -> float:
+def get_cpu_temp(
+        celsius: bool
+) -> float:
     """
     Get the current CPU temperature.
 
+    :param celsius: Whether to get temperature in Celsius.
     :return: Temperature.
     """
 
     with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
         temp_celsius = float(f.read()) / 1000.0
 
-    return temp_celsius
+    return temp_celsius if celsius else temp_celsius * 9.0 / 5.0 + 32.0
 
 
 class IncrementalSampleAverager:

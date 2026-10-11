@@ -4,6 +4,7 @@ import inspect
 import logging
 import os.path
 import pickle
+import signal
 import sys
 from argparse import ArgumentParser
 from datetime import timedelta
@@ -501,6 +502,7 @@ class RpyFlask(Flask):
         state_dir = join(expanduser('~'), '.raspberry-py')
         os.makedirs(state_dir, exist_ok=True)
         self.state_path = join(state_dir, f'{name}-state.pickle')
+        assert self.state_path is not None
 
         # add the special call history component, which tracks rest calls.
         self.add_component(self.call_history)
@@ -556,6 +558,8 @@ class RpyFlask(Flask):
         """
         Save state and signal that the process running the app is about to exit.
         """
+
+        assert self.state_path is not None
 
         with open(self.state_path, 'wb') as f:
             history_state: CallHistory.State = self.call_history.state
@@ -1638,6 +1642,19 @@ export async function is_checked(element) {
 
 
 app = RpyFlask(__name__)
+
+def handle_sigterm(signum, frame):
+    """
+    Handle termination signal. Calls sys.exit(0), which triggers normal interpreter shutdown, which fires atexit.
+
+    :param signum: Signal.
+    :param frame: Frame.
+    """
+
+    logger.info(f'Received signal {signum}. Exiting gracefully...')
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, handle_sigterm)
 
 
 @app.route('/list')

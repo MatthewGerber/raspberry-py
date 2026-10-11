@@ -12,7 +12,7 @@ def main():
     try:
         while True:
             lcd.set_cursor(0, 0)  # set cursor position
-            lcd.message(f'CPU:  {get_cpu_temp()}\n')
+            lcd.message(f'CPU temp (F):  {get_cpu_temp(False) * (9 / 5) + 32:.1f}\n')
             lcd.message(datetime.now().strftime('    %H:%M:%S'))
             sleep(5)
             lcd.clear()
