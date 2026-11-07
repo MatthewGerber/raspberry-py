@@ -1005,7 +1005,7 @@ class Camera(Component):
 
         self.height_width_ratio = 0.75
         if height / width != self.height_width_ratio:
-            width = height / self.height_width_ratio
+            width = int(height / self.height_width_ratio)
 
         self.device = device
         self.width = width
@@ -1029,6 +1029,9 @@ class MjpgStreamer(Component):
     """
     A wrapper around the mjpg-streamer application found here:  https://github.com/jacksonliam/mjpg-streamer
     """
+
+    # environment variable specifying the directory that contains the mjpg_streamer binary
+    MJPG_STREAMER_HOME_ENV = 'MJPG_STREAMER_HOME'
 
     class State(Component.State):
         """
@@ -1101,14 +1104,29 @@ class MjpgStreamer(Component):
         curr_state: MjpgStreamer.State = self.state
 
         if state.on and not curr_state.on:
-            args = shlex.split(f'./mjpg_streamer -i "input_uvc.so -d {self.device} -fps {self.fps} -r {self.width}x{self.height} -q {self.quality}" -o "output_http.so -p {self.port} -w ./www"')
-            self.process = subprocess.Popen(args, cwd=os.getenv('MJPG_STREAMER_HOME'))
-        elif not state.on and curr_state.on:
-            os.kill(self.process.pid, signal.SIGTERM)
-            while self.process.poll() is None:
-                time.sleep(1)
 
-            self.process = None
+            mjpg_streamer_home = os.getenv(MjpgStreamer.MJPG_STREAMER_HOME_ENV)
+            if mjpg_streamer_home is None:
+                raise ValueError(
+                    f'Must set environment variable to directory containing mjpg_streamer binary:  '
+                    f'{MjpgStreamer.MJPG_STREAMER_HOME_ENV}'
+                )
+
+            logger.info(f'Starting mjpg-streamer process in {mjpg_streamer_home}.')
+            args = shlex.split(f'./mjpg_streamer -i "input_uvc.so -d {self.device} -fps {self.fps} -r {self.width}x{self.height} -q {self.quality}" -o "output_http.so -p {self.port} -w ./www"')
+            self.process = subprocess.Popen(args, cwd=mjpg_streamer_home)
+
+        elif not state.on and curr_state.on:
+
+            if self.process is None:
+                logger.error(f'No MJPG streamer process to kill.')
+            else:
+                logger.info(f'Killing mjpg-streamer process {self.process.pid}.')
+                os.kill(self.process.pid, signal.SIGTERM)
+                while self.process.poll() is None:
+                    time.sleep(1)
+
+                self.process = None
 
         super().set_state(state)
 

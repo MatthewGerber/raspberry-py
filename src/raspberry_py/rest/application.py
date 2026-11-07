@@ -1251,7 +1251,7 @@ export async function is_checked(element) {
             refresh_interval: Optional[timedelta],
             image_width: str,
             image_height: str,
-            action_function_names: List[Tuple[Callable[[int], None], str]]
+            action_function_names: List[Tuple[Callable[[int], Any], str]]
     ) -> Tuple[str, str]:
         """
         Get an action button list that refreshes its items periodically.
