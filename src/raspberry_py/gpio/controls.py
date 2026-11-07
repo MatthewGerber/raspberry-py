@@ -1,6 +1,6 @@
 import time
 from threading import Thread
-from typing import List, Dict
+from typing import List, Dict, cast
 
 import RPi.GPIO as gpio
 
@@ -318,7 +318,9 @@ class Joystick(Component):
         self.button.event(lambda s: self.set_state(self.get_joystick_state(self.adc.get_channel_value(), s.pressed)))
 
         # listen for events from the adc and update joystick state when they occur
-        self.adc.event(lambda s: self.set_state(self.get_joystick_state(s.channel_value, self.button.is_pressed())))
+        self.adc.event(lambda s: self.set_state(
+            self.get_joystick_state(cast(Dict, cast(AdcDevice.State, s).channel_value), self.button.is_pressed())
+        ))
 
         # set up a clock and update the adc each tick. it doesn't matter that we pass None here (max tick rate), since
         # the caller will need to supply a tick interval when starting updates.
