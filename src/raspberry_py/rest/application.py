@@ -1367,8 +1367,8 @@ export async function is_checked(element) {
         :return: JavaScript.
         """
 
-        if dyn_arg_type in [int, float]:
-            js = f'document.getElementById("{dyn_arg_comp_id}").value'  # assume number textbox
+        if dyn_arg_type in [int, float, str]:
+            js = f'document.getElementById("{dyn_arg_comp_id}").value'  # assume number/text textbox
         elif dyn_arg_type == bool:
             js = f'$("#{dyn_arg_comp_id}").is(":checked")'  # assume switch
         else:
