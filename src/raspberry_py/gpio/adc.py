@@ -18,7 +18,7 @@ class AdcDevice(Component, ABC):
 
         def __init__(
                 self,
-                channel_value: Optional[Dict[int, float]]
+                channel_value: Dict[int, float]
         ):
             """
             Initialize the state.
@@ -86,6 +86,7 @@ class AdcDevice(Component, ABC):
             rescaled_range = self.channel_rescaled_range[channel]
             reversed_range = rescaled_range is not None and rescaled_range[0] > rescaled_range[1]
             if reversed_range:
+                assert rescaled_range is not None
                 rescaled_range = sorted(rescaled_range)
 
             # rescale if a range is provided for the channel
@@ -133,12 +134,13 @@ class AdcDevice(Component, ABC):
 
     def get_voltage(
             self,
-            digital_output: int
+            digital_output: float
     ) -> float:
         """
         Get analog voltage corresponding to a digital output.
 
-        :param digital_output: Digital output.
+        :param digital_output: Digital output. This is typically an int, but it can also be a float if the ADC channels
+        are rescaled to a different range.
         :return: Approximate voltage.
         """
 
@@ -179,7 +181,7 @@ class AdcDevice(Component, ABC):
         """
 
         super().__init__(
-            state=AdcDevice.State(None)
+            state=AdcDevice.State({})
         )
 
         self.input_voltage = input_voltage

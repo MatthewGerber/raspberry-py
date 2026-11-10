@@ -9,7 +9,7 @@ from abc import abstractmethod, ABC
 from datetime import timedelta
 from enum import Enum, auto, IntEnum
 from threading import Thread, Lock
-from typing import Optional, List, Callable, Tuple, Union
+from typing import Optional, List, Callable, Tuple, Union, cast
 
 import RPi.GPIO as gpio
 import cv2
@@ -102,6 +102,7 @@ class Photoresistor(Component):
         self.adc.update_state()
 
         state: Photoresistor.State = self.state
+        assert state.light_level is not None
 
         return state.light_level
 
@@ -139,7 +140,7 @@ class Photoresistor(Component):
         self.adc.event(
             lambda s: self.set_state(
                 Photoresistor.State(
-                    light_level=s.channel_value[self.channel]
+                    light_level=cast(AdcDevice.State, s).channel_value[self.channel]
                 )
             )
         )
@@ -235,6 +236,7 @@ class Thermistor(Component):
         self.adc.update_state()
 
         state: Thermistor.State = self.state
+        assert state.temperature_f is not None
 
         return state.temperature_f
 
@@ -275,7 +277,7 @@ class Thermistor(Component):
                     temperature_f=self.convert_voltage_to_temperature(
                         input_voltage=self.adc.input_voltage,
                         output_voltage=adc.get_voltage(
-                            digital_output=s.channel_value[self.channel]
+                            digital_output=cast(AdcDevice.State, s).channel_value[self.channel]
                         )
                     )
                 )

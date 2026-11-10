@@ -319,7 +319,7 @@ class Joystick(Component):
 
         # listen for events from the adc and update joystick state when they occur
         self.adc.event(lambda s: self.set_state(
-            self.get_joystick_state(cast(Dict, cast(AdcDevice.State, s).channel_value), self.button.is_pressed())
+            self.get_joystick_state(cast(AdcDevice.State, s).channel_value, self.button.is_pressed())
         ))
 
         # set up a clock and update the adc each tick. it doesn't matter that we pass None here (max tick rate), since
