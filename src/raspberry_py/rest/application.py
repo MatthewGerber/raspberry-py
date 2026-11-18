@@ -1577,7 +1577,7 @@ export async function is_checked(element) {
 
         :param component_id: Component id.
         :param height: Height of image.
-        :param refresh_interval: How long to wait between refresh calls, or None for no interval.
+        :param refresh_interval: How long to wait between refresh calls, or None to use the display's refresh rate.
         :param pause_for_checkbox_id: HTML identifier of checkbox to pause for before capturing image.
         :param port: Port that mjpg_streamer runs on.
         :return: 2-tuple of (1) element id and (2) UI element.
@@ -1587,9 +1587,10 @@ export async function is_checked(element) {
         image_element = element_id.replace('-', '_')
         insert_new_image_function_name = f'insert_new_image_{image_element}'
 
-        refresh_interval_javascript = ''
-        if refresh_interval is not None:
-            refresh_interval_javascript = f'      await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
+        if refresh_interval is None:
+            refresh_interval_javascript = f'  await new Promise(r => requestAnimationFrame(r));\n'
+        else:
+            refresh_interval_javascript = f'  await new Promise(r => setTimeout(r, {refresh_interval.total_seconds() * 1000}));\n'
 
         pause_import_javascript = ''
         pause_element_javascript = ''
@@ -1609,18 +1610,32 @@ export async function is_checked(element) {
                 f'{pause_import_javascript}'
                 f'{pause_element_javascript}'
                 f'let image_id = 0;\n'
-                f'let loaded_images = [];\n'                
+                f'let loaded_images = [];\n'
+                f'let old_url = null;\n'
                 f'async function {insert_new_image_function_name}() {{\n'
                 f'{pause_await_javascript}'
+                f'{refresh_interval_javascript}'
                 f'  let img = new Image();\n'
                 f'  img.style.position = "absolute";\n'
                 f'  img.style.zIndex = "-1";\n'
                 f'  img.onload = image_loaded;\n'
                 f'  img.onerror = image_error;\n'
-                f'  img.src = "http://" + rest_host + ":{port}/?action=snapshot&n=" + (++image_id);\n'
-                f'  let {image_element} = document.getElementById("{element_id}");\n'
-                f'  {image_element}.insertBefore(img, {image_element}.firstChild);\n'
-                f'{refresh_interval_javascript}'
+                f'  const img_endpoint = "http://" + rest_host + ":{port}/?action=snapshot&n=" + (++image_id);\n'
+                f'  const response = await fetch(img_endpoint);\n'
+                f'  if (response.ok) {{\n'
+                f'    const image_blob = await response.blob();\n'
+                f'    const new_url = URL.createObjectURL(image_blob);\n'
+                f'    img.src = new_url;\n'
+                f'    if (old_url) {{\n'
+                f'      URL.revokeObjectURL(old_url);\n'
+                f'    }}\n'
+                f'    old_url = new_url;\n'
+                f'    let {image_element} = document.getElementById("{element_id}");\n'
+                f'    {image_element}.insertBefore(img, {image_element}.firstChild);\n'
+                f'  }}\n'
+                f'  else {{\n'
+                f'    await image_error();\n'
+                f'  }}\n'
                 f'}}\n'
                 f'async function image_loaded() {{\n'
                 f'  this.style.zIndex = image_id;\n'
