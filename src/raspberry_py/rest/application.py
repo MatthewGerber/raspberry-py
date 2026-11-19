@@ -1570,16 +1570,18 @@ export async function is_checked(element) {
             height: int,
             refresh_interval: Optional[timedelta],
             pause_for_checkbox_id: Optional[str],
-            port: int
+            port: int,
+            upside_down: bool
     ):
         """
-        Get connection to the mjpg_streamer application.
+        Get viewer for the mjpg_streamer application.
 
         :param component_id: Component id.
         :param height: Height of image.
         :param refresh_interval: How long to wait between refresh calls, or None to use the display's refresh rate.
         :param pause_for_checkbox_id: HTML identifier of checkbox to pause for before capturing image.
         :param port: Port that mjpg_streamer runs on.
+        :param upside_down: Whether to flip the viewer for cameras mounted upside down.
         :return: 2-tuple of (1) element id and (2) UI element.
         """
 
@@ -1618,6 +1620,7 @@ export async function is_checked(element) {
                 f'  let img = new Image();\n'
                 f'  img.style.position = "absolute";\n'
                 f'  img.style.zIndex = "-1";\n'
+                f'  img.style.transform = "rotate(180deg)";\n'
                 f'  img.onload = image_loaded;\n'
                 f'  img.onerror = image_error;\n'
                 f'  const img_endpoint = "http://" + rest_host + ":{port}/?action=snapshot&n=" + (++image_id);\n'

@@ -539,7 +539,7 @@ class Car(Component):
             ]
             elements.extend(camera_elements)
         elif isinstance(self.camera, MjpgStreamer):
-            elements.append(RpyFlask.get_mjpg_streamer(self.camera.id, self.camera.height, None, power_id, self.camera.port))
+            elements.append(RpyFlask.get_mjpg_streamer(self.camera.id, self.camera.height, None, power_id, self.camera.port, False))
         else:
             raise ValueError(f'Unknown camera:  {self.camera}')
 
